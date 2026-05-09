@@ -130,6 +130,7 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
     <label>Период</label>
     <select class="msel" id="msel" onchange="switchMonth(this.value)"></select>
     <button class="btn-nm" onclick="openNewMonth()">+ Новый месяц</button>
+<button class="btn-nm" onclick="loadData()" style="border-color:var(--blue);color:var(--blue)" id="reloadBtn">↻ Обновить</button>
   </div>
   <div class="hdr-stats" id="hdrStats"></div>
 </div>
@@ -225,7 +226,22 @@ let curMonth='',kmFilter='all',_eId=null,_eBlock=null,_kId=null,selNewMonth='';
 const ALL_MONTHS=['Октябрь 2025','Ноябрь 2025','Декабрь 2025','Январь 2026','Февраль 2026','Март 2026','Апрель 2026','Май 2026','Июнь 2026','Июль 2026','Август 2026','Сентябрь 2026','Октябрь 2026'];
 
 async function api(method,url,body){const opts={method,headers:{'Content-Type':'application/json'}};if(body)opts.body=JSON.stringify(body);const r=await fetch(url,opts);return r.json();}
-async function loadData(){try{DB=await api('GET','/api/data');const months=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];if(!curMonth||!months.includes(curMonth))curMonth=months[months.length-1]||'';renderAll();}catch(e){console.error(e);}}
+async function loadData(){
+  const btn=document.getElementById('reloadBtn');
+  if(btn){btn.textContent='↻ ...';btn.disabled=true;}
+  try{
+    DB=await api('GET','/api/data');
+    const months=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];
+    if(!curMonth||!months.includes(curMonth))curMonth=months[months.length-1]||'';
+    renderAll();
+    toast('Данные обновлены ✓');
+  }catch(e){
+    toast('Ошибка загрузки');
+    console.error(e);
+  }finally{
+    if(btn){btn.textContent='↻ Обновить';btn.disabled=false;}
+  }
+}
 
 function parseD(s){if(!s||s==='-'||s==='—')return null;const m=s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
 function tenure(s){const d=parseD(s);if(!d)return'—';const now=new Date();let mo=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth());if(mo<0)return'<1 мес';const y=Math.floor(mo/12),r=mo%12;return y?`${y} г ${r?r+' мес':''}`:`${r} мес`;}
