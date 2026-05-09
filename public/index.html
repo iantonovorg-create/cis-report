@@ -237,7 +237,47 @@ function toast(msg){const el=document.getElementById('toast');el.textContent=msg
 
 function renderAll(){renderSel();renderStats();renderHead();renderTL();renderOPS();renderGrid('bush','КРМ/ТХП');renderGrid('evs','КМ');renderKM();document.getElementById('footM').textContent=curMonth;document.getElementById('footUpd').textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU');}
 function renderSel(){const months=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];document.getElementById('msel').innerHTML=months.map(m=>`<option value="${m}"${m===curMonth?' selected':''}>${m}</option>`).join('');}
-function renderStats(){const rows=byM(DB.employees).filter(e=>!['HEAD','TL_BUSH','TL_EVS'].includes(e.block));const t=rows.length,st=rows.filter(e=>e.status==='Стабилен').length,wa=rows.filter(e=>e.status&&e.status.includes('Требует')).length,ri=rows.filter(e=>e.status==='Зона риска'||e.status==='Увольнение').length,gr=rows.filter(e=>e.status==='Потенциал роста').length;document.getElementById('hdrStats').innerHTML=`<div class="hst"><span class="n" style="color:var(--accent)">${t}</span><span class="l">Всего</span></div><div class="hst"><span class="n" style="color:var(--green)">${st}</span><span class="l">Стабильны</span></div><div class="hst"><span class="n" style="color:var(--warn)">${wa}</span><span class="l">Контроль</span></div><div class="hst"><span class="n" style="color:var(--red)">${ri}</span><span class="l">Риск</span></div><div class="hst"><span class="n" style="color:var(--purple)">${gr}</span><span class="l">Потенциал</span></div>`;const ops=byM(DB.employees).filter(e=>e.block==='OPS').length,bush=byM(DB.employees).filter(e=>e.block==='КРМ/ТХП').length,evs=byM(DB.employees).filter(e=>e.block==='КМ').length;document.getElementById('sumRow').innerHTML=[['Вся команда',t,'var(--accent)'],['OPS',ops,'var(--blue)'],['КРМ/ТХП',bush,'var(--sage)'],['КМ',evs,'var(--purple)'],['Стабильны',st,'var(--green)'],['Контроль',wa,'var(--warn)'],['Риск/Увол.',ri,'var(--red)'],['Потенциал',gr,'var(--purple)']].map(([l,n,c])=>`<div class="chip"><span class="n" style="color:${c}">${n}</span><div class="l">${l}</div></div>`).join('');document.getElementById('bushN').textContent=bush;document.getElementById('evsN').textContent=evs;}
+function renderStats(){
+  const rows=byM(DB.employees).filter(e=>!['HEAD','TL_BUSH','TL_EVS'].includes(e.block));
+  const t=rows.length;
+  const st=rows.filter(e=>e.status==='Стабилен').length;
+  const wa=rows.filter(e=>e.status&&e.status.includes('Требует')).length;
+  const ri=rows.filter(e=>e.status==='Зона риска'||e.status==='Увольнение').length;
+  const gr=rows.filter(e=>e.status==='Потенциал роста').length;
+
+  // По должностям — считаем из поля role
+  const ops=rows.filter(e=>e.block==='OPS').length;
+  const krm=rows.filter(e=>(e.role||'').toLowerCase().includes('crisis')).length;
+  const thp=rows.filter(e=>(e.role||'').toLowerCase().includes('tsp')).length;
+  const km=rows.filter(e=>(e.role||'').toLowerCase().includes('client manager')).length;
+  const mch=rows.filter(e=>(e.role||'').toLowerCase().includes('chat')).length;
+  const vr=rows.filter(e=>(e.sub||'').toLowerCase().includes('внутренняя')||
+    (e.functions||'').toLowerCase().includes('вр')||
+    (e.functions||'').toLowerCase().includes('внутренняя рассрочка')).length;
+
+  document.getElementById('hdrStats').innerHTML=`
+    <div class="hst"><span class="n" style="color:var(--accent)">${t}</span><span class="l">Всего</span></div>
+    <div class="hst"><span class="n" style="color:var(--green)">${st}</span><span class="l">Стабильны</span></div>
+    <div class="hst"><span class="n" style="color:var(--warn)">${wa}</span><span class="l">Контроль</span></div>
+    <div class="hst"><span class="n" style="color:var(--red)">${ri}</span><span class="l">Риск</span></div>
+    <div class="hst"><span class="n" style="color:var(--purple)">${gr}</span><span class="l">Потенциал</span></div>`;
+
+  document.getElementById('sumRow').innerHTML=[
+    ['Вся команда', t,   'var(--accent)'],
+    ['OPS',         ops, 'var(--blue)'],
+    ['КРМ',         krm, '#c8a87a'],
+    ['ТХП',         thp, '#8aaac8'],
+    ['КМ',          km,  'var(--purple)'],
+    ['МЧ',          mch, 'var(--sage)'],
+    ['Стабильны',   st,  'var(--green)'],
+    ['Контроль',    wa,  'var(--warn)'],
+    ['Риск/Увол.',  ri,  'var(--red)'],
+    ['Потенциал',   gr,  'var(--purple)'],
+  ].map(([l,n,c])=>`<div class="chip"><span class="n" style="color:${c}">${n}</span><div class="l">${l}</div></div>`).join('');
+
+  document.getElementById('bushN').textContent=byM(DB.employees).filter(e=>e.block==='КРМ/ТХП').length;
+  document.getElementById('evsN').textContent=byM(DB.employees).filter(e=>e.block==='КМ').length;
+}
 function renderHead(){const h=byM(DB.employees).find(e=>e.block==='HEAD');if(!h){document.getElementById('headCard').innerHTML='';return;}document.getElementById('headCard').innerHTML=`<div class="head-card"><div class="ava av-gold">${ini(h.name)}</div><div class="head-info"><div class="head-name">${h.name}</div><div class="head-role">${h.role||'HEAD'}</div><div class="head-meta"><div class="hm">Вход: <b>${h.entry||'—'}</b></div><div class="hm">Стаж: <b>${tenure(h.entry)}</b></div><div class="hm">График: <b>${h.schedule||'—'}</b></div><div class="hm">Город: <b>${h.city||'—'}</b></div><div class="hm">ЧП: <b>${h.tz||'—'}</b></div><div class="hm">TG: <b>${h.tg||'—'}</b></div></div></div><button class="abt ed" onclick="openEditEmp('${h.id}','HEAD')">✎ Редактировать</button></div>`;}
 function renderTL(){['TL_BUSH','TL_EVS'].forEach(block=>{const key=block==='TL_BUSH'?'bush':'evs';const tl=byM(DB.employees).find(e=>e.block===block);if(!tl)return;document.getElementById(key+'-ava').textContent=ini(tl.name);document.getElementById(key+'-info').innerHTML=`<div class="tl-name">${tl.name}</div><div class="tl-role">${tl.role||'Team Lead'}</div>`;document.getElementById(key+'-sched').textContent=tl.schedule||'—';});}
 function card(e){const sc=scls(e.status),ten=tenure(e.entry),hasCom=e.comment&&e.comment.trim()&&e.comment!=='-';return`<div class="ecard ${sc}" id="ec_${e.id}" onclick="toggleC('${e.id}')"><div class="cbar"></div><div class="cbody"><div class="ctop"><div><div class="cname">${e.name}</div><div class="crole">${e.role||'—'}${e.sub?' · '+e.sub:''}</div><div class="centry">Вход: ${e.entry||'—'} · Стаж: ${ten}</div>${e.vacation?`<div class="bvac">✈ ${e.vacation}</div>`:''}${e.dismiss?`<div class="bdis">Увольнение: ${e.dismiss}</div>`:''}</div><div class="cright"><div class="sbadge">${e.status||'—'}</div><div class="cchev">▾</div></div></div><div class="cfields"><div class="cf"><div class="l">График</div><div class="v">${e.schedule||'—'}</div></div><div class="cf"><div class="l">План смен</div><div class="v">${e.plan||'—'}</div></div><div class="cf"><div class="l">ЧП МСК</div><div class="v">${e.tz||'—'}</div></div><div class="cf"><div class="l">Факт смен</div><div class="v">${e.fact||'—'}</div></div><div class="cf"><div class="l">Город</div><div class="v" style="font-size:10px">${e.city||'—'}</div></div></div>${hasCom?`<div class="ccomment">${e.comment}</div>`:''}</div><div class="cexp" id="cx_${e.id}"><div class="egrid"><div class="ef"><div class="l">Функции / KPI</div><div class="v">${e.functions||'—'}</div></div><div class="ef"><div class="l">Доп. функции</div><div class="v">${e.extra||'—'}</div></div><div class="ef full"><div class="l">Комментарий</div><div class="v">${e.comment||'—'}</div></div></div><div class="crow"><div class="ci">📱 <span>${e.phone||'—'}</span></div><div class="ci">✈️ <span>${e.tg||'—'}</span></div></div><div class="cacts" onclick="event.stopPropagation()"><button class="abt ed" onclick="openEditEmp('${e.id}','${e.block}')">✎ Редактировать</button><button class="abt dl" onclick="delEmp('${e.id}')">✕ Удалить</button></div></div></div>`;}
