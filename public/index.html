@@ -3,793 +3,273 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CIS Client Service — Отчёт</title>
+<title>CIS Client Service — Отчёт по команде</title>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600;700&family=Golos+Text:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#181818;--bg2:#202020;--bg3:#282828;
-  --border:#363636;--border2:#484848;
-  --text:#e4e2df;--dim:#888;--muted:#3a3a3a;
-  --accent:#c8b89a;--gold:#d4c4a8;
-  --green:#7ac890;--warn:#c8a87a;--red:#c87a7a;--purple:#a87ac8;--blue:#8aaac8;--sage:#9aac8a;
-}
+:root{--bg:#181818;--bg2:#202020;--bg3:#282828;--border:#363636;--border2:#484848;--text:#e4e2df;--dim:#888;--muted:#3a3a3a;--accent:#c8b89a;--gold:#d4c4a8;--green:#7ac890;--warn:#c8a87a;--red:#c87a7a;--purple:#a87ac8;--blue:#8aaac8;--sage:#9aac8a}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-
-.hdr{background:#111;border-bottom:1px solid var(--border);padding:0 36px;display:flex;align-items:stretch;position:sticky;top:0;z-index:300;flex-wrap:wrap}
-.hdr-logo{font-family:'Unbounded',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--accent);border-right:1px solid var(--border);padding:18px 24px 18px 0;display:flex;align-items:center}
-.hdr-title{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:300;color:var(--dim);letter-spacing:1px;padding:0 24px;display:flex;align-items:center;border-right:1px solid var(--border)}
-.hdr-mid{padding:0 20px;display:flex;align-items:center;gap:10px;border-right:1px solid var(--border)}
+.hdr{background:#111;border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:stretch;position:sticky;top:0;z-index:300;flex-wrap:wrap}
+.hdr-logo{font-family:'Unbounded',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--accent);border-right:1px solid var(--border);padding:0 22px 0 0;display:flex;align-items:center;margin-right:22px}
+.hdr-title{font-size:11px;color:var(--dim);letter-spacing:1px;display:flex;align-items:center;margin-right:22px;border-right:1px solid var(--border);padding-right:22px}
+.hdr-mid{display:flex;align-items:center;gap:10px;padding:14px 0;border-right:1px solid var(--border);padding-right:22px;margin-right:22px}
 .hdr-mid label{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
-.month-sel{background:var(--bg3);border:1px solid var(--border2);color:var(--accent);padding:7px 12px;font-family:'Golos Text',sans-serif;font-size:12px;font-weight:600;cursor:pointer;outline:none;border-radius:2px;min-width:150px}
-.btn-reload{background:transparent;border:1px solid var(--border2);color:var(--dim);padding:6px 12px;font-family:'Golos Text',sans-serif;font-size:10px;cursor:pointer;border-radius:2px;letter-spacing:.5px;transition:all .2s}
-.btn-reload:hover{border-color:var(--accent);color:var(--accent)}
-.btn-reload.spinning{animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+.msel{background:var(--bg3);border:1px solid var(--border2);color:var(--accent);padding:7px 12px;font-family:'Golos Text',sans-serif;font-size:12px;font-weight:600;cursor:pointer;outline:none;border-radius:2px;min-width:150px}
+.btn-nm{background:transparent;border:1px solid var(--accent);color:var(--accent);padding:6px 14px;font-family:'Golos Text',sans-serif;font-size:10px;cursor:pointer;border-radius:2px;letter-spacing:.5px;transition:all .2s;white-space:nowrap}
+.btn-nm:hover{background:var(--accent);color:#111}
 .hdr-stats{display:flex;align-items:center;margin-left:auto}
-.hst{padding:0 14px;text-align:center;border-right:1px solid var(--border)}
-.hst:last-child{border-right:none}
-.hst .n{font-family:'Unbounded',sans-serif;font-size:15px;font-weight:700;display:block}
+.hst{padding:0 13px;text-align:center;border-right:1px solid var(--border)}.hst:last-child{border-right:none}
+.hst .n{font-family:'Unbounded',sans-serif;font-size:14px;font-weight:700;display:block}
 .hst .l{font-size:8px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-top:2px}
-
-.tabs{background:#111;border-bottom:1px solid var(--border);padding:0 36px;display:flex}
-.tab{font-family:'Unbounded',sans-serif;font-size:9px;letter-spacing:2px;padding:13px 22px;cursor:pointer;background:transparent;border:none;color:var(--muted);text-transform:uppercase;border-bottom:2px solid transparent;transition:all .2s;position:relative;top:1px}
-.tab:hover{color:var(--text)}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-
-.main{padding:28px 36px;max-width:1700px}
-.panel{display:none}.panel.active{display:block}
-
-/* LOADER */
-.loader{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;gap:16px}
-.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
-.loader-text{font-size:12px;color:var(--dim);letter-spacing:1px}
-
-/* ERROR */
-.err-box{background:rgba(200,122,122,.08);border:1px solid rgba(200,122,122,.3);border-radius:4px;padding:20px 24px;margin:20px 0}
-.err-box h3{color:var(--red);font-size:13px;margin-bottom:8px}
-.err-box p{font-size:12px;color:var(--dim);line-height:1.7}
-.err-box code{background:rgba(0,0,0,.3);padding:2px 6px;border-radius:2px;font-family:monospace;font-size:11px;color:var(--accent)}
-
-/* CONFIG PANEL */
-.cfg-box{background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:24px 28px;margin-bottom:24px}
-.cfg-box h3{font-family:'Unbounded',sans-serif;font-size:11px;color:var(--gold);margin-bottom:14px;letter-spacing:.5px}
-.cfg-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
-.cfg-group{display:flex;flex-direction:column;gap:5px;flex:1;min-width:200px}
-.cfg-group label{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
-.cfg-group input{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:9px 12px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none}
-.cfg-group input:focus{border-color:var(--accent)}
-.btn-connect{padding:9px 20px;background:var(--accent);border:none;color:#111;font-family:'Golos Text',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border-radius:2px;white-space:nowrap}
-.btn-connect:hover{opacity:.85}
-.cfg-hint{font-size:11px;color:var(--dim);margin-top:10px;line-height:1.7}
-.cfg-hint a{color:var(--accent);text-decoration:none}
-.cfg-hint a:hover{text-decoration:underline}
-.cfg-step{display:flex;gap:8px;margin-bottom:6px;align-items:flex-start}
-.cfg-step-n{font-family:'Unbounded',sans-serif;font-size:10px;color:var(--accent);flex-shrink:0;margin-top:1px}
-
-/* SUMMARY */
-.sum-row{display:flex;gap:10px;margin-bottom:26px;flex-wrap:wrap}
-.sum-chip{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:10px 18px;text-align:center}
-.sum-chip .n{font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;display:block}
-.sum-chip .l{font-size:8px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-top:4px}
-
-/* HEAD CARD */
-.head-card{background:linear-gradient(135deg,#1a1a14 0%,#222018 100%);border:1px solid #4a4030;border-radius:4px;padding:18px 26px;margin-bottom:26px;display:flex;align-items:center;gap:22px}
-.head-ava{width:48px;height:48px;background:linear-gradient(135deg,var(--accent),#9a8060);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:14px;font-weight:700;color:#111;flex-shrink:0}
-.head-info{flex:1}
-.head-name{font-family:'Unbounded',sans-serif;font-size:14px;font-weight:600;color:var(--gold)}
-.head-role{font-size:9px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-top:4px}
+.tabs{background:#111;border-bottom:1px solid var(--border);padding:0 32px;display:flex}
+.tab{font-family:'Unbounded',sans-serif;font-size:9px;letter-spacing:2px;padding:13px 20px;cursor:pointer;background:transparent;border:none;color:var(--muted);text-transform:uppercase;border-bottom:2px solid transparent;transition:all .2s;position:relative;top:1px}
+.tab:hover{color:var(--text)}.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.main{padding:24px 32px;max-width:1700px}
+.panel{display:none}.panel.on{display:block}
+.sum-row{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap}
+.chip{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:10px 16px;text-align:center;min-width:76px}
+.chip .n{font-family:'Unbounded',sans-serif;font-size:19px;font-weight:700;display:block}
+.chip .l{font-size:8px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-top:3px}
+.head-card{background:linear-gradient(135deg,#1a1a14,#222018);border:1px solid #4a4030;border-radius:4px;padding:16px 22px;margin-bottom:22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.ava{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;color:#111;flex-shrink:0}
+.av-gold{background:linear-gradient(135deg,var(--accent),#9a8060)}.av-sage{background:linear-gradient(135deg,var(--sage),#5a8040)}.av-blue{background:linear-gradient(135deg,var(--blue),#5a7aa0)}.av-plum{background:linear-gradient(135deg,var(--purple),#6a3aa0)}
+.head-info{flex:1}.head-name{font-family:'Unbounded',sans-serif;font-size:14px;font-weight:600;color:var(--gold)}
+.head-role{font-size:9px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-top:3px}
 .head-meta{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px}
 .hm{font-size:11px;color:var(--dim)}.hm b{color:var(--text);font-weight:500}
-
-.section{margin-bottom:30px}
-.sec-label{font-family:'Unbounded',sans-serif;font-size:9px;letter-spacing:4px;color:var(--muted);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:14px}
-.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
-
+.sec-lbl{font-family:'Unbounded',sans-serif;font-size:9px;letter-spacing:4px;color:var(--muted);text-transform:uppercase;margin-bottom:11px;margin-top:20px;display:flex;align-items:center;gap:12px}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
 .tl-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:12px}
-.tl-hdr{display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .2s;user-select:none}
+.tl-hdr{display:flex;align-items:center;gap:13px;padding:13px 18px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s;user-select:none}
 .tl-hdr:hover{background:var(--bg3)}
-.tl-ava{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:11px;font-weight:700;color:#111;flex-shrink:0}
-.av-b{background:linear-gradient(135deg,var(--warn),#9a7840)}
-.av-e{background:linear-gradient(135deg,var(--sage),#5a8040)}
-.av-o{background:linear-gradient(135deg,var(--blue),#5a7aa0)}
-.tl-info{flex:1}
-.tl-name{font-size:13px;font-weight:600;color:var(--text)}
-.tl-role{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:2px}
-.tl-stats{display:flex;gap:18px}
-.tls .n{font-family:'Unbounded',sans-serif;font-size:14px;font-weight:600;color:var(--accent);display:block;text-align:center}
-.tls .l{font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
-.tl-chev{font-size:15px;color:var(--muted);transition:transform .3s;flex-shrink:0}
-.tl-chev.open{transform:rotate(180deg)}
-.tl-body{padding:16px 20px}
-.tl-body.hidden{display:none}
-
-.frow{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
-.fb{font-size:10px;padding:5px 12px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:2px;transition:all .2s;font-family:'Golos Text',sans-serif}
+.tl-info{flex:1}.tl-name{font-size:13px;font-weight:600;color:var(--text)}.tl-role{font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-top:2px}
+.tl-stat{text-align:center;padding:0 12px;border-left:1px solid var(--border)}.tl-stat .n{font-family:'Unbounded',sans-serif;font-size:15px;font-weight:700;color:var(--accent);display:block}.tl-stat .l{font-size:8px;letter-spacing:1px;color:var(--muted)}
+.chev{font-size:14px;color:var(--muted);transition:transform .25s;flex-shrink:0}.chev.open{transform:rotate(180deg)}
+.tl-body{padding:14px 18px}.tl-body.hidden{display:none}
+.frow{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.fb{font-size:10px;padding:5px 12px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:2px;transition:all .15s;font-family:'Golos Text',sans-serif}
 .fb:hover,.fb.on{background:var(--bg3);border-color:var(--accent);color:var(--text)}
-
-.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:11px}
-
-/* CARD */
-.ecard{background:var(--bg2);border:1px solid var(--border);border-radius:4px;overflow:hidden;cursor:pointer;transition:all .2s}
-.ecard:hover{border-color:var(--accent);box-shadow:0 4px 18px rgba(0,0,0,.4);transform:translateY(-1px)}
-.ecard.open{border-color:var(--accent)}
-.cbar{height:3px}
-.cbody{padding:14px 16px 12px}
+.btn-add{font-size:10px;padding:5px 12px;border:1px solid var(--sage);background:transparent;color:var(--sage);cursor:pointer;border-radius:2px;transition:all .15s;font-family:'Golos Text',sans-serif;margin-left:auto;white-space:nowrap}
+.btn-add:hover{background:var(--sage);color:#111}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:11px}
+.ecard{background:var(--bg2);border:1px solid var(--border);border-radius:4px;overflow:hidden;cursor:pointer;transition:all .15s}
+.ecard:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(0,0,0,.4);transform:translateY(-1px)}.ecard.open{border-color:var(--accent)}
+.cbar{height:3px}.cbody{padding:13px 15px 11px}
 .ctop{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.cname{font-size:13px;font-weight:600;color:var(--text);line-height:1.3}
-.crole{font-size:10px;color:var(--dim);margin-top:2px}
-.centry{font-size:10px;color:var(--muted);margin-top:2px}
+.cname{font-size:13px;font-weight:600;color:var(--text);line-height:1.3}.crole{font-size:10px;color:var(--dim);margin-top:2px}.centry{font-size:10px;color:var(--muted);margin-top:2px}
 .cright{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
-.sbadge{font-size:9px;letter-spacing:.5px;padding:3px 8px;border-radius:2px;white-space:nowrap;font-weight:600}
-.cchev{font-size:10px;color:var(--muted);transition:transform .2s}
-.open .cchev{transform:rotate(180deg)}
-.bvac{font-size:9px;background:rgba(138,170,200,.12);color:var(--blue);border:1px solid rgba(138,170,200,.2);padding:2px 6px;border-radius:2px;margin-top:3px;display:inline-block}
-.bdis{font-size:9px;background:rgba(200,122,122,.12);color:var(--red);border:1px solid rgba(200,122,122,.2);padding:2px 6px;border-radius:2px;margin-top:3px;display:inline-block}
-.cfields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:11px}
-.cf .l{font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:2px}
-.cf .v{font-size:11px;color:var(--text);font-weight:500}
+.sbadge{font-size:9px;padding:3px 8px;border-radius:2px;white-space:nowrap;font-weight:600;flex-shrink:0}
+.cchev{font-size:10px;color:var(--muted);transition:transform .2s}.open .cchev{transform:rotate(180deg)}
+.bvac{font-size:9px;background:rgba(138,170,200,.13);color:var(--blue);border:1px solid rgba(138,170,200,.22);padding:2px 6px;border-radius:2px;margin-top:3px;display:inline-block}
+.bdis{font-size:9px;background:rgba(200,122,122,.13);color:var(--red);border:1px solid rgba(200,122,122,.22);padding:2px 6px;border-radius:2px;margin-top:3px;display:inline-block}
+.cfields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:10px}
+.cf .l{font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:2px}.cf .v{font-size:11px;color:var(--text);font-weight:500}
 .ccomment{margin-top:9px;padding:6px 9px;background:rgba(0,0,0,.25);border-left:2px solid var(--accent);font-size:10px;color:var(--dim);line-height:1.5;border-radius:0 2px 2px 0}
-.cexp{display:none;border-top:1px solid var(--border);padding:13px 16px;background:rgba(0,0,0,.18)}
-.cexp.show{display:block}
-.egrid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-.ef .l{font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:3px}
-.ef .v{font-size:11px;color:var(--text);line-height:1.5}
-.ef.full{grid-column:1/-1}
-.crow{display:flex;gap:12px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px solid var(--border)}
+.cexp{display:none;border-top:1px solid var(--border);padding:12px 15px;background:rgba(0,0,0,.18)}.cexp.show{display:block}
+.egrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ef .l{font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:3px}.ef .v{font-size:11px;color:var(--text);line-height:1.5}.ef.full{grid-column:1/-1}
+.crow{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .ci{font-size:10px;color:var(--dim)}.ci span{color:var(--accent)}
-
-/* STATUS */
-.ss .cbar,.ss .sbadge{background:var(--green)}
-.ss .sbadge{background:rgba(122,200,144,.15);color:var(--green);border:1px solid rgba(122,200,144,.28)}
-.sw .cbar{background:var(--warn)}
-.sw .sbadge{background:rgba(200,168,122,.15);color:var(--warn);border:1px solid rgba(200,168,122,.28)}
-.sr .cbar{background:var(--red)}
-.sr .sbadge{background:rgba(200,122,122,.15);color:var(--red);border:1px solid rgba(200,122,122,.28)}
-.sf .cbar{background:#e07070}
-.sf .sbadge{background:rgba(224,112,112,.15);color:#e07070;border:1px solid rgba(224,112,112,.28)}
-.sg .cbar{background:var(--purple)}
-.sg .sbadge{background:rgba(168,122,200,.15);color:var(--purple);border:1px solid rgba(168,122,200,.28)}
-
-/* OPS */
-.ops-item{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:13px 17px;margin-bottom:9px;display:flex;align-items:flex-start;gap:12px;cursor:pointer;transition:all .2s}
-.ops-item:hover{border-color:var(--blue);background:var(--bg3)}
-.ops-item.open{border-color:var(--blue)}
-.ops-ava{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#5a7aa0);display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:10px;font-weight:700;color:#111;flex-shrink:0}
-.ops-info{flex:1}
-.ops-name{font-size:13px;font-weight:600;color:var(--text)}
-.ops-role{font-size:10px;color:var(--dim);margin-top:2px}
-.ops-meta{display:flex;flex-wrap:wrap;gap:12px;margin-top:7px}
-.om{font-size:10px;color:var(--dim)}.om b{color:var(--text);font-weight:500}
-.ops-exp{display:none;margin-top:11px;padding-top:11px;border-top:1px solid var(--border)}
-.ops-exp.show{display:block}
-
-/* KM */
-.km-ctrl{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
-.srch{background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:7px 13px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none;width:210px}
-.srch:focus{border-color:var(--accent)}
-.srch::placeholder{color:var(--muted)}
+.cacts{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.abt{font-size:10px;padding:5px 11px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:2px;transition:all .15s;font-family:'Golos Text',sans-serif}
+.abt.ed{border-color:var(--blue);color:var(--blue)}.abt.ed:hover{background:var(--blue);color:#111}
+.abt.dl{border-color:var(--red);color:var(--red)}.abt.dl:hover{background:var(--red);color:#111}
+.ss .cbar{background:var(--green)}.ss .sbadge{background:rgba(122,200,144,.15);color:var(--green);border:1px solid rgba(122,200,144,.28)}
+.sw .cbar{background:var(--warn)}.sw .sbadge{background:rgba(200,168,122,.15);color:var(--warn);border:1px solid rgba(200,168,122,.28)}
+.sr .cbar{background:var(--red)}.sr .sbadge{background:rgba(200,122,122,.15);color:var(--red);border:1px solid rgba(200,122,122,.28)}
+.sf .cbar{background:#e07070}.sf .sbadge{background:rgba(224,112,112,.15);color:#e07070;border:1px solid rgba(224,112,112,.28)}
+.sg .cbar{background:var(--purple)}.sg .sbadge{background:rgba(168,122,200,.15);color:var(--purple);border:1px solid rgba(168,122,200,.28)}
+.ops-item{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;cursor:pointer;transition:border-color .15s}
+.ops-item:hover{border-color:var(--blue)}.ops-item.open{border-color:var(--blue)}
+.ops-info{flex:1}.ops-name{font-size:13px;font-weight:600;color:var(--text)}.ops-role{font-size:10px;color:var(--dim);margin-top:2px}
+.ops-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:7px}.om{font-size:10px;color:var(--dim)}.om b{color:var(--text);font-weight:500}
+.ops-exp{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}.ops-exp.show{display:block}
+.km-ctrl{display:flex;gap:8px;margin-bottom:13px;flex-wrap:wrap;align-items:center}
+.srch{background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:7px 12px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none;width:200px}
+.srch:focus{border-color:var(--accent)}.srch::placeholder{color:var(--muted)}
+.btn-akm{font-size:10px;padding:6px 13px;border:1px solid var(--sage);background:transparent;color:var(--sage);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif;transition:all .15s;margin-left:auto;white-space:nowrap}
+.btn-akm:hover{background:var(--sage);color:#111}
 .tw{overflow-x:auto}
 table.kt{width:100%;border-collapse:collapse;font-size:11px}
-table.kt th{background:var(--bg3);border:1px solid var(--border);padding:9px 12px;text-align:left;font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;white-space:nowrap}
-table.kt td{border:1px solid var(--border);padding:9px 12px;vertical-align:top;color:var(--text);line-height:1.5}
-table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}
-table.kt tr:hover td{background:rgba(200,184,154,.04)}
+table.kt th{background:var(--bg3);border:1px solid var(--border);padding:8px 11px;text-align:left;font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+table.kt td{border:1px solid var(--border);padding:8px 11px;vertical-align:top;color:var(--text);line-height:1.5}
+table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{background:rgba(200,184,154,.04)}
 .du{color:var(--green)}.dd{color:var(--red)}.df{color:var(--muted)}
-
-.footer{border-top:1px solid var(--border);padding:12px 36px;display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:36px}
-.updated-tag{font-size:9px;color:var(--muted);letter-spacing:.5px}
-
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-
-@media(max-width:860px){
-  .hdr{padding:12px 16px}
-  .main{padding:16px}
-  .cgrid{grid-template-columns:1fr}
-}
+.kbt{background:none;border:none;cursor:pointer;font-size:13px;padding:2px 5px;border-radius:2px;transition:color .15s}
+.kbt.e{color:var(--muted)}.kbt.e:hover{color:var(--blue)}.kbt.d{color:var(--muted)}.kbt.d:hover{color:var(--red)}
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:500;align-items:center;justify-content:center}.ov.show{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:6px;width:min(680px,96vw);max-height:90vh;overflow-y:auto;padding:24px 28px;position:relative}
+.modal h2{font-family:'Unbounded',sans-serif;font-size:12px;font-weight:600;color:var(--gold);margin-bottom:16px}
+.mclose{position:absolute;top:14px;right:18px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}.mclose:hover{color:var(--text)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg{display:flex;flex-direction:column;gap:4px}.fg.full{grid-column:1/-1}
+.fg label{font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.fg input,.fg select,.fg textarea{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px 11px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none;transition:border-color .15s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--accent)}
+.fg textarea{resize:vertical;min-height:54px}.fg select option{background:var(--bg3)}
+.mbtns{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.bsave{padding:9px 20px;background:var(--accent);border:none;color:#111;font-family:'Golos Text',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border-radius:2px}.bsave:hover{opacity:.85}
+.bcancel{padding:9px 20px;background:transparent;border:1px solid var(--border2);color:var(--dim);font-family:'Golos Text',sans-serif;font-size:12px;cursor:pointer;border-radius:2px}.bcancel:hover{border-color:var(--text);color:var(--text)}
+.mnote{font-size:11px;color:var(--dim);margin-bottom:12px;line-height:1.7}
+.mchips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.mchip{padding:7px 14px;border:1px solid var(--border);background:transparent;color:var(--dim);border-radius:2px;cursor:pointer;font-family:'Golos Text',sans-serif;font-size:12px;transition:all .15s}
+.mchip:hover,.mchip.sel{border-color:var(--accent);color:var(--accent);background:rgba(200,184,154,.07)}.mchip.used{opacity:.35;cursor:default;pointer-events:none}
+.copy-opts{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.copy-opt{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text)}.copy-opt input{accent-color:var(--accent)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:10px 18px;font-size:12px;color:var(--text);z-index:999;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none}.toast.show{opacity:1;transform:translateY(0)}
+.footer{border-top:1px solid var(--border);padding:12px 32px;display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:36px}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@media(max-width:860px){.hdr{padding:12px 16px;flex-wrap:wrap}.main{padding:16px}.cgrid{grid-template-columns:1fr}.fgrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-
 <div class="hdr">
   <div class="hdr-logo">CIS CS</div>
   <div class="hdr-title">Отчёт по команде</div>
   <div class="hdr-mid">
     <label>Период</label>
-    <select class="month-sel" id="monthSel" onchange="switchMonth(this.value)"></select>
-    <button class="btn-reload" id="reloadBtn" onclick="loadData()" title="Обновить из Google Sheets">↻ Обновить</button>
+    <select class="msel" id="msel" onchange="switchMonth(this.value)"></select>
+    <button class="btn-nm" onclick="openNewMonth()">+ Новый месяц</button>
   </div>
   <div class="hdr-stats" id="hdrStats"></div>
 </div>
-
 <div class="tabs">
-  <button class="tab active" onclick="showTab('team',this)">Команда</button>
+  <button class="tab on" onclick="showTab('team',this)">Команда</button>
   <button class="tab" onclick="showTab('km',this)">Работа с КМ</button>
 </div>
-
 <div class="main">
-
-  <!-- НАСТРОЙКА (показывается если нет Sheet ID) -->
-  <div id="cfgPanel" style="display:none">
-    <div class="cfg-box">
-      <h3>⚙️ Подключение к Google Sheets</h3>
-      <div class="cfg-row">
-        <div class="cfg-group" style="flex:2">
-          <label>ID Google таблицы</label>
-          <input id="sheetIdInput" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" />
-        </div>
-        <button class="btn-connect" onclick="saveSheetId()">Подключить</button>
+  <div class="panel on" id="p-team">
+    <div class="sum-row" id="sumRow"></div>
+    <div id="headCard"></div>
+    <div class="sec-lbl">OPS — операционный блок</div>
+    <div id="opsBlock"></div>
+    <button class="btn-add" style="margin-top:8px;margin-left:0" onclick="openAddEmp('OPS')">+ Добавить в OPS</button>
+    <div class="sec-lbl">КРМ · ТХП — рук. Бушманова Татьяна Михайловна</div>
+    <div class="tl-wrap">
+      <div class="tl-hdr" onclick="toggleTL('bush')">
+        <div class="ava av-sage" id="bush-ava">ТБ</div>
+        <div class="tl-info" id="bush-info"><div class="tl-name">Бушманова Татьяна Михайловна</div><div class="tl-role">Team Lead · КРМ + ТХП</div></div>
+        <div class="tl-stat"><span class="n" id="bushN">—</span><span class="l">Сотр.</span></div>
+        <div class="tl-stat"><span class="n" id="bush-sched">14:00–22:00</span><span class="l">График</span></div>
+        <button class="abt ed" style="flex-shrink:0;margin-left:8px" onclick="event.stopPropagation();openEditTL('TL_BUSH')">✎</button>
+        <div class="chev open" id="ch-bush">▾</div>
       </div>
-      <div class="cfg-hint">
-        <div class="cfg-step"><span class="cfg-step-n">1.</span><span>Открой свою Google таблицу, скопируй ID из адресной строки:<br><code>docs.google.com/spreadsheets/d/<b>[ЭТО_И_ЕСТЬ_ID]</b>/edit</code></span></div>
-        <div class="cfg-step"><span class="cfg-step-n">2.</span><span>Сделай таблицу публичной: Файл → Настройки доступа → «Все, у кого есть ссылка» → Читатель</span></div>
-        <div class="cfg-step"><span class="cfg-step-n">3.</span><span>Вставь ID выше и нажми «Подключить»</span></div>
-        <div class="cfg-step"><span class="cfg-step-n">4.</span><span>Структура листов описана в инструкции ниже ↓</span></div>
+      <div class="tl-body" id="tb-bush">
+        <div class="frow">
+          <button class="fb on" onclick="fg('bush','all',this)">Все</button>
+          <button class="fb" onclick="fg('bush','Стабилен',this)">Стабилен</button>
+          <button class="fb" onclick="fg('bush','watch',this)">Контроль</button>
+          <button class="fb" onclick="fg('bush','risk',this)">Риск</button>
+          <button class="fb" onclick="fg('bush','Увольнение',this)">Увольнение</button>
+          <button class="btn-add" onclick="openAddEmp('КРМ/ТХП')">+ Добавить</button>
+        </div>
+        <div class="cgrid" id="g-bush"></div>
       </div>
     </div>
-
-    <div class="cfg-box" style="margin-top:0">
-      <h3>📋 Структура Google Sheets</h3>
-      <div class="cfg-hint">
-        <p style="margin-bottom:12px">Создай таблицу с такими листами (названия точно как здесь):</p>
-
-        <p style="color:var(--accent);font-size:11px;font-weight:600;margin-bottom:6px">Лист «Команда» — данные по сотрудникам</p>
-        <p style="margin-bottom:10px">Колонки: <code>Месяц</code> · <code>Блок</code> · <code>Подгруппа</code> · <code>ФИО</code> · <code>Должность</code> · <code>Дата входа</code> · <code>График</code> · <code>План смен</code> · <code>Факт смен</code> · <code>Отпуск</code> · <code>Статус</code> · <code>Функции</code> · <code>Доп функции</code> · <code>Комментарий</code> · <code>Дата увольнения</code> · <code>Город</code> · <code>ЧП МСК</code> · <code>Телефон</code> · <code>Телеграм</code></p>
-        <p style="margin-bottom:4px">Значения в колонке <code>Блок</code>: <code>HEAD</code> · <code>OPS</code> · <code>КРМ/ТХП</code> · <code>КМ</code> · <code>TL_BUSH</code> · <code>TL_EVS</code></p>
-        <p style="margin-bottom:12px">Значения в колонке <code>Статус</code>: <code>Стабилен</code> · <code>Требует наблюдения</code> · <code>Зона риска</code> · <code>Потенциал роста</code> · <code>Увольнение</code></p>
-
-        <p style="color:var(--accent);font-size:11px;font-weight:600;margin-bottom:6px">Лист «Встречи» — работа с КМ</p>
-        <p>Колонки: <code>Месяц</code> · <code>Сотрудник</code> · <code>Дата встречи</code> · <code>О чём говорили</code> · <code>Задачи</code> · <code>Следующая встреча</code> · <code>Динамика</code> · <code>ТЛ</code></p>
+    <div class="sec-lbl">КМ — клиентский опыт · рук. Евстигнеева Наталья Валерьевна</div>
+    <div class="tl-wrap">
+      <div class="tl-hdr" onclick="toggleTL('evs')">
+        <div class="ava av-plum" id="evs-ava">НЕ</div>
+        <div class="tl-info" id="evs-info"><div class="tl-name">Евстигнеева Наталья Валерьевна</div><div class="tl-role">Team Lead · КМ</div></div>
+        <div class="tl-stat"><span class="n" id="evsN">—</span><span class="l">Сотр.</span></div>
+        <div class="tl-stat"><span class="n" id="evs-sched">09:00–16:00</span><span class="l">График</span></div>
+        <button class="abt ed" style="flex-shrink:0;margin-left:8px" onclick="event.stopPropagation();openEditTL('TL_EVS')">✎</button>
+        <div class="chev open" id="ch-evs">▾</div>
+      </div>
+      <div class="tl-body" id="tb-evs">
+        <div class="frow">
+          <button class="fb on" onclick="fg('evs','all',this)">Все</button>
+          <button class="fb" onclick="fg('evs','Стабилен',this)">Стабилен</button>
+          <button class="fb" onclick="fg('evs','watch',this)">Контроль</button>
+          <button class="fb" onclick="fg('evs','risk',this)">Риск</button>
+          <button class="fb" onclick="fg('evs','Потенциал роста',this)">Потенциал</button>
+          <button class="btn-add" onclick="openAddEmp('КМ')">+ Добавить</button>
+        </div>
+        <div class="cgrid" id="g-evs"></div>
       </div>
     </div>
   </div>
-
-  <!-- КОНТЕНТ -->
-  <div id="contentPanel">
-    <div id="loaderWrap" class="loader">
-      <div class="spinner"></div>
-      <div class="loader-text">Загрузка данных из Google Sheets…</div>
+  <div class="panel" id="p-km">
+    <div class="km-ctrl">
+      <input class="srch" id="kmQ" type="text" placeholder="Поиск по имени…" oninput="renderKM()">
+      <button class="fb on" onclick="kp('all',this)">Все</button>
+      <button class="fb" onclick="kp('cur',this)">Текущий месяц</button>
+      <button class="fb" onclick="kp('2025',this)">2025</button>
+      <button class="btn-akm" onclick="openAddKM()">+ Добавить встречу</button>
     </div>
-    <div id="errWrap" style="display:none"></div>
-    <div id="mainContent" style="display:none">
-
-      <!-- КОМАНДА -->
-      <div class="panel active" id="panel-team">
-        <div class="sum-row" id="sumRow"></div>
-        <div id="headCard"></div>
-
-        <div class="section">
-          <div class="sec-label">OPS — операционный блок</div>
-          <div id="opsBlock"></div>
-        </div>
-
-        <div class="section">
-          <div class="sec-label">КРМ · ТХП — рук. Бушманова Татьяна Михайловна</div>
-          <div class="tl-wrap">
-            <div class="tl-hdr" onclick="toggleTL('bush')">
-              <div class="tl-ava av-b" id="bush-ini">ТБ</div>
-              <div class="tl-info" id="bush-info">
-                <div class="tl-name">Бушманова Татьяна Михайловна</div>
-                <div class="tl-role">Team Lead · КРМ + ТХП</div>
-              </div>
-              <div class="tl-stats">
-                <div class="tls"><span class="n" id="bushN">—</span><span class="l">Сотрудников</span></div>
-                <div class="tls"><span class="n" id="bush-sched">14:00–22:00</span><span class="l">График</span></div>
-              </div>
-              <div class="tl-chev open" id="ch-bush">▾</div>
-            </div>
-            <div class="tl-body" id="tb-bush">
-              <div class="frow">
-                <button class="fb on" onclick="fg('bush','all',this)">Все</button>
-                <button class="fb" onclick="fg('bush','Стабилен',this)">Стабилен</button>
-                <button class="fb" onclick="fg('bush','watch',this)">Контроль</button>
-                <button class="fb" onclick="fg('bush','risk',this)">Риск</button>
-                <button class="fb" onclick="fg('bush','Увольнение',this)">Увольнение</button>
-              </div>
-              <div class="cgrid" id="grid-bush"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="sec-label">КМ — клиентский опыт · рук. Евстигнеева Наталья Валерьевна</div>
-          <div class="tl-wrap">
-            <div class="tl-hdr" onclick="toggleTL('evs')">
-              <div class="tl-ava av-e" id="evs-ini">НЕ</div>
-              <div class="tl-info" id="evs-info">
-                <div class="tl-name">Евстигнеева Наталья Валерьевна</div>
-                <div class="tl-role">Team Lead · КМ</div>
-              </div>
-              <div class="tl-stats">
-                <div class="tls"><span class="n" id="evsN">—</span><span class="l">Сотрудников</span></div>
-                <div class="tls"><span class="n" id="evs-sched">09:00–16:00</span><span class="l">График</span></div>
-              </div>
-              <div class="tl-chev open" id="ch-evs">▾</div>
-            </div>
-            <div class="tl-body" id="tb-evs">
-              <div class="frow">
-                <button class="fb on" onclick="fg('evs','all',this)">Все</button>
-                <button class="fb" onclick="fg('evs','Стабилен',this)">Стабилен</button>
-                <button class="fb" onclick="fg('evs','watch',this)">Контроль</button>
-                <button class="fb" onclick="fg('evs','risk',this)">Риск</button>
-                <button class="fb" onclick="fg('evs','Потенциал роста',this)">Потенциал</button>
-              </div>
-              <div class="cgrid" id="grid-evs"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ВСТРЕЧИ -->
-      <div class="panel" id="panel-km">
-        <div class="km-ctrl">
-          <input class="srch" id="kmQ" type="text" placeholder="Поиск по имени…" oninput="renderKM()">
-          <button class="fb on" onclick="kp('all',this)">Все</button>
-          <button class="fb" onclick="kp('2026-05',this)">Май 2026</button>
-          <button class="fb" onclick="kp('2026-04',this)">Апрель 2026</button>
-          <button class="fb" onclick="kp('2026-03',this)">Март 2026</button>
-          <button class="fb" onclick="kp('2025',this)">2025</button>
-        </div>
-        <div class="tw">
-          <table class="kt">
-            <thead><tr>
-              <th>Сотрудник</th><th>Дата</th><th>О чём говорили</th>
-              <th>Задачи</th><th>След. встреча</th><th>Динамика</th><th>ТЛ</th>
-            </tr></thead>
-            <tbody id="kmBody"></tbody>
-          </table>
-        </div>
-      </div>
-
-    </div><!-- /mainContent -->
-  </div><!-- /contentPanel -->
-</div><!-- /main -->
-
+    <div class="tw">
+      <table class="kt">
+        <thead><tr><th>Сотрудник</th><th>Дата</th><th>О чём говорили</th><th>Задачи</th><th>След. встреча</th><th>Динамика</th><th>ТЛ</th><th></th></tr></thead>
+        <tbody id="kmBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 <div class="footer">
   <span>CIS Client Service · <span id="footM">—</span></span>
-  <span class="updated-tag" id="footUpd"></span>
+  <span id="footUpd"></span>
 </div>
 
+<!-- MODALS -->
+<div class="ov" id="empOv"><div class="modal"><button class="mclose" onclick="cm('empOv')">✕</button><h2 id="empTitle">Сотрудник</h2><div class="fgrid"><div class="fg full"><label>ФИО</label><input id="f_name" placeholder="Фамилия Имя Отчество"></div><div class="fg"><label>Должность</label><input id="f_role" placeholder="Client manager"></div><div class="fg"><label>Подгруппа</label><input id="f_sub" placeholder="Team 1 / КРМ / ТХП"></div><div class="fg"><label>Дата входа</label><input id="f_entry" placeholder="дд.мм.гггг"></div><div class="fg"><label>График</label><input id="f_schedule" placeholder="09:00–18:00"></div><div class="fg"><label>План смен</label><input id="f_plan" placeholder="22"></div><div class="fg"><label>Факт смен</label><input id="f_fact"></div><div class="fg"><label>Отпуск</label><input id="f_vacation" placeholder="01.05–14.05"></div><div class="fg"><label>Статус</label><select id="f_status"><option value="">— не указан —</option><option>Стабилен</option><option>Требует наблюдения</option><option>Зона риска</option><option>Потенциал роста</option><option>Увольнение</option></select></div><div class="fg"><label>Дата увольнения</label><input id="f_dismiss"></div><div class="fg full"><label>Функции / KPI</label><textarea id="f_functions"></textarea></div><div class="fg full"><label>Доп. функции</label><textarea id="f_extra"></textarea></div><div class="fg full"><label>Комментарий</label><textarea id="f_comment"></textarea></div><div class="fg"><label>Город</label><input id="f_city"></div><div class="fg"><label>ЧП от МСК</label><input id="f_tz" placeholder="+2 ч"></div><div class="fg"><label>Телефон</label><input id="f_phone"></div><div class="fg"><label>Телеграм</label><input id="f_tg" placeholder="@username"></div></div><div class="mbtns"><button class="bcancel" onclick="cm('empOv')">Отмена</button><button class="bsave" onclick="saveEmp()">Сохранить</button></div></div></div>
+
+<div class="ov" id="kmOv"><div class="modal"><button class="mclose" onclick="cm('kmOv')">✕</button><h2 id="kmTitle">Встреча</h2><div class="fgrid"><div class="fg full"><label>Сотрудник</label><input id="k_name"></div><div class="fg"><label>Дата встречи</label><input id="k_date" placeholder="дд.мм.гггг"></div><div class="fg"><label>ТЛ</label><input id="k_tl" placeholder="Таня / Наташа"></div><div class="fg full"><label>О чём говорили</label><textarea id="k_topic" rows="3"></textarea></div><div class="fg full"><label>Задачи</label><textarea id="k_tasks" rows="2"></textarea></div><div class="fg"><label>Следующая встреча</label><input id="k_next" placeholder="дд.мм.гггг"></div><div class="fg"><label>Динамика</label><select id="k_dyn"><option value="">—</option><option>Улучшение</option><option>Спад</option><option>Без изменений</option></select></div></div><div class="mbtns"><button class="bcancel" onclick="cm('kmOv')">Отмена</button><button class="bsave" onclick="saveKM()">Сохранить</button></div></div></div>
+
+<div class="ov" id="monthOv"><div class="modal" style="max-width:460px"><button class="mclose" onclick="cm('monthOv')">✕</button><h2>Новый месяц</h2><p class="mnote">Выбери месяц. Данные текущего месяца скопируются как база.</p><div class="mchips" id="mchips"></div><div class="copy-opts"><label class="copy-opt"><input type="radio" name="cmode" value="copy" checked> Скопировать команду из текущего месяца</label><label class="copy-opt"><input type="radio" name="cmode" value="empty"> Начать с пустой команды</label></div><div class="mbtns"><button class="bcancel" onclick="cm('monthOv')">Отмена</button><button class="bsave" onclick="confirmNewMonth()">Создать</button></div></div></div>
+
+<div class="toast" id="toast"></div>
+
 <script>
-// ════════════════════════════════════════════════════
-// CONFIG
-// ════════════════════════════════════════════════════
-const LS_KEY = 'cis_sheet_id';
-const LS_MONTH = 'cis_cur_month';
+let DB={employees:[],meetings:[]};
+let curMonth='',kmFilter='all',_eId=null,_eBlock=null,_kId=null,selNewMonth='';
+const ALL_MONTHS=['Октябрь 2025','Ноябрь 2025','Декабрь 2025','Январь 2026','Февраль 2026','Март 2026','Апрель 2026','Май 2026','Июнь 2026','Июль 2026','Август 2026','Сентябрь 2026','Октябрь 2026'];
 
-let SHEET_ID = localStorage.getItem(LS_KEY) || '';
-let curMonth = localStorage.getItem(LS_MONTH) || '';
-let kmPeriod = 'all';
+async function api(method,url,body){const opts={method,headers:{'Content-Type':'application/json'}};if(body)opts.body=JSON.stringify(body);const r=await fetch(url,opts);return r.json();}
+async function loadData(){try{DB=await api('GET','/api/data');const months=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];if(!curMonth||!months.includes(curMonth))curMonth=months[months.length-1]||'';renderAll();}catch(e){console.error(e);}}
 
-// Parsed data
-let allEmp = [];    // all rows from "Команда"
-let allKM  = [];    // all rows from "Встречи"
-let months = [];    // unique months found in data
+function parseD(s){if(!s||s==='-'||s==='—')return null;const m=s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
+function tenure(s){const d=parseD(s);if(!d)return'—';const now=new Date();let mo=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth());if(mo<0)return'<1 мес';const y=Math.floor(mo/12),r=mo%12;return y?`${y} г ${r?r+' мес':''}`:`${r} мес`;}
+function scls(s){if(!s)return'';if(s==='Стабилен')return'ss';if(s==='Потенциал роста')return'sg';if(s==='Зона риска')return'sr';if(s==='Увольнение')return'sf';if(s.includes('Требует'))return'sw';return'';}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function ini(n){return(n||'').split(' ').slice(0,2).map(w=>w[0]||'').join('');}
+function byM(arr){return arr.filter(e=>e.month===curMonth);}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
 
-// ════════════════════════════════════════════════════
-// INIT
-// ════════════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', () => {
-  if (SHEET_ID) {
-    document.getElementById('cfgPanel').style.display = 'none';
-    document.getElementById('contentPanel').style.display = 'block';
-    loadData();
-  } else {
-    document.getElementById('cfgPanel').style.display = 'block';
-    document.getElementById('contentPanel').style.display = 'none';
-  }
-});
-
-function saveSheetId() {
-  const v = document.getElementById('sheetIdInput').value.trim();
-  // Extract ID if full URL pasted
-  const m = v.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  SHEET_ID = m ? m[1] : v;
-  if (!SHEET_ID) { alert('Введи ID таблицы'); return; }
-  localStorage.setItem(LS_KEY, SHEET_ID);
-  document.getElementById('cfgPanel').style.display = 'none';
-  document.getElementById('contentPanel').style.display = 'block';
-  loadData();
-}
-
-// ════════════════════════════════════════════════════
-// LOAD DATA FROM GOOGLE SHEETS (public CSV export)
-// ════════════════════════════════════════════════════
-async function loadData() {
-  showLoader(true);
-  showError(null);
-  try {
-    const [empRows, kmRows] = await Promise.all([
-      fetchSheet('Команда'),
-      fetchSheet('Встречи'),
-    ]);
-    allEmp = empRows;
-    allKM  = kmRows;
-    months = [...new Set(empRows.map(r => r['Месяц']).filter(Boolean))].sort();
-    if (!months.length) throw new Error('Нет данных. Проверь что лист называется «Команда» и колонка «Месяц» заполнена.');
-    if (!curMonth || !months.includes(curMonth)) curMonth = months[months.length - 1];
-    localStorage.setItem(LS_MONTH, curMonth);
-    renderMonthSel();
-    renderAll();
-    showLoader(false);
-    document.getElementById('mainContent').style.display = 'block';
-    document.getElementById('footUpd').textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU');
-  } catch(e) {
-    showLoader(false);
-    showError(e.message);
-  }
-}
-
-async function fetchSheet(sheetName) {
-  const encoded = encodeURIComponent(sheetName);
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encoded}`;
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`Не удалось загрузить лист «${sheetName}». Проверь что таблица публичная и ID верный.`);
-  const text = await resp.text();
-  if (text.includes('<!DOCTYPE')) throw new Error(`Таблица закрытая или ID неверный. Сделай таблицу публичной (читатель).<br><br>ID: <code>${SHEET_ID}</code>`);
-  return parseCSV(text);
-}
-
-function parseCSV(text) {
-  const lines = text.trim().split('\n');
-  if (lines.length < 2) return [];
-  const headers = parseCSVLine(lines[0]);
-  return lines.slice(1).map(line => {
-    const vals = parseCSVLine(line);
-    const obj = {};
-    headers.forEach((h, i) => { obj[h.trim().replace(/^"|"$/g,'')] = (vals[i]||'').replace(/^"|"$/g,'').trim(); });
-    return obj;
-  }).filter(r => Object.values(r).some(v => v));
-}
-
-function parseCSVLine(line) {
-  const result = [];
-  let cur = '', inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    if (line[i] === '"') {
-      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
-      else inQ = !inQ;
-    } else if (line[i] === ',' && !inQ) {
-      result.push(cur); cur = '';
-    } else cur += line[i];
-  }
-  result.push(cur);
-  return result;
-}
-
-function showLoader(v) {
-  document.getElementById('loaderWrap').style.display = v ? 'flex' : 'none';
-  const btn = document.getElementById('reloadBtn');
-  if (v) btn.classList.add('spinning'); else btn.classList.remove('spinning');
-}
-function showError(msg) {
-  const el = document.getElementById('errWrap');
-  if (!msg) { el.style.display='none'; return; }
-  el.style.display = 'block';
-  el.innerHTML = `<div class="err-box"><h3>Ошибка загрузки</h3><p>${msg}</p></div>`;
-}
-
-// ════════════════════════════════════════════════════
-// HELPERS
-// ════════════════════════════════════════════════════
-function parseD(s) {
-  if (!s || s==='-' || s==='—') return null;
-  const m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  return m ? new Date(+m[3], +m[2]-1, +m[1]) : null;
-}
-function tenure(s) {
-  const d = parseD(s); if (!d) return '—';
-  const now = new Date();
-  let mo = (now.getFullYear()-d.getFullYear())*12 + (now.getMonth()-d.getMonth());
-  if (mo < 0) return '<1 мес';
-  const y = Math.floor(mo/12), r = mo%12;
-  return y ? `${y} г ${r ? r+' мес' : ''}` : `${r} мес`;
-}
-function scls(s) {
-  if (!s) return '';
-  if (s==='Стабилен') return 'ss';
-  if (s==='Потенциал роста') return 'sg';
-  if (s==='Зона риска') return 'sr';
-  if (s==='Увольнение') return 'sf';
-  if (s.includes('Требует')) return 'sw';
-  return '';
-}
-function ini(name) {
-  return name.split(' ').slice(0,2).map(w=>w[0]||'').join('');
-}
-function byMonth(arr) {
-  return arr.filter(r => r['Месяц'] === curMonth);
-}
-
-// ════════════════════════════════════════════════════
-// MONTH SELECT
-// ════════════════════════════════════════════════════
-function renderMonthSel() {
-  const sel = document.getElementById('monthSel');
-  sel.innerHTML = months.map(m => `<option value="${m}"${m===curMonth?' selected':''}>${m}</option>`).join('');
-}
-function switchMonth(m) {
-  curMonth = m;
-  localStorage.setItem(LS_MONTH, m);
-  renderAll();
-}
-
-// ════════════════════════════════════════════════════
-// RENDER ALL
-// ════════════════════════════════════════════════════
-function renderAll() {
-  renderStats();
-  renderHead();
-  renderOPS();
-  renderTL();
-  renderGrid('bush');
-  renderGrid('evs');
-  renderKM();
-  document.getElementById('footM').textContent = curMonth;
-}
-
-// ════════════════════════════════════════════════════
-// STATS
-// ════════════════════════════════════════════════════
-function renderStats() {
-  const rows = byMonth(allEmp).filter(r => !['HEAD','TL_BUSH','TL_EVS'].includes(r['Блок']));
-  const total = rows.length;
-  const stable = rows.filter(r=>r['Статус']==='Стабилен').length;
-  const watch  = rows.filter(r=>r['Статус']&&r['Статус'].includes('Требует')).length;
-  const risk   = rows.filter(r=>r['Статус']==='Зона риска'||r['Статус']==='Увольнение').length;
-  const grow   = rows.filter(r=>r['Статус']==='Потенциал роста').length;
-
-  document.getElementById('hdrStats').innerHTML=`
-    <div class="hst"><span class="n" style="color:var(--accent)">${total}</span><span class="l">Всего</span></div>
-    <div class="hst"><span class="n" style="color:var(--green)">${stable}</span><span class="l">Стабильны</span></div>
-    <div class="hst"><span class="n" style="color:var(--warn)">${watch}</span><span class="l">Контроль</span></div>
-    <div class="hst"><span class="n" style="color:var(--red)">${risk}</span><span class="l">Риск</span></div>
-    <div class="hst"><span class="n" style="color:var(--purple)">${grow}</span><span class="l">Потенциал</span></div>`;
-
-  const ops = byMonth(allEmp).filter(r=>r['Блок']==='OPS').length;
-  const bush = byMonth(allEmp).filter(r=>r['Блок']==='КРМ/ТХП').length;
-  const evs = byMonth(allEmp).filter(r=>r['Блок']==='КМ').length;
-
-  document.getElementById('sumRow').innerHTML=[
-    ['Вся команда',total,'var(--accent)'],
-    ['OPS',ops,'var(--blue)'],
-    ['КРМ/ТХП',bush,'var(--sage)'],
-    ['КМ',evs,'var(--purple)'],
-    ['Стабильны',stable,'var(--green)'],
-    ['Контроль',watch,'var(--warn)'],
-    ['Риск/Увол.',risk,'var(--red)'],
-    ['Потенциал',grow,'var(--purple)'],
-  ].map(([l,n,c])=>`<div class="sum-chip"><span class="n" style="color:${c}">${n}</span><div class="l">${l}</div></div>`).join('');
-
-  document.getElementById('bushN').textContent = bush;
-  document.getElementById('evsN').textContent = evs;
-}
-
-// ════════════════════════════════════════════════════
-// HEAD CARD
-// ════════════════════════════════════════════════════
-function renderHead() {
-  const h = byMonth(allEmp).find(r => r['Блок']==='HEAD');
-  if (!h) { document.getElementById('headCard').innerHTML=''; return; }
-  const name = h['ФИО'] || '—';
-  const ten = tenure(h['Дата входа']);
-  document.getElementById('headCard').innerHTML = `
-    <div class="head-card">
-      <div class="head-ava">${ini(name)}</div>
-      <div class="head-info">
-        <div class="head-name">${name}</div>
-        <div class="head-role">${h['Должность']||'Head'}</div>
-        <div class="head-meta">
-          <div class="hm">Вход: <b>${h['Дата входа']||'—'}</b></div>
-          <div class="hm">Стаж: <b>${ten}</b></div>
-          <div class="hm">График: <b>${h['График']||'—'}</b></div>
-          <div class="hm">Город: <b>${h['Город']||'—'}</b></div>
-          <div class="hm">ЧП: <b>${h['ЧП МСК']||'—'}</b></div>
-          <div class="hm">TG: <b>${h['Телеграм']||'—'}</b></div>
-        </div>
-      </div>
-    </div>`;
-}
-
-// ════════════════════════════════════════════════════
-// TL INFO
-// ════════════════════════════════════════════════════
-function renderTL() {
-  const tlb = byMonth(allEmp).find(r => r['Блок']==='TL_BUSH');
-  const tle = byMonth(allEmp).find(r => r['Блок']==='TL_EVS');
-
-  if (tlb) {
-    document.getElementById('bush-ini').textContent = ini(tlb['ФИО']||'ТБ');
-    document.getElementById('bush-info').innerHTML = `<div class="tl-name">${tlb['ФИО']||'—'}</div><div class="tl-role">${tlb['Должность']||'Team Lead'}</div>`;
-    document.getElementById('bush-sched').textContent = tlb['График']||'—';
-  }
-  if (tle) {
-    document.getElementById('evs-ini').textContent = ini(tle['ФИО']||'НЕ');
-    document.getElementById('evs-info').innerHTML = `<div class="tl-name">${tle['ФИО']||'—'}</div><div class="tl-role">${tle['Должность']||'Team Lead'}</div>`;
-    document.getElementById('evs-sched').textContent = tle['График']||'—';
-  }
-}
-
-// ════════════════════════════════════════════════════
-// EMP CARD
-// ════════════════════════════════════════════════════
-function card(e, idx) {
-  const sc = scls(e['Статус']);
-  const ten = tenure(e['Дата входа']);
-  const name = e['ФИО']||'—';
-  const hasCom = e['Комментарий'] && e['Комментарий'].trim();
-  const id = `c${idx}`;
-  return `<div class="ecard ${sc}" id="ec_${id}" onclick="toggleC('${id}')">
-    <div class="cbar"></div>
-    <div class="cbody">
-      <div class="ctop">
-        <div>
-          <div class="cname">${name}</div>
-          <div class="crole">${e['Должность']||'—'}${e['Подгруппа']?' · '+e['Подгруппа']:''}</div>
-          <div class="centry">Вход: ${e['Дата входа']||'—'} · Стаж: ${ten}</div>
-          ${e['Отпуск']?`<div class="bvac">✈ ${e['Отпуск']}</div>`:''}
-          ${e['Дата увольнения']?`<div class="bdis">Увольнение: ${e['Дата увольнения']}</div>`:''}
-        </div>
-        <div class="cright">
-          <div class="sbadge">${e['Статус']||'—'}</div>
-          <div class="cchev">▾</div>
-        </div>
-      </div>
-      <div class="cfields">
-        <div class="cf"><div class="l">График</div><div class="v">${e['График']||'—'}</div></div>
-        <div class="cf"><div class="l">План смен</div><div class="v">${e['План смен']||'—'}</div></div>
-        <div class="cf"><div class="l">ЧП МСК</div><div class="v">${e['ЧП МСК']||'—'}</div></div>
-        <div class="cf"><div class="l">Факт смен</div><div class="v">${e['Факт смен']||'—'}</div></div>
-        <div class="cf"><div class="l">Город</div><div class="v" style="font-size:10px">${e['Город']||'—'}</div></div>
-      </div>
-      ${hasCom?`<div class="ccomment">${e['Комментарий']}</div>`:''}
-    </div>
-    <div class="cexp" id="cx_${id}">
-      <div class="egrid">
-        <div class="ef"><div class="l">Функции / KPI</div><div class="v">${e['Функции']||'—'}</div></div>
-        <div class="ef"><div class="l">Доп. функции</div><div class="v">${e['Доп функции']||'—'}</div></div>
-        <div class="ef full"><div class="l">Комментарий</div><div class="v">${e['Комментарий']||'—'}</div></div>
-      </div>
-      <div class="crow">
-        <div class="ci">📱 <span>${e['Телефон']||'—'}</span></div>
-        <div class="ci">✈️ <span>${e['Телеграм']||'—'}</span></div>
-      </div>
-    </div>
-  </div>`;
-}
-
-function toggleC(id) {
-  const x = document.getElementById('cx_'+id), c = document.getElementById('ec_'+id);
-  if (!x) return;
-  const o = x.classList.contains('show');
-  x.classList.toggle('show',!o); c.classList.toggle('open',!o);
-}
-
-// ════════════════════════════════════════════════════
-// OPS
-// ════════════════════════════════════════════════════
-function renderOPS() {
-  const rows = byMonth(allEmp).filter(r => r['Блок']==='OPS');
-  document.getElementById('opsBlock').innerHTML = rows.map((e, idx) => {
-    const id = `op${idx}`;
-    return `<div class="ops-item" id="oi_${id}" onclick="toggleOps('${id}')">
-      <div class="ops-ava">${ini(e['ФИО']||'OP')}</div>
-      <div class="ops-info">
-        <div class="ops-name">${e['ФИО']||'—'}</div>
-        <div class="ops-role">${e['Должность']||'—'}</div>
-        <div class="ops-meta">
-          <div class="om">Вход: <b>${e['Дата входа']||'—'}</b></div>
-          <div class="om">Стаж: <b>${tenure(e['Дата входа'])}</b></div>
-          <div class="om">График: <b>${e['График']||'—'}</b></div>
-          <div class="om">План: <b>${e['План смен']||'—'}</b></div>
-          ${e['Отпуск']?`<div class="om">✈ <b>${e['Отпуск']}</b></div>`:''}
-          <div class="om">Город: <b>${e['Город']||'—'}</b></div>
-          <div class="om">TG: <b>${e['Телеграм']||'—'}</b></div>
-        </div>
-        ${e['Комментарий']?`<div class="ccomment" style="margin-top:9px">${e['Комментарий']}</div>`:''}
-        <div class="ops-exp" id="ox_${id}">
-          <div class="egrid">
-            <div class="ef"><div class="l">Функции</div><div class="v">${e['Функции']||'—'}</div></div>
-            <div class="ef"><div class="l">Доп. функции</div><div class="v">${e['Доп функции']||'—'}</div></div>
-          </div>
-          <div class="crow">
-            <div class="ci">📱 <span>${e['Телефон']||'—'}</span></div>
-            <div class="ci">✈️ <span>${e['Телеграм']||'—'}</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="sbadge ${scls(e['Статус'])}" style="flex-shrink:0;margin-top:2px">${e['Статус']||'—'}</div>
-    </div>`;
-  }).join('');
-}
-function toggleOps(id) {
-  const x=document.getElementById('ox_'+id),c=document.getElementById('oi_'+id);
-  if(!x) return;
-  const o=x.classList.contains('show');
-  x.classList.toggle('show',!o); c.classList.toggle('open',!o);
-}
-
-// ════════════════════════════════════════════════════
-// GRID RENDER
-// ════════════════════════════════════════════════════
-const BLOCK_MAP = { bush: 'КРМ/ТХП', evs: 'КМ' };
-function renderGrid(key) {
-  const rows = byMonth(allEmp).filter(r => r['Блок'] === BLOCK_MAP[key]);
-  document.getElementById('grid-'+key).innerHTML = rows.map((e,i) => card(e, key+i)).join('');
-}
-
-// ════════════════════════════════════════════════════
-// FILTER
-// ════════════════════════════════════════════════════
-function fg(block, filter, btn) {
-  btn.closest('.frow').querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  document.querySelectorAll(`#grid-${block} .ecard`).forEach(c => {
-    const s = c.querySelector('.sbadge')?.textContent || '';
-    if (filter==='all') { c.style.display=''; return; }
-    if (filter==='watch' && s.includes('Требует')) { c.style.display=''; return; }
-    if (filter==='risk' && (s.includes('Зона')||s.includes('Увольнение'))) { c.style.display=''; return; }
-    c.style.display = s===filter ? '' : 'none';
-  });
-}
-
-// ════════════════════════════════════════════════════
-// TL TOGGLE
-// ════════════════════════════════════════════════════
-function toggleTL(id) {
-  document.getElementById('tb-'+id).classList.toggle('hidden');
-  document.getElementById('ch-'+id).classList.toggle('open');
-}
-
-// ════════════════════════════════════════════════════
-// TABS
-// ════════════════════════════════════════════════════
-function showTab(name, btn) {
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('panel-'+name).classList.add('active');
-  btn.classList.add('active');
-}
-
-// ════════════════════════════════════════════════════
-// KM TABLE
-// ════════════════════════════════════════════════════
-function parseKD(s) {
-  const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-  return m ? new Date(+m[3],+m[2]-1,+m[1]) : null;
-}
-function renderKM() {
-  const q = (document.getElementById('kmQ')?.value||'').toLowerCase().trim();
-  const rows = allKM.filter(r => {
-    if (q && !((r['Сотрудник']||'').toLowerCase().includes(q))) return false;
-    if (kmPeriod==='all') return true;
-    const dt = parseKD(r['Дата встречи']||''); if (!dt) return true;
-    const ym = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
-    if (kmPeriod==='2025') return dt.getFullYear()===2025;
-    return ym===kmPeriod;
-  });
-  document.getElementById('kmBody').innerHTML = rows.map(r => {
-    const d = r['Динамика']||'';
-    const dc = d==='Улучшение'?'du':d==='Спад'?'dd':d?'df':'';
-    return `<tr>
-      <td style="font-weight:600;white-space:nowrap">${r['Сотрудник']||'—'}</td>
-      <td style="white-space:nowrap">${r['Дата встречи']||'—'}</td>
-      <td>${r['О чём говорили']||'—'}</td>
-      <td>${r['Задачи']||'—'}</td>
-      <td style="white-space:nowrap">${r['Следующая встреча']||'—'}</td>
-      <td class="${dc}">${d||'—'}</td>
-      <td style="white-space:nowrap">${r['ТЛ']||'—'}</td>
-    </tr>`;
-  }).join('');
-}
-function kp(p, btn) {
-  kmPeriod = p;
-  btn.closest('.km-ctrl').querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  renderKM();
-}
+function renderAll(){renderSel();renderStats();renderHead();renderTL();renderOPS();renderGrid('bush','КРМ/ТХП');renderGrid('evs','КМ');renderKM();document.getElementById('footM').textContent=curMonth;document.getElementById('footUpd').textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU');}
+function renderSel(){const months=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];document.getElementById('msel').innerHTML=months.map(m=>`<option value="${m}"${m===curMonth?' selected':''}>${m}</option>`).join('');}
+function renderStats(){const rows=byM(DB.employees).filter(e=>!['HEAD','TL_BUSH','TL_EVS'].includes(e.block));const t=rows.length,st=rows.filter(e=>e.status==='Стабилен').length,wa=rows.filter(e=>e.status&&e.status.includes('Требует')).length,ri=rows.filter(e=>e.status==='Зона риска'||e.status==='Увольнение').length,gr=rows.filter(e=>e.status==='Потенциал роста').length;document.getElementById('hdrStats').innerHTML=`<div class="hst"><span class="n" style="color:var(--accent)">${t}</span><span class="l">Всего</span></div><div class="hst"><span class="n" style="color:var(--green)">${st}</span><span class="l">Стабильны</span></div><div class="hst"><span class="n" style="color:var(--warn)">${wa}</span><span class="l">Контроль</span></div><div class="hst"><span class="n" style="color:var(--red)">${ri}</span><span class="l">Риск</span></div><div class="hst"><span class="n" style="color:var(--purple)">${gr}</span><span class="l">Потенциал</span></div>`;const ops=byM(DB.employees).filter(e=>e.block==='OPS').length,bush=byM(DB.employees).filter(e=>e.block==='КРМ/ТХП').length,evs=byM(DB.employees).filter(e=>e.block==='КМ').length;document.getElementById('sumRow').innerHTML=[['Вся команда',t,'var(--accent)'],['OPS',ops,'var(--blue)'],['КРМ/ТХП',bush,'var(--sage)'],['КМ',evs,'var(--purple)'],['Стабильны',st,'var(--green)'],['Контроль',wa,'var(--warn)'],['Риск/Увол.',ri,'var(--red)'],['Потенциал',gr,'var(--purple)']].map(([l,n,c])=>`<div class="chip"><span class="n" style="color:${c}">${n}</span><div class="l">${l}</div></div>`).join('');document.getElementById('bushN').textContent=bush;document.getElementById('evsN').textContent=evs;}
+function renderHead(){const h=byM(DB.employees).find(e=>e.block==='HEAD');if(!h){document.getElementById('headCard').innerHTML='';return;}document.getElementById('headCard').innerHTML=`<div class="head-card"><div class="ava av-gold">${ini(h.name)}</div><div class="head-info"><div class="head-name">${h.name}</div><div class="head-role">${h.role||'HEAD'}</div><div class="head-meta"><div class="hm">Вход: <b>${h.entry||'—'}</b></div><div class="hm">Стаж: <b>${tenure(h.entry)}</b></div><div class="hm">График: <b>${h.schedule||'—'}</b></div><div class="hm">Город: <b>${h.city||'—'}</b></div><div class="hm">ЧП: <b>${h.tz||'—'}</b></div><div class="hm">TG: <b>${h.tg||'—'}</b></div></div></div><button class="abt ed" onclick="openEditEmp('${h.id}','HEAD')">✎ Редактировать</button></div>`;}
+function renderTL(){['TL_BUSH','TL_EVS'].forEach(block=>{const key=block==='TL_BUSH'?'bush':'evs';const tl=byM(DB.employees).find(e=>e.block===block);if(!tl)return;document.getElementById(key+'-ava').textContent=ini(tl.name);document.getElementById(key+'-info').innerHTML=`<div class="tl-name">${tl.name}</div><div class="tl-role">${tl.role||'Team Lead'}</div>`;document.getElementById(key+'-sched').textContent=tl.schedule||'—';});}
+function card(e){const sc=scls(e.status),ten=tenure(e.entry),hasCom=e.comment&&e.comment.trim()&&e.comment!=='-';return`<div class="ecard ${sc}" id="ec_${e.id}" onclick="toggleC('${e.id}')"><div class="cbar"></div><div class="cbody"><div class="ctop"><div><div class="cname">${e.name}</div><div class="crole">${e.role||'—'}${e.sub?' · '+e.sub:''}</div><div class="centry">Вход: ${e.entry||'—'} · Стаж: ${ten}</div>${e.vacation?`<div class="bvac">✈ ${e.vacation}</div>`:''}${e.dismiss?`<div class="bdis">Увольнение: ${e.dismiss}</div>`:''}</div><div class="cright"><div class="sbadge">${e.status||'—'}</div><div class="cchev">▾</div></div></div><div class="cfields"><div class="cf"><div class="l">График</div><div class="v">${e.schedule||'—'}</div></div><div class="cf"><div class="l">План смен</div><div class="v">${e.plan||'—'}</div></div><div class="cf"><div class="l">ЧП МСК</div><div class="v">${e.tz||'—'}</div></div><div class="cf"><div class="l">Факт смен</div><div class="v">${e.fact||'—'}</div></div><div class="cf"><div class="l">Город</div><div class="v" style="font-size:10px">${e.city||'—'}</div></div></div>${hasCom?`<div class="ccomment">${e.comment}</div>`:''}</div><div class="cexp" id="cx_${e.id}"><div class="egrid"><div class="ef"><div class="l">Функции / KPI</div><div class="v">${e.functions||'—'}</div></div><div class="ef"><div class="l">Доп. функции</div><div class="v">${e.extra||'—'}</div></div><div class="ef full"><div class="l">Комментарий</div><div class="v">${e.comment||'—'}</div></div></div><div class="crow"><div class="ci">📱 <span>${e.phone||'—'}</span></div><div class="ci">✈️ <span>${e.tg||'—'}</span></div></div><div class="cacts" onclick="event.stopPropagation()"><button class="abt ed" onclick="openEditEmp('${e.id}','${e.block}')">✎ Редактировать</button><button class="abt dl" onclick="delEmp('${e.id}')">✕ Удалить</button></div></div></div>`;}
+function toggleC(id){const x=document.getElementById('cx_'+id),c=document.getElementById('ec_'+id);if(!x)return;const o=x.classList.contains('show');x.classList.toggle('show',!o);c.classList.toggle('open',!o);}
+function renderOPS(){document.getElementById('opsBlock').innerHTML=byM(DB.employees).filter(e=>e.block==='OPS').map(e=>`<div class="ops-item" id="oi_${e.id}" onclick="toggleOps('${e.id}')"><div class="ava av-blue">${ini(e.name)}</div><div class="ops-info"><div class="ops-name">${e.name}</div><div class="ops-role">${e.role||'—'}</div><div class="ops-meta"><div class="om">Вход: <b>${e.entry||'—'}</b></div><div class="om">Стаж: <b>${tenure(e.entry)}</b></div><div class="om">График: <b>${e.schedule||'—'}</b></div><div class="om">План: <b>${e.plan||'—'}</b></div>${e.vacation?`<div class="om">✈ <b>${e.vacation}</b></div>`:''}<div class="om">TG: <b>${e.tg||'—'}</b></div></div>${e.comment?`<div class="ccomment" style="margin-top:8px">${e.comment}</div>`:''}<div class="ops-exp" id="ox_${e.id}"><div class="egrid"><div class="ef"><div class="l">Функции</div><div class="v">${e.functions||'—'}</div></div><div class="ef"><div class="l">Город</div><div class="v">${e.city||'—'}</div></div></div><div class="crow"><div class="ci">📱 <span>${e.phone||'—'}</span></div><div class="ci">✈️ <span>${e.tg||'—'}</span></div></div><div class="cacts" onclick="event.stopPropagation()"><button class="abt ed" onclick="openEditEmp('${e.id}','OPS')">✎ Редактировать</button><button class="abt dl" onclick="delEmp('${e.id}')">✕ Удалить</button></div></div></div><div class="sbadge ${scls(e.status)}" style="flex-shrink:0;margin-top:2px">${e.status||'—'}</div></div>`).join('');}
+function toggleOps(id){document.getElementById('ox_'+id)?.classList.toggle('show');document.getElementById('oi_'+id)?.classList.toggle('open');}
+function renderGrid(key,block){document.getElementById('g-'+key).innerHTML=byM(DB.employees).filter(e=>e.block===block).map(e=>card(e)).join('');}
+function fg(block,filter,btn){btn.closest('.frow').querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');document.querySelectorAll('#g-'+block+' .ecard').forEach(c=>{const s=c.querySelector('.sbadge')?.textContent||'';if(filter==='all'){c.style.display='';return;}if(filter==='watch'&&s.includes('Требует')){c.style.display='';return;}if(filter==='risk'&&(s.includes('Зона')||s.includes('Увольнение'))){c.style.display='';return;}c.style.display=s===filter?'':'none';});}
+function toggleTL(id){document.getElementById('tb-'+id).classList.toggle('hidden');document.getElementById('ch-'+id).classList.toggle('open');}
+function showTab(name,btn){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.getElementById('p-'+name).classList.add('on');btn.classList.add('on');}
+function switchMonth(m){curMonth=m;renderAll();}
+function parseKD(s){const m=s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
+function renderKM(){const q=(document.getElementById('kmQ')?.value||'').toLowerCase().trim();const rows=DB.meetings.filter(r=>{if(q&&!(r.name||'').toLowerCase().includes(q))return false;if(kmFilter==='all')return true;if(kmFilter==='cur')return r.month===curMonth;const dt=parseKD(r.date||'');if(!dt)return true;if(kmFilter==='2025')return dt.getFullYear()===2025;return true;});document.getElementById('kmBody').innerHTML=rows.map(r=>{const dc=r.dyn==='Улучшение'?'du':r.dyn==='Спад'?'dd':r.dyn?'df':'';return`<tr><td style="font-weight:600;white-space:nowrap">${r.name||'—'}</td><td style="white-space:nowrap">${r.date||'—'}</td><td>${r.topic||'—'}</td><td>${r.tasks||'—'}</td><td style="white-space:nowrap">${r.next||'—'}</td><td class="${dc}">${r.dyn||'—'}</td><td style="white-space:nowrap">${r.tl||'—'}</td><td style="white-space:nowrap"><button class="kbt e" onclick="openEditKM('${r.id}')">✎</button><button class="kbt d" onclick="delKM('${r.id}')">✕</button></td></tr>`;}).join('');}
+function kp(p,btn){kmFilter=p;btn.closest('.km-ctrl').querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderKM();}
+const EF=['name','role','sub','entry','schedule','plan','fact','vacation','status','dismiss','functions','extra','comment','city','tz','phone','tg'];
+function openAddEmp(block){_eId=null;_eBlock=block;document.getElementById('empTitle').textContent='Добавить сотрудника';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value='';});om('empOv');}
+function openEditEmp(id,block){_eId=id;_eBlock=block;const e=DB.employees.find(x=>x.id===id);if(!e)return;document.getElementById('empTitle').textContent='Редактировать';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value=e[k]||'';});om('empOv');}
+function openEditTL(block){_eBlock=block;const e=byM(DB.employees).find(x=>x.block===block);_eId=e?e.id:null;document.getElementById('empTitle').textContent=block==='TL_BUSH'?'Редактировать — Бушманова':'Редактировать — Евстигнеева';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value=e?e[k]||'':'';});om('empOv');}
+async function saveEmp(){const obj={month:curMonth,block:_eBlock};EF.forEach(k=>{obj[k]=(document.getElementById('f_'+k)?.value||'').trim();});if(!obj.name){alert('Введи ФИО');return;}if(_eId)obj.id=_eId;await api('POST','/api/employee',obj);await loadData();cm('empOv');toast('Сохранено ✓');}
+async function delEmp(id){if(!confirm('Удалить сотрудника?'))return;await api('DELETE',`/api/employee/${id}`);await loadData();toast('Удалено');}
+const KF=['name','date','tl','topic','tasks','next','dyn'];
+function openAddKM(){_kId=null;document.getElementById('kmTitle').textContent='Добавить встречу';KF.forEach(k=>{const el=document.getElementById('k_'+k);if(el)el.value='';});om('kmOv');}
+function openEditKM(id){_kId=id;const r=DB.meetings.find(x=>x.id===id);if(!r)return;document.getElementById('kmTitle').textContent='Редактировать встречу';KF.forEach(k=>{const el=document.getElementById('k_'+k);if(el)el.value=r[k]||'';});om('kmOv');}
+async function saveKM(){const obj={month:curMonth};KF.forEach(k=>{obj[k]=(document.getElementById('k_'+k)?.value||'').trim();});if(!obj.name){alert('Введи имя');return;}if(_kId)obj.id=_kId;await api('POST','/api/meeting',obj);await loadData();cm('kmOv');toast('Сохранено ✓');}
+async function delKM(id){if(!confirm('Удалить встречу?'))return;await api('DELETE',`/api/meeting/${id}`);await loadData();toast('Удалено');}
+function openNewMonth(){selNewMonth='';const used=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];document.getElementById('mchips').innerHTML=ALL_MONTHS.map(m=>`<button class="mchip${used.includes(m)?' used':''}" onclick="pickMonth('${m}',this)">${m}${used.includes(m)?' ✓':''}</button>`).join('');document.querySelector('[name=cmode][value=copy]').checked=true;om('monthOv');}
+function pickMonth(m,btn){document.querySelectorAll('.mchip:not(.used)').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');selNewMonth=m;}
+async function confirmNewMonth(){if(!selNewMonth){alert('Выбери месяц');return;}const mode=document.querySelector('[name=cmode]:checked').value;if(mode==='copy'){const empToCopy=byM(DB.employees).map(e=>({...e,id:uid(),month:selNewMonth,fact:''}));for(const e of empToCopy)await api('POST','/api/employee',e);}curMonth=selNewMonth;await loadData();cm('monthOv');toast(`Месяц ${selNewMonth} создан`);}
+function om(id){document.getElementById(id).classList.add('show');}
+function cm(id){document.getElementById(id).classList.remove('show');}
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show');}));
+loadData();
 </script>
 </body>
 </html>
