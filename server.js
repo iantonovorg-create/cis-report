@@ -1,74 +1,157 @@
 const express = require('express');
-const fs = require('fs');
+const { Pool } = require('pg');
 const path = require('path');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_FILE = path.join(__dirname, 'data', 'db.json');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ensure data dir exists
-if (!fs.existsSync(path.join(__dirname, 'data'))) {
-  fs.mkdirSync(path.join(__dirname, 'data'));
+async function initDB() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS employees (
+      id TEXT PRIMARY KEY, month TEXT, block TEXT, sub TEXT, name TEXT,
+      role TEXT, entry TEXT, schedule TEXT, plan TEXT, fact TEXT,
+      vacation TEXT, status TEXT, functions TEXT, extra TEXT, comment TEXT,
+      dismiss TEXT, city TEXT, tz TEXT, phone TEXT, tg TEXT
+    )`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS meetings (
+      id TEXT PRIMARY KEY, month TEXT, name TEXT, date TEXT,
+      topic TEXT, tasks TEXT, next TEXT, dyn TEXT, tl TEXT
+    )`);
+  const { rows } = await pool.query('SELECT COUNT(*) FROM employees');
+  if (parseInt(rows[0].count) === 0) await seedData();
+  console.log('DB ready');
 }
 
-function readDB() {
-  if (!fs.existsSync(DB_FILE)) return { employees: [], meetings: [] };
-  return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+async function seedData() {
+  const emps = [
+    ['h1','Май 2026','HEAD','','Антонов Иван Дмитриевич','Head · Client Service','14.10.2025','09:00–18:00','22','','','','','','','','Будва, Черногория','−1 ч','79933438590','@johnyyq'],
+    ['tb1','Май 2026','TL_BUSH','','Бушманова Татьяна Михайловна','Team Lead · КРМ + ТХП','01.02.2021','14:00–22:00','','','','','','','','','Череповец, РФ','нет','79291424416','@bushmanovatm'],
+    ['te1','Май 2026','TL_EVS','','Евстигнеева Наталья Валерьевна','Team Lead · КМ','13.09.2022','09:00–16:00','','','','','','','','','Саратов, РФ','+1 ч','+79198396208','@NatalyaEvs'],
+    ['o1','Май 2026','OPS','OPS','Володина Наталья Евгеньевна','Operations','17.12.2025','09:00–18:00','22','','','Стабилен','Операционная работа, выгрузки','Документооборот','','','Новосибирск, РФ','+4 ч','+79960721668','@skov_plv'],
+    ['o2','Май 2026','OPS','OPS','Гороховская Анна Викторовна','Operations','01.04.2026','10:00–19:00','19','','25.03–05.04','Требует наблюдения','Операционная работа, выгрузки','Работа с КРМ','Перевод из ОКК, функции контроля КРМ','','Оренбург, РФ','+2 ч','79958377155','@Anna_Viktorovna09'],
+    ['b1','Май 2026','КРМ/ТХП','КРМ','Коритич Марина Александровна','Crisis manager','01.07.2025','9:00–18:00','','','','Увольнение','—','','Ищет новое место, увольнение 14 числа','14.04','Александров, РФ','нет','79066119339','@Marina_Korititch'],
+    ['b2','Май 2026','КРМ/ТХП','КРМ','Кроха Никита Сергеевич','Crisis manager (стажёр)','17.03.2026','9:00–18:00','','','','Требует наблюдения','','','ИС на апрель, таргет 70% конверсии','','Самара, РФ','+1 ч','799948423','@kroxiik'],
+    ['b3','Май 2026','КРМ/ТХП','ТХП','Свинин Николай','Senior TSP','-','12:00–21:00','15','','','Стабилен','','Контроль команды, ФОТ','Старший в ТХП','','-','-','-','-'],
+    ['b4','Май 2026','КРМ/ТХП','ТХП','Сорокин Олег','TSP','-','14:00–20:00','22','','','Зона риска','','','Нет действий в омни, свод за март — печально','','-','-','-','-'],
+    ['b5','Май 2026','КРМ/ТХП','ТХП','Павленко Сергей','TSP','-','?','8','','','Требует наблюдения','','','Только на группах — парт-тайм','','-','-','-','-'],
+    ['b6','Май 2026','КРМ/ТХП','ТХП','Воронов Александр','TSP','-','14:00–20:00','15','','','Требует наблюдения','','','Вопрос по закрытию задач','','-','-','-','-'],
+    ['b7','Май 2026','КРМ/ТХП','ТХП','Бойправ Андрей','TSP','-','?','8','','','Стабилен','','','Парт-тайм сб/вс, Респект от Вики','','-','-','-','-'],
+    ['e1','Май 2026','КМ','Team 1','Минеева Анна Игоревна','Client manager','17.03.2025','14-22/8-16(2)','22','','','Стабилен','НД + постановка групп','Надбавка 2к','','','Волгодонск, РФ','нет','+79885562650','@SProsha'],
+    ['e2','Май 2026','КМ','Team 1','Чуракова Надежда Константиновна','Client manager','12.09.2023','08:00–16:00','22','','','Стабилен','ВР — сбор оплат + тикеты по ВР','','Низкий показатель по закрытым тикетам','','Бали, Индонезия','+5 ч','79187021374','nadiy_12'],
+    ['e3','Май 2026','КМ','Team 1','Божинская Татьяна Васильевна','Client manager','20.03.2024','09:00–18:00','22','','','Зона риска','Работа с 0У + тикеты от КРМ','','Деструктивная, ищем замену','','Токмок, Кыргызстан','+3 ч','+996555768522','Tati Anna'],
+    ['e4','Май 2026','КМ','Team 1','Лихачёва Евгения','Client manager','15.10.2025','09:00–21:00','8','','01.04–14.04.2026','Увольнение','','','Увольнение по семейным','30.04.2026','Рязань, РФ','нет','79209591518','@evgeniyalih'],
+    ['e5','Май 2026','КМ','Team 1','Сальменов Ардак Мейрамович','Client manager','23.01.2026','09:00–21:00','15','','','Стабилен','','','Первый месяц на фул ставке','','Павлодар, Казахстан','+2 ч','87021576509','@AS71821'],
+    ['e6','Май 2026','КМ','Team 1','Макулик Маргарита','Client manager','14.02.2026','09:00–21:00','15','','','Требует наблюдения','','','','','Беларусь','нет','-','@margo_Mako'],
+    ['e7','Май 2026','КМ','Team 1','Панькова Диана','Client manager','20.02.2026','09:00–21:00','15','','','Требует наблюдения','','','','','Беларусь, Бобруйск','нет','375295605407','@di_vic13'],
+    ['e8','Май 2026','КМ','Team 1','Агреско Алеся','Client manager','23.02.2026','09:00–21:00','15','','','Требует наблюдения','','','','','Грузия, Тбилиси','+1 ч','995599505574','@agresko'],
+    ['e9','Май 2026','КМ','Team 1','Дехрярук Юлия','Client manager (стажёр)','09.03.2026','09:00–18:00','22','','','Требует наблюдения','','','','','-','-','-','-'],
+    ['e10','Май 2026','КМ','Team 1','Кокин Пётр','Client manager (стажёр)','12.03.2026','09:00–18:00','22','','','Требует наблюдения','','','','','-','-','-','-'],
+    ['e11','Май 2026','КМ','Team 1','Войшев Евгений Владимирович','Chat manager','24.07.2024','09:00–21:00','15','','','Требует наблюдения','','','—','','Термез, Узбекистан','+2 ч','+998996761541','@Evgen9394'],
+    ['e12','Май 2026','КМ','Team 1','Ковалевич Анна','Chat manager','15.10.2025','09:00–21:00','15','','','Стабилен','','','ФГ на новую мотивацию','','Минск, РБ','нет','375445498904','@nneonya'],
+    ['e13','Май 2026','КМ','Team 2','Абдуганиева Камола Витальевна','Client manager','02.11.2021','9:00–21:00','7','','14.04–27.04.2026','Потенциал роста','SMM — соц. сети','3к+1к за лидов+3к за отзывы','ФГ по паузам','','Ташкент, Узбекистан','+2 ч','+998949147896','@GuitarCam'],
+    ['e14','Май 2026','КМ','Team 2','Оганнесян Ануш Лёвовна','Client manager','23.03.2024','9:00–18:00','22','','','Стабилен','ВР — сбор оплат + тикеты по ВР','','Высокие зарплатные ожидания','','РФ','нет','+79964316007','@annn1911'],
+    ['e15','Май 2026','КМ','Team 2','Чекан Елена','Client manager','11.07.2024','8-17/13-22(1)','22','','','Стабилен','Работа с 0У + тикеты от КРМ','','','','Бишкек, Кыргызстан','+3 ч','+79026588366','@Len_chek1405'],
+    ['e16','Май 2026','КМ','Team 2','Жуманова Аружан Нуржановна','Client manager','25.07.2024','9:00–18:00','22','','','Требует наблюдения','Тест новой мотивации','','','','Астана, Казахстан','+2 ч','+77783006199','@arrukazhan'],
+    ['e17','Май 2026','КМ','Team 2','Бурова Марина Владимировна','Client manager','28.09.2024','9-18/12-21(2)','21','','','Стабилен','ВР — сбор оплат + тикеты по ВР','','','','Киров, РФ','нет','79960466193','@marii954'],
+    ['e18','Май 2026','КМ','Team 2','Евзрезова Виктория','Client manager','25.06.2025','12:00–21:00','19','','28.04–04.05.2026','Требует наблюдения','Работа с 0У','','','','Минск, РБ','нет','+375445896603','@tavimii'],
+    ['e19','Май 2026','КМ','Team 2','Хлуднева Анна Александровна','Client manager','27.06.2025','08:00–16:00','18','','','Требует наблюдения','','','','','Новосибирск, РФ','+4 ч','+79139123316','@topasik1'],
+    ['e20','Май 2026','КМ','Team 2','Суханова Татьяна Михайловна','Client manager','05.09.2024','9-17/9-18(1)','22','','','Стабилен','Тест новой мотивации','','ФГ на новую мотивацию','','Магнитогорск, РФ','+2 ч','79525144954','@reallynotspecial']
+  ];
+
+  const meets = [
+    ['k1','Май 2026','Евзрезова Виктория','11.11.2025','Разбор кейсов ОКК за октябрь и ноябрь','Детальное изучение истории клиента','18.11.2025','','Наташа'],
+    ['k2','Май 2026','Лихачёва Евгения','25.11.2025','Оценки ОКК, новая мотивация, ФГ','','05.12.2025','Улучшение','Таня'],
+    ['k3','Май 2026','Евзрезова Виктория','29.11.2025','Разбор доплат + ОКК','Тикеты на контроль доплаты','','Улучшение','Наташа'],
+    ['k4','Май 2026','Чуракова Надежда','08.01.2026','Итоги декабря, 1е место по закрытию','','','','Таня'],
+    ['k5','Май 2026','Евзрезова Виктория','08.04.2026','Обсуждение результатов и ИС','','','','Наташа'],
+    ['k6','Май 2026','Хлуднева Анна','08.04.2026','Обсуждение результатов и ИС','','','','Наташа'],
+    ['k7','Май 2026','Войшев Евгений','12.04.2026','Разбор кейса с возвратом','','','','Таня'],
+    ['k8','Май 2026','Лихачёва Евгения','19.04.2026','Причины увольнения и условия отработки','','','','Таня'],
+    ['k9','Май 2026','Жуманова Аружан','27.04.2026','Исправление показателей, конференция','','','Спад','Наташа'],
+    ['k10','Май 2026','Абдуганиева Камола','06.04.2026','Новости и вопросы','','','','Наташа'],
+    ['k11','Май 2026','Макулик Маргарита','14.04.2026','Динамика закрытия тикетов','','','','Таня'],
+    ['k12','Май 2026','Панькова Диана','16.04.2026','Сложные кейсы, ФГ по паузам','','','','Таня'],
+    ['k13','Май 2026','Хлуднева Анна','29.04.2026','Вопросы по текущим клиентам','','','','Наташа'],
+    ['k14','Май 2026','Сальменов Ардак','02.05.2026','Разбор зачислений 1-1','','','','Наташа']
+  ];
+
+  for (const e of emps) {
+    await pool.query(
+      `INSERT INTO employees (id,month,block,sub,name,role,entry,schedule,plan,fact,vacation,status,functions,extra,comment,dismiss,city,tz,phone,tg)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+       ON CONFLICT (id) DO NOTHING`, e);
+  }
+  for (const m of meets) {
+    await pool.query(
+      `INSERT INTO meetings (id,month,name,date,topic,tasks,next,dyn,tl)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING`, m);
+  }
+  console.log('Seed done');
 }
-function writeDB(data) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-}
 
-// GET all data
-app.get('/api/data', (req, res) => {
-  res.json(readDB());
+app.get('/api/data', async (req, res) => {
+  try {
+    const [emp, meet] = await Promise.all([
+      pool.query('SELECT * FROM employees ORDER BY month,block,name'),
+      pool.query('SELECT * FROM meetings ORDER BY month,date')
+    ]);
+    res.json({ employees: emp.rows, meetings: meet.rows });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// SAVE employee (add or update)
-app.post('/api/employee', (req, res) => {
-  const db = readDB();
-  const emp = req.body;
-  if (!emp.id) emp.id = Date.now().toString();
-  const idx = db.employees.findIndex(e => e.id === emp.id);
-  if (idx >= 0) db.employees[idx] = emp;
-  else db.employees.push(emp);
-  writeDB(db);
-  res.json({ ok: true, employee: emp });
+app.post('/api/employee', async (req, res) => {
+  try {
+    const e = req.body;
+    if (!e.id) e.id = Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    await pool.query(
+      `INSERT INTO employees (id,month,block,sub,name,role,entry,schedule,plan,fact,vacation,status,functions,extra,comment,dismiss,city,tz,phone,tg)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+       ON CONFLICT (id) DO UPDATE SET month=$2,block=$3,sub=$4,name=$5,role=$6,entry=$7,schedule=$8,plan=$9,fact=$10,vacation=$11,status=$12,functions=$13,extra=$14,comment=$15,dismiss=$16,city=$17,tz=$18,phone=$19,tg=$20`,
+      [e.id,e.month,e.block,e.sub||'',e.name,e.role||'',e.entry||'',e.schedule||'',e.plan||'',e.fact||'',e.vacation||'',e.status||'',e.functions||'',e.extra||'',e.comment||'',e.dismiss||'',e.city||'',e.tz||'',e.phone||'',e.tg||'']);
+    res.json({ ok: true, id: e.id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// DELETE employee
-app.delete('/api/employee/:id', (req, res) => {
-  const db = readDB();
-  db.employees = db.employees.filter(e => e.id !== req.params.id);
-  writeDB(db);
-  res.json({ ok: true });
+app.delete('/api/employee/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM employees WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// SAVE meeting
-app.post('/api/meeting', (req, res) => {
-  const db = readDB();
-  const m = req.body;
-  if (!m.id) m.id = Date.now().toString();
-  const idx = db.meetings.findIndex(x => x.id === m.id);
-  if (idx >= 0) db.meetings[idx] = m;
-  else db.meetings.push(m);
-  writeDB(db);
-  res.json({ ok: true, meeting: m });
+app.post('/api/meeting', async (req, res) => {
+  try {
+    const m = req.body;
+    if (!m.id) m.id = Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    await pool.query(
+      `INSERT INTO meetings (id,month,name,date,topic,tasks,next,dyn,tl)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       ON CONFLICT (id) DO UPDATE SET month=$2,name=$3,date=$4,topic=$5,tasks=$6,next=$7,dyn=$8,tl=$9`,
+      [m.id,m.month,m.name||'',m.date||'',m.topic||'',m.tasks||'',m.next||'',m.dyn||'',m.tl||'']);
+    res.json({ ok: true, id: m.id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// DELETE meeting
-app.delete('/api/meeting/:id', (req, res) => {
-  const db = readDB();
-  db.meetings = db.meetings.filter(m => m.id !== req.params.id);
-  writeDB(db);
-  res.json({ ok: true });
+app.delete('/api/meeting/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM meetings WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Serve frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => console.log(`CIS Dashboard on port ${PORT}`));
+initDB().then(() => {
+  app.listen(PORT, () => console.log(`CIS Dashboard on port ${PORT}`));
+}).catch(err => { console.error('DB init failed:', err); process.exit(1); });
