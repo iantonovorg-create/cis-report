@@ -301,6 +301,53 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
     </div>
   </div>
 </div>
+  <!-- PAYROLL MODAL -->
+<div class="ov" id="payrollOv">
+  <div class="modal" style="max-width:620px">
+    <button class="mclose" onclick="cm('payrollOv')">✕</button>
+    <h2 id="prModalTitle">ЗП</h2>
+    <input type="hidden" id="pr_block">
+    <input type="hidden" id="pr_sub">
+    <div class="fgrid">
+      <div class="fg"><label>Оклад (₽)</label><input id="pr_salary" type="number" placeholder="0"></div>
+      <div class="fg"><label>Система премирования</label>
+        <select id="pr_bonus_type" onchange="updateBonusFields(this.value,null)">
+          <option value="">— не выбрано —</option>
+          <option>105р за клиента</option>
+          <option>55р за тикет</option>
+          <option>45р за чат</option>
+          <option>Новая мотивация</option>
+        </select>
+      </div>
+      <div class="fg full" id="pr_bonus_fields"></div>
+    </div>
+
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Доп. выплаты</div>
+      <div id="pr_extras_list"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <select id="extra_type" onchange="showExtraForm(this.value)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px 11px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none;flex:1">
+          <option value="">+ Добавить доп. выплату</option>
+          <option>Дежурства в омни (КМ)</option>
+          <option>Дежурства ТХП</option>
+          <option>Бонус ВР</option>
+          <option>Другое</option>
+        </select>
+      </div>
+      <div id="extraAddForm"></div>
+    </div>
+
+    <div style="margin-top:14px;padding:12px;background:var(--bg3);border-radius:3px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Итого к выплате</div>
+      <div style="font-family:'Unbounded',sans-serif;font-size:18px;font-weight:700;color:var(--accent)" id="pr_preview">—</div>
+    </div>
+
+    <div class="mbtns">
+      <button class="bcancel" onclick="cm('payrollOv')">Отмена</button>
+      <button class="bsave" onclick="savePayroll()">Сохранить</button>
+    </div>
+  </div>
+</div>
   <div class="toast" id="toast"></div>
 
 <script>
