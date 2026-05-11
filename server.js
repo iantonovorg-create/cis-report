@@ -70,6 +70,29 @@ async function initDB() {
   created_at TIMESTAMPTZ DEFAULT NOW()
 )`);
 
+  await pool.query(`CREATE TABLE IF NOT EXISTS payroll (
+  id TEXT PRIMARY KEY,
+  month TEXT,
+  employee_id TEXT,
+  name TEXT,
+  block TEXT,
+  sub TEXT,
+  salary NUMERIC DEFAULT 0,
+  bonus_type TEXT DEFAULT '',
+  bonus_clients NUMERIC DEFAULT 0,
+  bonus_tickets NUMERIC DEFAULT 0,
+  bonus_chats NUMERIC DEFAULT 0,
+  new_mot_base NUMERIC DEFAULT 25000,
+  new_mot_clients_plan NUMERIC DEFAULT 0,
+  new_mot_clients_fact NUMERIC DEFAULT 0,
+  new_mot_repeat_plan NUMERIC DEFAULT 0,
+  new_mot_repeat_fact NUMERIC DEFAULT 0,
+  new_mot_first_plan NUMERIC DEFAULT 0,
+  new_mot_first_fact NUMERIC DEFAULT 0,
+  extra_bonuses TEXT DEFAULT '[]',
+  total NUMERIC DEFAULT 0
+)`);
+  
   for (const u of INITIAL_USERS) {
     await pool.query(
       `INSERT INTO access_users (email,role) VALUES ($1,$2) ON CONFLICT (email) DO NOTHING`,
@@ -308,6 +331,51 @@ app.post('/api/task', requireAuth, requireEditor, async (req, res) => {
 app.delete('/api/task/:id', requireAuth, requireEditor, async (req, res) => {
   try {
     await pool.query('DELETE FROM tasks WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── API: PAYROLL ─────────────────────────────────────────────────────────────
+app.get('/api/payroll', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM payroll ORDER BY block, sub, name');
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/payroll', requireAuth, requireEditor, async (req, res) => {
+  try {
+    const p = req.body;
+    if (!p.id) p.id = Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    await pool.query(
+      `INSERT INTO payroll (id,month,employee_id,name,block,sub,salary,bonus_type,
+        bonus_clients,bonus_tickets,bonus_chats,
+        new_mot_base,new_mot_clients_plan,new_mot_clients_fact,
+        new_mot_repeat_plan,new_mot_repeat_fact,
+        new_mot_first_plan,new_mot_first_fact,
+        extra_bonuses,total)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+       ON CONFLICT (id) DO UPDATE SET
+         month=$2,employee_id=$3,name=$4,block=$5,sub=$6,salary=$7,bonus_type=$8,
+         bonus_clients=$9,bonus_tickets=$10,bonus_chats=$11,
+         new_mot_base=$12,new_mot_clients_plan=$13,new_mot_clients_fact=$14,
+         new_mot_repeat_plan=$15,new_mot_repeat_fact=$16,
+         new_mot_first_plan=$17,new_mot_first_fact=$18,
+         extra_bonuses=$19,total=$20`,
+      [p.id,p.month,p.employee_id||'',p.name,p.block,p.sub||'',
+       p.salary||0,p.bonus_type||'',
+       p.bonus_clients||0,p.bonus_tickets||0,p.bonus_chats||0,
+       p.new_mot_base||25000,p.new_mot_clients_plan||0,p.new_mot_clients_fact||0,
+       p.new_mot_repeat_plan||0,p.new_mot_repeat_fact||0,
+       p.new_mot_first_plan||0,p.new_mot_first_fact||0,
+       JSON.stringify(p.extra_bonuses||[]),p.total||0]);
+    res.json({ ok: true, id: p.id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/payroll/:id', requireAuth, requireEditor, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM payroll WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
