@@ -645,7 +645,332 @@ async function delTask(id) {
   await loadTasks();
   toast('Удалено');
 }
- loadData();
+ // ══════════════════════════════════════════════════════
+// PAYROLL
+// ══════════════════════════════════════════════════════
+let PAYROLL = [];
+
+async function loadPayroll() {
+  try {
+    PAYROLL = await (await fetch('/api/payroll')).json();
+    renderPayroll();
+  } catch(e) { console.error(e); }
+}
+
+function calcTotal(p) {
+  let bonus = 0;
+  const sal = parseFloat(p.salary) || 0;
+
+  if (p.bonus_type === '105р за клиента') {
+    bonus = (parseFloat(p.bonus_clients) || 0) * 105;
+  } else if (p.bonus_type === '55р за тикет') {
+    bonus = (parseFloat(p.bonus_tickets) || 0) * 55;
+  } else if (p.bonus_type === '45р за чат') {
+    bonus = (parseFloat(p.bonus_chats) || 0) * 45;
+  } else if (p.bonus_type === 'Новая мотивация') {
+    const base = parseFloat(p.new_mot_base) || 25000;
+    const cp = parseFloat(p.new_mot_clients_plan) || 1;
+    const cf = parseFloat(p.new_mot_clients_fact) || 0;
+    const rp = parseFloat(p.new_mot_repeat_plan) || 0;
+    const rf = parseFloat(p.new_mot_repeat_fact) || 0;
+    const fp = parseFloat(p.new_mot_first_plan) || 0;
+    const ff = parseFloat(p.new_mot_first_fact) || 0;
+
+    // Показатель 1 — клиенты (не более 100%)
+    const k1 = Math.min(cf / cp, 1);
+
+    // Показатель 2 — % повторок (превышение = минус)
+    let k2 = 1;
+    if (rf > rp) {
+      const over = (rf - rp) / rp;
+      k2 = Math.max(1 - over, 0);
+      if (rf >= rp * 2) k2 = 0;
+    }
+
+    // Показатель 3 — % закрытий с первого касания (превышение плана = минус)
+    let k3 = 1;
+    if (ff > fp) {
+      const over = (ff - fp) / fp;
+      k3 = Math.max(1 - over, 0);
+    }
+
+    bonus = base * k1 * k2 * k3;
+  }
+
+  // Доп бонусы
+  const extras = typeof p.extra_bonuses === 'string' ? JSON.parse(p.extra_bonuses || '[]') : (p.extra_bonuses || []);
+  let extraTotal = 0;
+  extras.forEach(e => { extraTotal += parseFloat(e.amount) || 0; });
+
+  return Math.round(sal + bonus + extraTotal);
+}
+
+function fmt(n) { return new Intl.NumberFormat('ru-RU').format(Math.round(n)) + ' ₽'; }
+
+function renderPayroll() {
+  renderPayrollSummary();
+  renderPayrollTable();
+}
+
+function renderPayrollSummary() {
+  const month = curMonth;
+  const emps = byM(DB.employees).filter(e => !['HEAD','TL_BUSH','TL_EVS'].includes(e.block));
+
+  const blocks = [
+    { key: 'OPS', label: 'OPS', color: 'var(--blue)' },
+    { key: 'КРМ', label: 'КРМ', color: 'var(--warn)', sub: true },
+    { key: 'ТХП', label: 'ТХП', color: 'var(--blue)', sub: true },
+    { key: 'КМ', label: 'КМ', color: 'var(--purple)', sub: true },
+    { key: 'МЧ', label: 'МЧ', color: 'var(--sage)', sub: true },
+  ];
+
+  const getTotal = (block, isSub) => {
+    const rows = isSub
+      ? PAYROLL.filter(p => p.month === month && p.sub === block)
+      : PAYROLL.filter(p => p.month === month && p.block === block);
+    return rows.reduce((s, p) => s + (parseFloat(p.total) || calcTotal(p)), 0);
+  };
+
+  const grandTotal = PAYROLL.filter(p => p.month === month).reduce((s, p) => s + (parseFloat(p.total) || calcTotal(p)), 0);
+  const totalEmps = PAYROLL.filter(p => p.month === month).length;
+
+  document.getElementById('payrollSummary').innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:18px 22px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-family:'Unbounded',sans-serif;font-size:13px;font-weight:600;color:var(--gold)">ФОТ — ${month}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:1px">Сотрудников в ведомости: ${totalEmps}</div>
+        </div>
+        <div style="font-family:'Unbounded',sans-serif;font-size:22px;font-weight:700;color:var(--accent)">${fmt(grandTotal)}</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${blocks.map(b => {
+          const t = getTotal(b.key, b.sub);
+          if (!t) return '';
+          return `<div style="background:var(--bg3);border-radius:3px;padding:8px 14px;text-align:center">
+            <div style="font-size:14px;font-weight:700;color:${b.color};font-family:'Unbounded',sans-serif">${fmt(t)}</div>
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">${b.label}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function renderPayrollTable() {
+  const month = curMonth;
+  const emps = byM(DB.employees).filter(e => !['HEAD','TL_BUSH','TL_EVS'].includes(e.block));
+
+  const sections = [
+    { label: 'OPS — Операционный блок', emps: emps.filter(e => e.block === 'OPS') },
+    { label: 'КРМ — Кризис-менеджеры', emps: emps.filter(e => e.block === 'КРМ/ТХП' && e.sub === 'КРМ') },
+    { label: 'ТХП — Техподдержка', emps: emps.filter(e => e.block === 'КРМ/ТХП' && e.sub === 'ТХП') },
+    { label: 'КМ — Клиентские менеджеры', emps: emps.filter(e => e.block === 'КМ' && e.sub !== 'МЧ') },
+    { label: 'МЧ — Чат-менеджеры', emps: emps.filter(e => e.role && e.role.toLowerCase().includes('chat')) },
+  ];
+
+  document.getElementById('payrollContent').innerHTML = sections.map(sec => {
+    if (!sec.emps.length) return '';
+    return `
+    <div style="margin-bottom:24px">
+      <div class="sec-lbl">${sec.label}</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr>
+              <th style="background:var(--bg3);border:1px solid var(--border);padding:8px 12px;text-align:left;font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;white-space:nowrap">Сотрудник</th>
+              <th style="background:var(--bg3);border:1px solid var(--border);padding:8px 12px;text-align:left;font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;white-space:nowrap">Оклад</th>
+              <th style="background:var(--bg3);border:1px solid var(--border);padding:8px 12px;text-align:left;font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;white-space:nowrap">Система премирования</th>
+              <th style="background:var(--bg3);border:1px solid var(--border);padding:8px 12px;text-align:left;font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;white-space:nowrap">Бонус</th>
+              <th style="background:var(--bg3);border:1px solid var(--border);padding:8px 12px;text-align:left;font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;white-space:nowrap">Доп. выплаты</th>
+              <th style="background:var(--bg3);border:1px solid var(--border);padding:8px 12px;text-align:right;font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;white-space:nowrap">Итого</th>
+              <th style="background:var(--bg3);border:1px solid var(--border);padding:8px 12px;text-align:center;font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sec.emps.map(emp => {
+              const pr = PAYROLL.find(p => p.month === month && p.employee_id === emp.id) || null;
+              const total = pr ? calcTotal(pr) : 0;
+              const extras = pr ? (typeof pr.extra_bonuses === 'string' ? JSON.parse(pr.extra_bonuses || '[]') : (pr.extra_bonuses || [])) : [];
+              const extraTotal = extras.reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+              const bonusAmt = total - (parseFloat(pr?.salary)||0) - extraTotal;
+              const odd = sec.emps.indexOf(emp) % 2 === 0;
+              return `<tr style="${odd?'':'background:rgba(0,0,0,.13)'}">
+                <td style="border:1px solid var(--border);padding:10px 12px;color:var(--text);font-weight:600">${emp.name}</td>
+                <td style="border:1px solid var(--border);padding:10px 12px;color:var(--dim)">${pr ? fmt(pr.salary) : '—'}</td>
+                <td style="border:1px solid var(--border);padding:10px 12px;color:var(--dim)">${pr?.bonus_type || '—'}</td>
+                <td style="border:1px solid var(--border);padding:10px 12px;color:var(--green)">${pr && bonusAmt > 0 ? fmt(bonusAmt) : '—'}</td>
+                <td style="border:1px solid var(--border);padding:10px 12px;color:var(--blue)">${extraTotal > 0 ? fmt(extraTotal) : '—'}</td>
+                <td style="border:1px solid var(--border);padding:10px 12px;text-align:right;font-weight:700;color:var(--accent);font-family:'Unbounded',sans-serif">${pr ? fmt(total) : '—'}</td>
+                <td style="border:1px solid var(--border);padding:10px 12px;text-align:center;white-space:nowrap">
+                  <button class="abt ed" onclick="openPayrollModal('${emp.id}','${emp.name.replace(/'/g,"\\'")}','${emp.block}','${emp.sub||''}')">✎</button>
+                  ${pr ? `<button class="abt dl" style="margin-left:4px" onclick="deletePayroll('${pr.id}')">✕</button>` : ''}
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── PAYROLL MODAL ─────────────────────────────────────────────────────────────
+let _prEmpId = null, _prId = null, _extraBonuses = [];
+
+function openPayrollModal(empId, empName, block, sub) {
+  _prEmpId = empId;
+  _extraBonuses = [];
+  const pr = PAYROLL.find(p => p.month === curMonth && p.employee_id === empId);
+  _prId = pr ? pr.id : null;
+  if (pr) {
+    _extraBonuses = typeof pr.extra_bonuses === 'string' ? JSON.parse(pr.extra_bonuses || '[]') : (pr.extra_bonuses || []);
+  }
+
+  document.getElementById('prModalTitle').textContent = empName;
+  document.getElementById('pr_salary').value = pr?.salary || '';
+  document.getElementById('pr_bonus_type').value = pr?.bonus_type || '';
+  document.getElementById('pr_block').value = block;
+  document.getElementById('pr_sub').value = sub;
+
+  updateBonusFields(pr?.bonus_type || '', pr);
+  renderExtraBonuses();
+  om('payrollOv');
+}
+
+function updateBonusFields(type, pr) {
+  const f = document.getElementById('pr_bonus_fields');
+  if (type === '105р за клиента') {
+    f.innerHTML = `<div class="fg"><label>Кол-во клиентов</label><input id="pr_clients" type="number" value="${pr?.bonus_clients||''}" placeholder="0"></div>`;
+  } else if (type === '55р за тикет') {
+    f.innerHTML = `<div class="fg"><label>Кол-во тикетов</label><input id="pr_tickets" type="number" value="${pr?.bonus_tickets||''}" placeholder="0"></div>`;
+  } else if (type === '45р за чат') {
+    f.innerHTML = `<div class="fg"><label>Кол-во чатов</label><input id="pr_chats" type="number" value="${pr?.bonus_chats||''}" placeholder="0"></div>`;
+  } else if (type === 'Новая мотивация') {
+    f.innerHTML = `
+      <div class="fg"><label>Базовая ставка (₽)</label><input id="pr_nm_base" type="number" value="${pr?.new_mot_base||25000}"></div>
+      <div class="fg full" style="margin-top:8px;padding:10px;background:var(--bg3);border-radius:3px">
+        <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:10px;letter-spacing:1px">ПОКАЗАТЕЛИ KPI</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+          <div>Показатель</div><div>План</div><div>Факт</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+          <div style="font-size:11px;color:var(--dim)">Уникальные клиенты</div>
+          <input id="pr_cp" type="number" value="${pr?.new_mot_clients_plan||''}" placeholder="план" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:6px 8px;border-radius:2px;font-size:11px;outline:none">
+          <input id="pr_cf" type="number" value="${pr?.new_mot_clients_fact||''}" placeholder="факт" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:6px 8px;border-radius:2px;font-size:11px;outline:none">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+          <div style="font-size:11px;color:var(--dim)">% повторок</div>
+          <input id="pr_rp" type="number" value="${pr?.new_mot_repeat_plan||''}" placeholder="план %" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:6px 8px;border-radius:2px;font-size:11px;outline:none">
+          <input id="pr_rf" type="number" value="${pr?.new_mot_repeat_fact||''}" placeholder="факт %" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:6px 8px;border-radius:2px;font-size:11px;outline:none">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center">
+          <div style="font-size:11px;color:var(--dim)">% закрытий с 1 касания</div>
+          <input id="pr_fp" type="number" value="${pr?.new_mot_first_plan||''}" placeholder="план %" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:6px 8px;border-radius:2px;font-size:11px;outline:none">
+          <input id="pr_ff" type="number" value="${pr?.new_mot_first_fact||''}" placeholder="факт %" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:6px 8px;border-radius:2px;font-size:11px;outline:none">
+        </div>
+      </div>`;
+  } else {
+    f.innerHTML = '';
+  }
+}
+
+function renderExtraBonuses() {
+  document.getElementById('pr_extras_list').innerHTML = _extraBonuses.map((e, i) => `
+    <div style="background:var(--bg3);border-radius:3px;padding:10px 12px;margin-bottom:8px;position:relative">
+      <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px">${e.type}</div>
+      <div style="font-size:11px;color:var(--dim)">${e.label||''} → <b style="color:var(--green)">${fmt(e.amount||0)}</b></div>
+      <button onclick="removeExtra(${i})" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button>
+    </div>`).join('');
+}
+
+function removeExtra(i) {
+  _extraBonuses.splice(i, 1);
+  renderExtraBonuses();
+}
+
+function addExtraBonus() {
+  const type = document.getElementById('extra_type').value;
+  let amount = 0, label = '';
+
+  if (type === 'Дежурства в омни (КМ)') {
+    const shifts = parseFloat(document.getElementById('extra_shifts').value) || 0;
+    amount = shifts * 275;
+    label = `${shifts} смен × 275₽`;
+  } else if (type === 'Дежурства ТХП') {
+    const hours = parseFloat(document.getElementById('extra_hours').value) || 0;
+    amount = hours * 300;
+    label = `${hours} ч × 300₽`;
+  } else if (type === 'Бонус ВР') {
+    const pct = parseFloat(document.getElementById('extra_vr_pct').value) || 0;
+    const fot = parseFloat(document.getElementById('extra_vr_fot').value) || 0;
+    amount = fot * (pct / 100);
+    label = `${pct}% от ФОТ ${fmt(fot)}`;
+  } else if (type === 'Другое') {
+    amount = parseFloat(document.getElementById('extra_other_amount').value) || 0;
+    label = document.getElementById('extra_other_comment').value || 'Доп. выплата';
+  }
+
+  if (amount > 0 || type === 'Другое') {
+    _extraBonuses.push({ type, label, amount });
+    renderExtraBonuses();
+    document.getElementById('extraAddForm').innerHTML = '';
+    document.getElementById('extra_type').value = '';
+  }
+}
+
+function showExtraForm(type) {
+  const f = document.getElementById('extraAddForm');
+  if (type === 'Дежурства в омни (КМ)') {
+    f.innerHTML = `<div style="display:flex;gap:8px;align-items:flex-end;margin-top:8px"><div class="fg" style="flex:1"><label>Кол-во смен</label><input id="extra_shifts" type="number" placeholder="0"></div><div class="fg" style="flex:1"><label>Ставка</label><input value="275 ₽/смена" disabled style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:8px 11px;border-radius:2px;font-size:12px;width:100%"></div><button class="bsave" style="white-space:nowrap" onclick="addExtraBonus()">+ Добавить</button></div>`;
+  } else if (type === 'Дежурства ТХП') {
+    f.innerHTML = `<div style="display:flex;gap:8px;align-items:flex-end;margin-top:8px"><div class="fg" style="flex:1"><label>Кол-во часов</label><input id="extra_hours" type="number" placeholder="0"></div><div class="fg" style="flex:1"><label>Ставка</label><input value="300 ₽/час" disabled style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:8px 11px;border-radius:2px;font-size:12px;width:100%"></div><button class="bsave" style="white-space:nowrap" onclick="addExtraBonus()">+ Добавить</button></div>`;
+  } else if (type === 'Бонус ВР') {
+    f.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:flex-end;margin-top:8px"><div class="fg"><label>% бонуса</label><input id="extra_vr_pct" type="number" placeholder="0"></div><div class="fg"><label>Базовая ставка</label><input value="24000" disabled style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:8px 11px;border-radius:2px;font-size:12px;width:100%"></div><div class="fg"><label>ФОТ бонуса (₽)</label><input id="extra_vr_fot" type="number" placeholder="0"></div><button class="bsave" style="grid-column:1/-1" onclick="addExtraBonus()">+ Добавить</button></div>`;
+  } else if (type === 'Другое') {
+    f.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:flex-end;margin-top:8px"><div class="fg"><label>Сумма (₽)</label><input id="extra_other_amount" type="number" placeholder="0"></div><div class="fg"><label>Комментарий</label><input id="extra_other_comment" placeholder="Описание выплаты"></div><button class="bsave" style="grid-column:1/-1" onclick="addExtraBonus()">+ Добавить</button></div>`;
+  } else {
+    f.innerHTML = '';
+  }
+}
+
+async function savePayroll() {
+  const bonusType = document.getElementById('pr_bonus_type').value;
+  const obj = {
+    id: _prId || undefined,
+    month: curMonth,
+    employee_id: _prEmpId,
+    name: document.getElementById('prModalTitle').textContent,
+    block: document.getElementById('pr_block').value,
+    sub: document.getElementById('pr_sub').value,
+    salary: document.getElementById('pr_salary').value || 0,
+    bonus_type: bonusType,
+    bonus_clients: document.getElementById('pr_clients')?.value || 0,
+    bonus_tickets: document.getElementById('pr_tickets')?.value || 0,
+    bonus_chats: document.getElementById('pr_chats')?.value || 0,
+    new_mot_base: document.getElementById('pr_nm_base')?.value || 25000,
+    new_mot_clients_plan: document.getElementById('pr_cp')?.value || 0,
+    new_mot_clients_fact: document.getElementById('pr_cf')?.value || 0,
+    new_mot_repeat_plan: document.getElementById('pr_rp')?.value || 0,
+    new_mot_repeat_fact: document.getElementById('pr_rf')?.value || 0,
+    new_mot_first_plan: document.getElementById('pr_fp')?.value || 0,
+    new_mot_first_fact: document.getElementById('pr_ff')?.value || 0,
+    extra_bonuses: _extraBonuses,
+  };
+  obj.total = calcTotal(obj);
+  await api('POST', '/api/payroll', obj);
+  await loadPayroll();
+  cm('payrollOv');
+  toast('Сохранено ✓');
+}
+
+async function deletePayroll(id) {
+  if (!confirm('Удалить запись?')) return;
+  await api('DELETE', `/api/payroll/${id}`);
+  await loadPayroll();
+  toast('Удалено');
+}
+  loadData();
+loadPayroll();
 loadTasks();
 </script>
 </body>
