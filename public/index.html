@@ -389,7 +389,10 @@ function renderStats(){
   const roleColors={'Client manager':'var(--purple)','Chat manager':'var(--sage)','Crisis manager':'var(--warn)','Crisis manager (стажёр)':'var(--warn)','TSP':'var(--blue)','Senior TSP':'var(--blue)','Operations':'var(--blue)','Client manager (стажёр)':'var(--purple)'};
   const roleShort={'Client manager':'КМ','Chat manager':'МЧ','Crisis manager':'КРМ','Crisis manager (стажёр)':'КРМ стаж','TSP':'ТХП','Senior TSP':'Sr.ТХП','Operations':'OPS','Client manager (стажёр)':'КМ стаж'};
   const roleChips=Object.entries(roleCounts).sort((a,b)=>b[1]-a[1]).map(([role,count])=>{const c=roleColors[role]||'var(--accent)';const s=roleShort[role]||role;return`<div class="chip" style="cursor:pointer" onclick="openRolePopup('${role}')" title="Нажми чтобы увидеть список"><span class="n" style="color:${c}">${count}</span><div class="l">${s}</div></div>`;}).join('');
-  document.getElementById('sumRow').innerHTML=`<div class="chip"><span class="n" style="color:var(--accent)">${t}</span><div class="l">Вся команда</div></div>${roleChips}<div class="chip"><span class="n" style="color:var(--green)">${st}</span><div class="l">Стабильны</div></div><div class="chip"><span class="n" style="color:var(--warn)">${wa}</span><div class="l">Контроль</div></div><div class="chip"><span class="n" style="color:var(--red)">${ri}</span><div class="l">Риск/Увол.</div></div><div class="chip"><span class="n" style="color:var(--purple)">${gr}</span><div class="l">Потенциал</div></div>`;
+  document.getElementById('sumRow').innerHTML=`<div class="chip"><span class="n" style="color:var(--accent)">${t}</span><div class="l">Вся команда</div></div>${roleChips}<div class="chip" style="cursor:pointer" onclick="openStatusPopup('Стабилен')" title="Нажми чтобы увидеть список"><span class="n" style="color:var(--green)">${st}</span><div class="l">Стабильны</div></div>
+<div class="chip" style="cursor:pointer" onclick="openStatusPopup('watch')" title="Нажми чтобы увидеть список"><span class="n" style="color:var(--warn)">${wa}</span><div class="l">Контроль</div></div>
+<div class="chip" style="cursor:pointer" onclick="openStatusPopup('risk')" title="Нажми чтобы увидеть список"><span class="n" style="color:var(--red)">${ri}</span><div class="l">Риск/Увол.</div></div>
+<div class="chip" style="cursor:pointer" onclick="openStatusPopup('Потенциал роста')" title="Нажми чтобы увидеть список"><span class="n" style="color:var(--purple)">${gr}</span><div class="l">Потенциал</div></div>;
   document.getElementById('bushN').textContent=byM(DB.employees).filter(e=>e.block==='КРМ/ТХП').length;
   document.getElementById('evsN').textContent=byM(DB.employees).filter(e=>e.block==='КМ').length;
 }
@@ -444,6 +447,31 @@ function openRolePopup(role){
       <div>
         <div style="font-size:13px;font-weight:600;color:var(--text)">${e.name}</div>
         <div style="font-size:10px;color:var(--dim);margin-top:2px">${e.sub||'—'} · Вход: ${e.entry||'—'}</div>
+      </div>
+      <span class="sbadge ${scls(e.status)}">${e.status||'—'}</span>
+    </div>`).join('');
+  om('roleOv');
+}
+  function openStatusPopup(filter) {
+  const labels = {
+    'Стабилен': 'Стабильны',
+    'watch': 'На контроле',
+    'risk': 'Риск / Увольнение',
+    'Потенциал роста': 'Потенциал роста'
+  };
+  const rows = byM(DB.employees).filter(e => {
+    if (!['HEAD','TL_BUSH','TL_EVS'].includes(e.block) === false) return false;
+    if (filter === 'watch') return e.status && e.status.includes('Требует');
+    if (filter === 'risk') return e.status === 'Зона риска' || e.status === 'Увольнение';
+    return e.status === filter;
+  }).filter(e => !['HEAD','TL_BUSH','TL_EVS'].includes(e.block));
+
+  document.getElementById('rolePopupTitle').textContent = labels[filter] + ' — ' + rows.length + ' чел.';
+  document.getElementById('rolePopupList').innerHTML = rows.map(e => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${e.name}</div>
+        <div style="font-size:10px;color:var(--dim);margin-top:2px">${e.role||'—'} · ${e.block}</div>
       </div>
       <span class="sbadge ${scls(e.status)}">${e.status||'—'}</span>
     </div>`).join('');
