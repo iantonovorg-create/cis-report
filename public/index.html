@@ -260,37 +260,13 @@ function renderStats(){
   const wa=rows.filter(e=>e.status&&e.status.includes('Требует')).length;
   const ri=rows.filter(e=>e.status==='Зона риска'||e.status==='Увольнение').length;
   const gr=rows.filter(e=>e.status==='Потенциал роста').length;
-
-  // По должностям — считаем из поля role
-  const ops=rows.filter(e=>e.block==='OPS').length;
-  const krm=rows.filter(e=>(e.role||'').toLowerCase().includes('crisis')).length;
-  const thp=rows.filter(e=>(e.role||'').toLowerCase().includes('tsp')).length;
-  const km=rows.filter(e=>(e.role||'').toLowerCase().includes('client manager')).length;
-  const mch=rows.filter(e=>(e.role||'').toLowerCase().includes('chat')).length;
-  const vr=rows.filter(e=>(e.sub||'').toLowerCase().includes('внутренняя')||
-    (e.functions||'').toLowerCase().includes('вр')||
-    (e.functions||'').toLowerCase().includes('внутренняя рассрочка')).length;
-
-  document.getElementById('hdrStats').innerHTML=`
-    <div class="hst"><span class="n" style="color:var(--accent)">${t}</span><span class="l">Всего</span></div>
-    <div class="hst"><span class="n" style="color:var(--green)">${st}</span><span class="l">Стабильны</span></div>
-    <div class="hst"><span class="n" style="color:var(--warn)">${wa}</span><span class="l">Контроль</span></div>
-    <div class="hst"><span class="n" style="color:var(--red)">${ri}</span><span class="l">Риск</span></div>
-    <div class="hst"><span class="n" style="color:var(--purple)">${gr}</span><span class="l">Потенциал</span></div>`;
-
-  document.getElementById('sumRow').innerHTML=[
-    ['Вся команда', t,   'var(--accent)'],
-    ['OPS',         ops, 'var(--blue)'],
-    ['КРМ',         krm, '#c8a87a'],
-    ['ТХП',         thp, '#8aaac8'],
-    ['КМ',          km,  'var(--purple)'],
-    ['МЧ',          mch, 'var(--sage)'],
-    ['Стабильны',   st,  'var(--green)'],
-    ['Контроль',    wa,  'var(--warn)'],
-    ['Риск/Увол.',  ri,  'var(--red)'],
-    ['Потенциал',   gr,  'var(--purple)'],
-  ].map(([l,n,c])=>`<div class="chip"><span class="n" style="color:${c}">${n}</span><div class="l">${l}</div></div>`).join('');
-
+  const roleCounts={};
+  rows.forEach(e=>{const r=(e.role||'').trim();if(!r||r==='-')return;roleCounts[r]=(roleCounts[r]||0)+1;});
+  document.getElementById('hdrStats').innerHTML=`<div class="hst"><span class="n" style="color:var(--accent)">${t}</span><span class="l">Всего</span></div><div class="hst"><span class="n" style="color:var(--green)">${st}</span><span class="l">Стабильны</span></div><div class="hst"><span class="n" style="color:var(--warn)">${wa}</span><span class="l">Контроль</span></div><div class="hst"><span class="n" style="color:var(--red)">${ri}</span><span class="l">Риск</span></div><div class="hst"><span class="n" style="color:var(--purple)">${gr}</span><span class="l">Потенциал</span></div>`;
+  const roleColors={'Client manager':'var(--purple)','Chat manager':'var(--sage)','Crisis manager':'var(--warn)','Crisis manager (стажёр)':'var(--warn)','TSP':'var(--blue)','Senior TSP':'var(--blue)','Operations':'var(--blue)','Client manager (стажёр)':'var(--purple)'};
+  const roleShort={'Client manager':'КМ','Chat manager':'МЧ','Crisis manager':'КРМ','Crisis manager (стажёр)':'КРМ стаж','TSP':'ТХП','Senior TSP':'Sr.ТХП','Operations':'OPS','Client manager (стажёр)':'КМ стаж'};
+  const roleChips=Object.entries(roleCounts).sort((a,b)=>b[1]-a[1]).map(([role,count])=>{const c=roleColors[role]||'var(--accent)';const s=roleShort[role]||role;return`<div class="chip"><span class="n" style="color:${c}">${count}</span><div class="l">${s}</div></div>`;}).join('');
+  document.getElementById('sumRow').innerHTML=`<div class="chip"><span class="n" style="color:var(--accent)">${t}</span><div class="l">Вся команда</div></div>${roleChips}<div class="chip"><span class="n" style="color:var(--green)">${st}</span><div class="l">Стабильны</div></div><div class="chip"><span class="n" style="color:var(--warn)">${wa}</span><div class="l">Контроль</div></div><div class="chip"><span class="n" style="color:var(--red)">${ri}</span><div class="l">Риск/Увол.</div></div><div class="chip"><span class="n" style="color:var(--purple)">${gr}</span><div class="l">Потенциал</div></div>`;
   document.getElementById('bushN').textContent=byM(DB.employees).filter(e=>e.block==='КРМ/ТХП').length;
   document.getElementById('evsN').textContent=byM(DB.employees).filter(e=>e.block==='КМ').length;
 }
