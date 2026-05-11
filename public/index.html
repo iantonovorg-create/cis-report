@@ -137,6 +137,7 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
 <div class="tabs">
   <button class="tab on" onclick="showTab('team',this)">Команда</button>
   <button class="tab" onclick="showTab('km',this)">Работа с КМ</button>
+<button class="tab" onclick="showTab('tasks',this)">Задачи</button>
 </div>
 <div class="main">
   <div class="panel on" id="p-team">
@@ -206,7 +207,33 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
     </div>
   </div>
 </div>
-<div class="footer">
+
+  <div class="panel" id="p-tasks">
+
+  <!-- СВОДКА -->
+  <div id="tasksSummary" style="margin-bottom:24px"></div>
+
+  <!-- ДВЕ КОЛОНКИ -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="tasksColumns">
+
+    <!-- ТАНЯ -->
+    <div>
+      <div class="sec-lbl">Бушманова Татьяна — задачи</div>
+      <button class="btn-add" style="margin-bottom:12px;margin-left:0" onclick="openAddTask('Таня')">+ Добавить задачу</button>
+      <div id="tasks-bush"></div>
+    </div>
+
+    <!-- НАТАША -->
+    <div>
+      <div class="sec-lbl">Евстигнеева Наталья — задачи</div>
+      <button class="btn-add" style="margin-bottom:12px;margin-left:0" onclick="openAddTask('Наташа')">+ Добавить задачу</button>
+      <div id="tasks-evs"></div>
+    </div>
+
+  </div>
+</div>
+  
+  <div class="footer">
   <span>CIS Client Service · <span id="footM">—</span></span>
   <span id="footUpd"></span>
 </div>
@@ -225,7 +252,35 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
     <div id="rolePopupList" style="max-height:60vh;overflow-y:auto"></div>
   </div>
 </div> 
-  
+  <div class="ov" id="taskOv">
+  <div class="modal" style="max-width:520px">
+    <button class="mclose" onclick="cm('taskOv')">✕</button>
+    <h2 id="taskTitle">Задача</h2>
+    <div class="fgrid">
+      <div class="fg full"><label>Название задачи</label><input id="t_title" placeholder="Что нужно сделать?"></div>
+      <div class="fg"><label>Приоритет</label>
+        <select id="t_priority">
+          <option>Высокий</option><option selected>Средний</option><option>Низкий</option>
+        </select>
+      </div>
+      <div class="fg"><label>Срок выполнения (ДДЛ)</label><input id="t_deadline" placeholder="дд.мм.гггг"></div>
+      <div class="fg"><label>Прогресс</label>
+        <select id="t_progress">
+          <option value="0">Начато — 0%</option>
+          <option value="25">В работе — 25%</option>
+          <option value="50">Завершено на половину — 50%</option>
+          <option value="75">Доработка — 75%</option>
+          <option value="100">Завершено — 100%</option>
+        </select>
+      </div>
+      <div class="fg full"><label>Описание задачи</label><textarea id="t_description" rows="4"></textarea></div>
+    </div>
+    <div class="mbtns">
+      <button class="bcancel" onclick="cm('taskOv')">Отмена</button>
+      <button class="bsave" onclick="saveTask()">Сохранить</button>
+    </div>
+  </div>
+</div>
   <div class="toast" id="toast"></div>
 
 <script>
@@ -323,7 +378,171 @@ function openRolePopup(role){
 function om(id){document.getElementById(id).classList.add('show');}
 function cm(id){document.getElementById(id).classList.remove('show');}
 document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show');}));
-loadData();
+// ══════════════════════════════════════════════════════════════════════════════
+// TASKS
+// ══════════════════════════════════════════════════════════════════════════════
+let TASKS = [];
+let _tId = null, _tTL = null;
+const TF = ['title','priority','deadline','description','progress'];
+
+const PRIORITY_COLOR = { 'Высокий': 'var(--red)', 'Средний': 'var(--warn)', 'Низкий': 'var(--green)' };
+const PROGRESS_LABEL = { '0':'Начато','25':'В работе','50':'Половина','75':'Доработка','100':'Завершено' };
+const PROGRESS_COLOR = { '0':'var(--muted)','25':'var(--blue)','50':'var(--warn)','75':'var(--purple)','100':'var(--green)' };
+
+async function loadTasks() {
+  try {
+    TASKS = await (await fetch('/api/tasks')).json();
+    renderTasks();
+  } catch(e) { console.error(e); }
+}
+
+function renderTasks() {
+  renderTasksSummary();
+  renderTasksList('Таня', 'tasks-bush');
+  renderTasksList('Наташа', 'tasks-evs');
+}
+
+function renderTasksSummary() {
+  const tl_data = ['Таня','Наташа'].map(tl => {
+    const tasks = TASKS.filter(t => t.tl === tl);
+    const total = tasks.length;
+    const done = tasks.filter(t => t.progress === '100').length;
+    const open = total - done;
+    const pct = total ? Math.round(tasks.reduce((s,t)=>s+parseInt(t.progress||0),0)/total) : 0;
+    const high = tasks.filter(t=>t.priority==='Высокий'&&t.progress!=='100').length;
+    const mid = tasks.filter(t=>t.priority==='Средний'&&t.progress!=='100').length;
+    const low = tasks.filter(t=>t.priority==='Низкий'&&t.progress!=='100').length;
+    return { tl, total, done, open, pct, high, mid, low };
+  });
+
+  document.getElementById('tasksSummary').innerHTML = `
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+    ${tl_data.map(d => `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:18px 20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="font-family:'Unbounded',sans-serif;font-size:13px;font-weight:600;color:var(--gold)">${d.tl === 'Таня' ? 'Бушманова Татьяна' : 'Евстигнеева Наталья'}</div>
+          <div style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:3px">Team Lead</div>
+        </div>
+        <div style="position:relative;width:64px;height:64px">
+          <svg width="64" height="64" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="26" fill="none" stroke="var(--border)" stroke-width="6"/>
+            <circle cx="32" cy="32" r="26" fill="none" stroke="${d.pct===100?'var(--green)':d.pct>=50?'var(--warn)':'var(--blue)'}" stroke-width="6"
+              stroke-dasharray="${2*Math.PI*26}" stroke-dashoffset="${2*Math.PI*26*(1-d.pct/100)}"
+              stroke-linecap="round" transform="rotate(-90 32 32)"/>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700;color:var(--text)">${d.pct}%</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <div style="text-align:center;background:var(--bg3);border-radius:3px;padding:7px 12px;flex:1">
+          <div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">${d.total}</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Всего</div>
+        </div>
+        <div style="text-align:center;background:var(--bg3);border-radius:3px;padding:7px 12px;flex:1">
+          <div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--green)">${d.done}</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Закрыто</div>
+        </div>
+        <div style="text-align:center;background:var(--bg3);border-radius:3px;padding:7px 12px;flex:1">
+          <div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--warn)">${d.open}</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Открыто</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${d.high?`<span style="font-size:10px;padding:3px 8px;border-radius:2px;background:rgba(200,122,122,.15);color:var(--red);border:1px solid rgba(200,122,122,.28)">🔴 Высокий: ${d.high}</span>`:''}
+        ${d.mid?`<span style="font-size:10px;padding:3px 8px;border-radius:2px;background:rgba(200,168,122,.15);color:var(--warn);border:1px solid rgba(200,168,122,.28)">🟡 Средний: ${d.mid}</span>`:''}
+        ${d.low?`<span style="font-size:10px;padding:3px 8px;border-radius:2px;background:rgba(122,200,144,.15);color:var(--green);border:1px solid rgba(122,200,144,.28)">🟢 Низкий: ${d.low}</span>`:''}
+      </div>
+      <div style="margin-top:12px;background:var(--bg3);border-radius:3px;height:6px;overflow:hidden">
+        <div style="height:100%;width:${d.pct}%;background:${d.pct===100?'var(--green)':d.pct>=50?'var(--warn)':'var(--blue)'};transition:width .3s;border-radius:3px"></div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderTasksList(tl, containerId) {
+  const tasks = TASKS.filter(t => t.tl === tl);
+  document.getElementById(containerId).innerHTML = tasks.length ? tasks.map(t => taskCard(t)).join('') :
+    `<div style="text-align:center;padding:32px;color:var(--muted);font-size:12px">Задач пока нет — добавь первую</div>`;
+}
+
+function taskCard(t) {
+  const pct = parseInt(t.progress || '0');
+  const pc = PROGRESS_COLOR[t.progress] || 'var(--muted)';
+  const pl = PROGRESS_LABEL[t.progress] || t.progress + '%';
+  const priColor = PRIORITY_COLOR[t.priority] || 'var(--dim)';
+  const isOpen = t.progress !== '100';
+  return `
+  <div class="ecard" id="tc_${t.id}" style="margin-bottom:10px;border-top:3px solid ${priColor};cursor:default">
+    <div class="cbody">
+      <div class="ctop">
+        <div style="flex:1">
+          <div class="cname">${t.title}</div>
+          <div style="display:flex;gap:8px;margin-top:5px;flex-wrap:wrap">
+            <span style="font-size:9px;padding:2px 7px;border-radius:2px;background:rgba(0,0,0,.2);color:${priColor};border:1px solid ${priColor}44">${t.priority||'—'}</span>
+            ${t.deadline?`<span style="font-size:9px;padding:2px 7px;border-radius:2px;background:var(--bg3);color:var(--dim)">📅 ${t.deadline}</span>`:''}
+            <span style="font-size:9px;padding:2px 7px;border-radius:2px;background:var(--bg3);color:${pc}">${pl}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div style="position:relative;width:44px;height:44px">
+            <svg width="44" height="44" viewBox="0 0 44 44">
+              <circle cx="22" cy="22" r="17" fill="none" stroke="var(--border)" stroke-width="4"/>
+              <circle cx="22" cy="22" r="17" fill="none" stroke="${pc}" stroke-width="4"
+                stroke-dasharray="${2*Math.PI*17}" stroke-dashoffset="${2*Math.PI*17*(1-pct/100)}"
+                stroke-linecap="round" transform="rotate(-90 22 22)"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--text)">${pct}%</div>
+          </div>
+        </div>
+      </div>
+      ${t.description?`<div class="ccomment" style="margin-top:8px">${t.description}</div>`:''}
+      <div style="margin-top:10px;background:var(--bg3);border-radius:3px;height:4px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${pc};transition:width .3s;border-radius:3px"></div>
+      </div>
+    </div>
+    <div style="padding:10px 15px;border-top:1px solid var(--border);display:flex;gap:8px;background:rgba(0,0,0,.15)">
+      <button class="abt ed" onclick="openEditTask('${t.id}')">✎ Редактировать</button>
+      <button class="abt dl" onclick="delTask('${t.id}')">✕ Удалить</button>
+    </div>
+  </div>`;
+}
+
+function openAddTask(tl) {
+  _tId = null; _tTL = tl;
+  document.getElementById('taskTitle').textContent = 'Новая задача — ' + (tl==='Таня'?'Бушманова':'Евстигнеева');
+  TF.forEach(k => { const el=document.getElementById('t_'+k); if(el) el.value = k==='priority'?'Средний':k==='progress'?'0':''; });
+  om('taskOv');
+}
+
+function openEditTask(id) {
+  _tId = id;
+  const t = TASKS.find(x => x.id === id); if (!t) return;
+  _tTL = t.tl;
+  document.getElementById('taskTitle').textContent = 'Редактировать задачу';
+  TF.forEach(k => { const el=document.getElementById('t_'+k); if(el) el.value = t[k]||''; });
+  om('taskOv');
+}
+
+async function saveTask() {
+  const obj = { tl: _tTL };
+  TF.forEach(k => { obj[k] = (document.getElementById('t_'+k)?.value||'').trim(); });
+  if (!obj.title) { alert('Введи название задачи'); return; }
+  if (_tId) obj.id = _tId;
+  await api('POST', '/api/task', obj);
+  await loadTasks();
+  cm('taskOv');
+  toast('Задача сохранена ✓');
+}
+
+async function delTask(id) {
+  if (!confirm('Удалить задачу?')) return;
+  await api('DELETE', `/api/task/${id}`);
+  await loadTasks();
+  toast('Удалено');
+}
+ loadData();
+loadTasks();
 </script>
 </body>
 </html>
