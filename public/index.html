@@ -390,9 +390,6 @@ function renderStats(){
   const roleShort={'Client manager':'КМ','Chat manager':'МЧ','Crisis manager':'КРМ','Crisis manager (стажёр)':'КРМ стаж','TSP':'ТХП','Senior TSP':'Sr.ТХП','Operations':'OPS','Client manager (стажёр)':'КМ стаж'};
   const roleChips=Object.entries(roleCounts).sort((a,b)=>b[1]-a[1]).map(([role,count])=>{const c=roleColors[role]||'var(--accent)';const s=roleShort[role]||role;return`<div class="chip" style="cursor:pointer" onclick="openRolePopup('${role}')" title="Нажми чтобы увидеть список"><span class="n" style="color:${c}">${count}</span><div class="l">${s}</div></div>`;}).join('');
   document.getElementById('sumRow').innerHTML=`<div class="chip"><span class="n" style="color:var(--accent)">${t}</span><div class="l">Вся команда</div></div>${roleChips}<div class="chip" style="cursor:pointer" onclick="openStatusPopup('Стабилен')" title="Нажми чтобы увидеть список"><span class="n" style="color:var(--green)">${st}</span><div class="l">Стабильны</div></div>
-<div class="chip" style="cursor:pointer" onclick="openStatusPopup('watch')" title="Нажми чтобы увидеть список"><span class="n" style="color:var(--warn)">${wa}</span><div class="l">Контроль</div></div>
-<div class="chip" style="cursor:pointer" onclick="openStatusPopup('risk')" title="Нажми чтобы увидеть список"><span class="n" style="color:var(--red)">${ri}</span><div class="l">Риск/Увол.</div></div>
-<div class="chip" style="cursor:pointer" onclick="openStatusPopup('Потенциал роста')" title="Нажми чтобы увидеть список"><span class="n" style="color:var(--purple)">${gr}</span><div class="l">Потенциал</div></div>;
   document.getElementById('bushN').textContent=byM(DB.employees).filter(e=>e.block==='КРМ/ТХП').length;
   document.getElementById('evsN').textContent=byM(DB.employees).filter(e=>e.block==='КМ').length;
 }
