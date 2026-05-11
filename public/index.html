@@ -243,7 +243,22 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
 
 <div class="ov" id="kmOv"><div class="modal"><button class="mclose" onclick="cm('kmOv')">✕</button><h2 id="kmTitle">Встреча</h2><div class="fgrid"><div class="fg full"><label>Сотрудник</label><input id="k_name"></div><div class="fg"><label>Дата встречи</label><input id="k_date" placeholder="дд.мм.гггг"></div><div class="fg"><label>ТЛ</label><input id="k_tl" placeholder="Таня / Наташа"></div><div class="fg full"><label>О чём говорили</label><textarea id="k_topic" rows="3"></textarea></div><div class="fg full"><label>Задачи</label><textarea id="k_tasks" rows="2"></textarea></div><div class="fg"><label>Следующая встреча</label><input id="k_next" placeholder="дд.мм.гггг"></div><div class="fg"><label>Динамика</label><select id="k_dyn"><option value="">—</option><option>Улучшение</option><option>Спад</option><option>Без изменений</option></select></div></div><div class="mbtns"><button class="bcancel" onclick="cm('kmOv')">Отмена</button><button class="bsave" onclick="saveKM()">Сохранить</button></div></div></div>
 
-<div class="ov" id="monthOv"><div class="modal" style="max-width:460px"><button class="mclose" onclick="cm('monthOv')">✕</button><h2>Новый месяц</h2><p class="mnote">Выбери месяц. Данные текущего месяца скопируются как база.</p><div class="mchips" id="mchips"></div><div class="copy-opts"><label class="copy-opt"><input type="radio" name="cmode" value="copy" checked> Скопировать команду из текущего месяца</label><label class="copy-opt"><input type="radio" name="cmode" value="empty"> Начать с пустой команды</label></div><div class="mbtns"><button class="bcancel" onclick="cm('monthOv')">Отмена</button><button class="bsave" onclick="confirmNewMonth()">Создать</button></div></div></div>
+<div class="ov" id="monthOv"><div class="modal" style="max-width:460px"><button class="mclose" onclick="cm('monthOv')">✕</button><h2>Новый месяц</h2><p class="mnote">Выбери месяц. Данные текущего месяца скопируются как база.</p><div class="mchips" id="mchips"></div><div style="height:1px;background:var(--border);margin:10px 0"></div>
+<div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:8px;text-transform:uppercase">Или выбери вручную:</div>
+<div id="customMonthRow" style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+  <select id="customMonthSel" onchange="pickCustomMonth()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px 11px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none;flex:1">
+    <option value="">— Месяц —</option>
+    <option value="1">Январь</option><option value="2">Февраль</option>
+    <option value="3">Март</option><option value="4">Апрель</option>
+    <option value="5">Май</option><option value="6">Июнь</option>
+    <option value="7">Июль</option><option value="8">Август</option>
+    <option value="9">Сентябрь</option><option value="10">Октябрь</option>
+    <option value="11">Ноябрь</option><option value="12">Декабрь</option>
+  </select>
+  <input id="customYearInp" oninput="pickCustomMonth()" type="number" placeholder="2027" min="2024" max="2030"
+    style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px 11px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none;width:90px">
+  <button class="fb" onclick="pickCustomMonth()" style="white-space:nowrap">Выбрать</button>
+</div><div class="copy-opts"><label class="copy-opt"><input type="radio" name="cmode" value="copy" checked> Скопировать команду из текущего месяца</label><label class="copy-opt"><input type="radio" name="cmode" value="empty"> Начать с пустой команды</label></div><div class="mbtns"><button class="bcancel" onclick="cm('monthOv')">Отмена</button><button class="bsave" onclick="confirmNewMonth()">Создать</button></div></div></div>
 
 <div class="ov" id="roleOv">
   <div class="modal" style="max-width:520px">
@@ -286,7 +301,52 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
 <script>
 let DB={employees:[],meetings:[]};
 let curMonth='',kmFilter='all',_eId=null,_eBlock=null,_kId=null,selNewMonth='';
-const ALL_MONTHS=['Октябрь 2025','Ноябрь 2025','Декабрь 2025','Январь 2026','Февраль 2026','Март 2026','Апрель 2026','Май 2026','Июнь 2026','Июль 2026','Август 2026','Сентябрь 2026','Октябрь 2026'];
+const ALL_MONTHS=['Январь 2026','Февраль 2026','Март 2026','Апрель 2026','Май 2026','Июнь 2026','Июль 2026','Август 2026','Сентябрь 2026','Октябрь 2026','Ноябрь 2026','Декабрь 2026'];
+
+const MONTH_NAMES=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+function openNewMonth(){
+  selNewMonth='';
+  const used=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];
+  const curYear=new Date().getFullYear();
+  const curMon=new Date().getMonth();
+
+  // Быстрый выбор — остаток текущего года начиная с текущего месяца
+  const quickMonths=ALL_MONTHS.filter(m=>{
+    const idx=MONTH_NAMES.findIndex(n=>m.startsWith(n));
+    return idx>=curMon;
+  });
+
+  document.getElementById('mchips').innerHTML=quickMonths.map(m=>`
+    <button class="mchip${used.includes(m)?' used':''}" onclick="pickMonth('${m}',this)">
+      ${m}${used.includes(m)?' ✓':''}
+    </button>`).join('');
+
+  document.getElementById('customMonthRow').style.display='flex';
+  document.getElementById('customMonthSel').value=curMon+1;
+  document.getElementById('customYearInp').value=curYear;
+
+  document.querySelector('[name=cmode][value=copy]').checked=true;
+  om('monthOv');
+}
+
+function pickMonth(m,btn){
+  document.querySelectorAll('.mchip:not(.used)').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  selNewMonth=m;
+  document.getElementById('customMonthSel').value='';
+}
+
+function pickCustomMonth(){
+  const mon=document.getElementById('customMonthSel').value;
+  const year=document.getElementById('customYearInp').value;
+  if(!mon||!year)return;
+  const name=MONTH_NAMES[parseInt(mon)-1]+' '+year;
+  document.querySelectorAll('.mchip:not(.used)').forEach(b=>b.classList.remove('sel'));
+  selNewMonth=name;
+  document.getElementById('customMonthSel').style.borderColor='var(--accent)';
+  document.getElementById('customYearInp').style.borderColor='var(--accent)';
+}
 
 async function api(method,url,body){const opts={method,headers:{'Content-Type':'application/json'}};if(body)opts.body=JSON.stringify(body);const r=await fetch(url,opts);return r.json();}
 async function loadData(){
