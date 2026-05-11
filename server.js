@@ -65,8 +65,7 @@ async function initDB() {
       [u.email, u.role]);
   }
 
-  const { rows } = await pool.query('SELECT COUNT(*) FROM employees');
-  if (parseInt(rows[0].count) === 0) await seedData();
+
   console.log('DB ready');
 }
 
