@@ -59,6 +59,17 @@ async function initDB() {
     email TEXT PRIMARY KEY, role TEXT NOT NULL,
     added_at TIMESTAMPTZ DEFAULT NOW())`);
 
+  await pool.query(`CREATE TABLE IF NOT EXISTS tasks (
+  id TEXT PRIMARY KEY,
+  tl TEXT,
+  title TEXT,
+  priority TEXT,
+  deadline TEXT,
+  description TEXT,
+  progress TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+)`);
+
   for (const u of INITIAL_USERS) {
     await pool.query(
       `INSERT INTO access_users (email,role) VALUES ($1,$2) ON CONFLICT (email) DO NOTHING`,
@@ -272,6 +283,34 @@ async function seedData() {
   }
   console.log('Seed done');
 }
+
+// ── API: TASKS ───────────────────────────────────────────────────────────────
+app.get('/api/tasks', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM tasks ORDER BY created_at DESC');
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/task', requireAuth, requireEditor, async (req, res) => {
+  try {
+    const t = req.body;
+    if (!t.id) t.id = Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    await pool.query(
+      `INSERT INTO tasks (id,tl,title,priority,deadline,description,progress,created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+       ON CONFLICT (id) DO UPDATE SET tl=$2,title=$3,priority=$4,deadline=$5,description=$6,progress=$7`,
+      [t.id,t.tl||'',t.title||'',t.priority||'Средний',t.deadline||'',t.description||'',t.progress||'0']);
+    res.json({ ok: true, id: t.id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/task/:id', requireAuth, requireEditor, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM tasks WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 app.get('*', (req, res) => res.redirect('/'));
 
