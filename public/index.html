@@ -218,7 +218,15 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
 
 <div class="ov" id="monthOv"><div class="modal" style="max-width:460px"><button class="mclose" onclick="cm('monthOv')">✕</button><h2>Новый месяц</h2><p class="mnote">Выбери месяц. Данные текущего месяца скопируются как база.</p><div class="mchips" id="mchips"></div><div class="copy-opts"><label class="copy-opt"><input type="radio" name="cmode" value="copy" checked> Скопировать команду из текущего месяца</label><label class="copy-opt"><input type="radio" name="cmode" value="empty"> Начать с пустой команды</label></div><div class="mbtns"><button class="bcancel" onclick="cm('monthOv')">Отмена</button><button class="bsave" onclick="confirmNewMonth()">Создать</button></div></div></div>
 
-<div class="toast" id="toast"></div>
+<div class="ov" id="roleOv">
+  <div class="modal" style="max-width:520px">
+    <button class="mclose" onclick="cm('roleOv')">✕</button>
+    <h2 id="rolePopupTitle"></h2>
+    <div id="rolePopupList" style="max-height:60vh;overflow-y:auto"></div>
+  </div>
+</div> 
+  
+  <div class="toast" id="toast"></div>
 
 <script>
 let DB={employees:[],meetings:[]};
@@ -265,7 +273,7 @@ function renderStats(){
   document.getElementById('hdrStats').innerHTML=`<div class="hst"><span class="n" style="color:var(--accent)">${t}</span><span class="l">Всего</span></div><div class="hst"><span class="n" style="color:var(--green)">${st}</span><span class="l">Стабильны</span></div><div class="hst"><span class="n" style="color:var(--warn)">${wa}</span><span class="l">Контроль</span></div><div class="hst"><span class="n" style="color:var(--red)">${ri}</span><span class="l">Риск</span></div><div class="hst"><span class="n" style="color:var(--purple)">${gr}</span><span class="l">Потенциал</span></div>`;
   const roleColors={'Client manager':'var(--purple)','Chat manager':'var(--sage)','Crisis manager':'var(--warn)','Crisis manager (стажёр)':'var(--warn)','TSP':'var(--blue)','Senior TSP':'var(--blue)','Operations':'var(--blue)','Client manager (стажёр)':'var(--purple)'};
   const roleShort={'Client manager':'КМ','Chat manager':'МЧ','Crisis manager':'КРМ','Crisis manager (стажёр)':'КРМ стаж','TSP':'ТХП','Senior TSP':'Sr.ТХП','Operations':'OPS','Client manager (стажёр)':'КМ стаж'};
-  const roleChips=Object.entries(roleCounts).sort((a,b)=>b[1]-a[1]).map(([role,count])=>{const c=roleColors[role]||'var(--accent)';const s=roleShort[role]||role;return`<div class="chip"><span class="n" style="color:${c}">${count}</span><div class="l">${s}</div></div>`;}).join('');
+  const roleChips=Object.entries(roleCounts).sort((a,b)=>b[1]-a[1]).map(([role,count])=>{const c=roleColors[role]||'var(--accent)';const s=roleShort[role]||role;return`<div class="chip" style="cursor:pointer" onclick="openRolePopup('${role}')" title="Нажми чтобы увидеть список"><span class="n" style="color:${c}">${count}</span><div class="l">${s}</div></div>`;}).join('');
   document.getElementById('sumRow').innerHTML=`<div class="chip"><span class="n" style="color:var(--accent)">${t}</span><div class="l">Вся команда</div></div>${roleChips}<div class="chip"><span class="n" style="color:var(--green)">${st}</span><div class="l">Стабильны</div></div><div class="chip"><span class="n" style="color:var(--warn)">${wa}</span><div class="l">Контроль</div></div><div class="chip"><span class="n" style="color:var(--red)">${ri}</span><div class="l">Риск/Увол.</div></div><div class="chip"><span class="n" style="color:var(--purple)">${gr}</span><div class="l">Потенциал</div></div>`;
   document.getElementById('bushN').textContent=byM(DB.employees).filter(e=>e.block==='КРМ/ТХП').length;
   document.getElementById('evsN').textContent=byM(DB.employees).filter(e=>e.block==='КМ').length;
@@ -298,6 +306,20 @@ async function delKM(id){if(!confirm('Удалить встречу?'))return;aw
 function openNewMonth(){selNewMonth='';const used=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];document.getElementById('mchips').innerHTML=ALL_MONTHS.map(m=>`<button class="mchip${used.includes(m)?' used':''}" onclick="pickMonth('${m}',this)">${m}${used.includes(m)?' ✓':''}</button>`).join('');document.querySelector('[name=cmode][value=copy]').checked=true;om('monthOv');}
 function pickMonth(m,btn){document.querySelectorAll('.mchip:not(.used)').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');selNewMonth=m;}
 async function confirmNewMonth(){if(!selNewMonth){alert('Выбери месяц');return;}const mode=document.querySelector('[name=cmode]:checked').value;if(mode==='copy'){const empToCopy=byM(DB.employees).map(e=>({...e,id:uid(),month:selNewMonth,fact:''}));for(const e of empToCopy)await api('POST','/api/employee',e);}curMonth=selNewMonth;await loadData();cm('monthOv');toast(`Месяц ${selNewMonth} создан`);}
+function openRolePopup(role){
+  const rows=byM(DB.employees).filter(e=>e.role===role);
+  const colors={'Стабилен':'var(--green)','Требует наблюдения':'var(--warn)','Зона риска':'var(--red)','Увольнение':'var(--red)','Потенциал роста':'var(--purple)'};
+  document.getElementById('rolePopupTitle').textContent=role+' — '+rows.length+' чел.';
+  document.getElementById('rolePopupList').innerHTML=rows.map(e=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${e.name}</div>
+        <div style="font-size:10px;color:var(--dim);margin-top:2px">${e.sub||'—'} · Вход: ${e.entry||'—'}</div>
+      </div>
+      <span class="sbadge ${scls(e.status)}">${e.status||'—'}</span>
+    </div>`).join('');
+  om('roleOv');
+}
 function om(id){document.getElementById(id).classList.add('show');}
 function cm(id){document.getElementById(id).classList.remove('show');}
 document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show');}));
