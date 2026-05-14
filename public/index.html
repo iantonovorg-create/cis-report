@@ -428,11 +428,21 @@ function pickCustomMonth(){
 }
 
 async function api(method,url,body){const opts={method,headers:{'Content-Type':'application/json'}};if(body)opts.body=JSON.stringify(body);const r=await fetch(url,opts);return r.json();}
+function applyRoleRestrictions(role){
+  if(role!=='reviews_editor')return;
+  document.querySelectorAll('.tab').forEach(t=>{if(!t.textContent.includes('Отзывы'))t.style.display='none';});
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.getElementById('p-reviews')?.classList.add('on');
+  document.getElementById('hdrStats').style.display='none';
+}
 async function loadData(){
   const btn=document.getElementById('reloadBtn');
   if(btn){btn.textContent='↻ ...';btn.disabled=true;}
   try{
     DB=await api('GET','/api/data');
+    const me=await api('GET','/auth/me');
+    window._userRole=me.role;
+    applyRoleRestrictions(me.role);
     const months=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];
     if(!curMonth||!months.includes(curMonth))curMonth=months[months.length-1]||'';
     renderAll();
