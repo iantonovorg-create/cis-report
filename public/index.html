@@ -356,6 +356,24 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
     </div>
   </div>
 </div>
+  <!-- REVIEW MODAL -->
+<div class="ov" id="reviewOv">
+  <div class="modal" style="max-width:460px">
+    <button class="mclose" onclick="cm('reviewOv')">✕</button>
+    <h2 id="revModalTitle">Внести данные</h2>
+    <div class="fgrid">
+      <div class="fg full"><label>Дата</label><input id="rev_date" placeholder="дд.мм.гггг"></div>
+      <div class="fg"><label>Позитивных отзывов за день</label><input id="rev_positive" type="number" placeholder="0"></div>
+      <div class="fg"><label>Негативных отзывов за день</label><input id="rev_negative" type="number" placeholder="0"></div>
+      <div class="fg"><label>Рейтинг (общий)</label><input id="rev_rating" type="number" step="0.1" placeholder="4.8"></div>
+      <div class="fg full"><label>Комментарий</label><textarea id="rev_comment" rows="2" placeholder="Необязательно"></textarea></div>
+    </div>
+    <div class="mbtns">
+      <button class="bcancel" onclick="cm('reviewOv')">Отмена</button>
+      <button class="bsave" onclick="saveReview()">Сохранить</button>
+    </div>
+  </div>
+</div>
   <div class="toast" id="toast"></div>
 
 <script>
