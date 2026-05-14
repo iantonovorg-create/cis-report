@@ -48,7 +48,7 @@ async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS employees (
     id TEXT PRIMARY KEY, month TEXT, block TEXT, sub TEXT, name TEXT,
     role TEXT, entry TEXT, schedule TEXT, plan TEXT, fact TEXT,
-    vacation TEXT, status TEXT, functions TEXT, extra TEXT, comment TEXT,
+    vacation TEXT, status TEXT, birthdate TEXT, functions TEXT, extra TEXT, comment TEXT,
     dismiss TEXT, city TEXT, tz TEXT, phone TEXT, tg TEXT)`);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS meetings (
@@ -204,10 +204,10 @@ app.post('/api/employee', requireAuth, requireEditor, async (req, res) => {
     const e = req.body;
     if (!e.id) e.id = Date.now().toString(36)+Math.random().toString(36).slice(2,5);
     await pool.query(
-      `INSERT INTO employees (id,month,block,sub,name,role,entry,schedule,plan,fact,vacation,status,functions,extra,comment,dismiss,city,tz,phone,tg)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
-       ON CONFLICT (id) DO UPDATE SET month=$2,block=$3,sub=$4,name=$5,role=$6,entry=$7,schedule=$8,plan=$9,fact=$10,vacation=$11,status=$12,functions=$13,extra=$14,comment=$15,dismiss=$16,city=$17,tz=$18,phone=$19,tg=$20`,
-      [e.id,e.month,e.block,e.sub||'',e.name,e.role||'',e.entry||'',e.schedule||'',e.plan||'',e.fact||'',e.vacation||'',e.status||'',e.functions||'',e.extra||'',e.comment||'',e.dismiss||'',e.city||'',e.tz||'',e.phone||'',e.tg||'']);
+      `INSERT INTO employees (id,month,block,sub,name,role,entry,schedule,plan,fact,vacation,status,functions,extra,comment,dismiss,city,tz,phone,tg,birthdate)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+       ON CONFLICT (id) DO UPDATE SET month=$2,block=$3,sub=$4,name=$5,role=$6,entry=$7,schedule=$8,plan=$9,fact=$10,vacation=$11,status=$12,functions=$13,extra=$14,comment=$15,dismiss=$16,city=$17,tz=$18,phone=$19,tg=$20,birthdate=$21`,
+      [e.id,e.month,e.block,e.sub||'',e.name,e.role||'',e.entry||'',e.schedule||'',e.plan||'',e.fact||'',e.vacation||'',e.status||'',e.functions||'',e.extra||'',e.comment||'',e.dismiss||'',e.city||'',e.tz||'',e.phone||'',e.tg||'',e.birthdate||'']);
     res.json({ ok: true, id: e.id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
