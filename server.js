@@ -49,7 +49,7 @@ async function initDB() {
     id TEXT PRIMARY KEY, month TEXT, block TEXT, sub TEXT, name TEXT,
     role TEXT, entry TEXT, schedule TEXT, plan TEXT, fact TEXT,
     vacation TEXT, status TEXT, birthdate TEXT, functions TEXT, extra TEXT, comment TEXT,
-    dismiss TEXT, city TEXT, tz TEXT, phone TEXT, tg TEXT)`);
+    dismiss TEXT, city TEXT, tz TEXT, phone TEXT, tg TEXT, birthdate TEXT)`);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS meetings (
     id TEXT PRIMARY KEY, month TEXT, name TEXT, date TEXT,
