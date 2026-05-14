@@ -964,7 +964,13 @@ function openPayrollModal(empId, empName, block, sub) {
 
   document.getElementById('prModalTitle').textContent = empName;
   const emp = DB.employees.find(x => x.id === empId);
-document.getElementById('pr_salary').value = pr?.salary || emp?.salary_base || '';
+const salBase = parseFloat(emp?.salary_base) || 0;
+const planDays = parseFloat(pr?.plan_days || emp?.plan) || 0;
+const rate = planDays > 0 ? Math.round(salBase / planDays) : 0;
+document.getElementById('pr_salary').value = salBase;
+document.getElementById('pr_rate').value = rate ? rate + ' ₽/день' : '—';
+document.getElementById('pr_plan_days').value = pr?.plan_days || emp?.plan || '';
+document.getElementById('pr_fact_days').value = pr?.fact_days || '';
   document.getElementById('pr_plan_days').value = pr?.plan_days || emp?.plan || '';
 document.getElementById('pr_fact_days').value = pr?.fact_days || emp?.fact || '';
   document.getElementById('pr_bonus_type').value = pr?.bonus_type || '';
