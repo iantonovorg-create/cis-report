@@ -1062,9 +1062,195 @@ async function deletePayroll(id) {
   await loadPayroll();
   toast('Удалено');
 }
+  // ══════════════════════════════════════════════════════
+// REVIEWS
+// ══════════════════════════════════════════════════════
+const PLATFORMS = [
+  { id: 'otzovik',    name: 'Otzovik',     color: '#e07050', url: 'https://otzovik.com/reviews/shkola_programmirovaniya_dlya_podrostkov_kodland_russia_moscow/' },
+  { id: 'irecommend', name: 'iRecommend',  color: '#5080e0', url: 'https://irecommend.ru/content/sait-onlain-shkola-programmirovanie-kodland' },
+  { id: 'tutortop',   name: 'TutorTop',    color: '#50a070', url: 'https://tutortop.ru/school-reviews/kodland/' },
+  { id: 'zoon',       name: 'Zoon',        color: '#a050e0', url: 'https://zoon.ru/msk/trainings/shkola_programmirovaniya_kodland/' },
+  { id: 'yandex',     name: 'Яндекс Карты',color: '#e0a030', url: 'https://yandex.com/maps/org/kodland_online_coding_school/80404939167/reviews/' },
+];
+
+let REVIEWS = [];
+let _revId = null, _revPlatform = null;
+
+async function loadReviews() {
+  try {
+    REVIEWS = await (await fetch('/api/reviews')).json();
+    renderReviews();
+  } catch(e) { console.error(e); }
+}
+
+function renderReviews() {
+  renderReviewsSummary();
+  renderReviewsPlatforms();
+}
+
+function renderReviewsSummary() {
+  const totalPos = REVIEWS.reduce((s,r) => s + (parseInt(r.positive)||0), 0);
+  const totalNeg = REVIEWS.reduce((s,r) => s + (parseInt(r.negative)||0), 0);
+  const total = totalPos + totalNeg;
+  const pct = total ? Math.round(totalPos/total*100) : 0;
+
+  const byPlatform = PLATFORMS.map(p => {
+    const rows = REVIEWS.filter(r => r.platform === p.id);
+    const pos = rows.reduce((s,r) => s+(parseInt(r.positive)||0), 0);
+    const neg = rows.reduce((s,r) => s+(parseInt(r.negative)||0), 0);
+    const lastRating = rows.length ? rows[0].rating : 0;
+    return { ...p, pos, neg, total: pos+neg, lastRating };
+  });
+
+  document.getElementById('reviewsSummary').innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:18px 22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-family:'Unbounded',sans-serif;font-size:13px;font-weight:600;color:var(--gold)">Сводка по отзывам</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Все площадки · всё время</div>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center">
+          <div style="text-align:center"><div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;color:var(--green)">${totalPos}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Позитивных</div></div>
+          <div style="text-align:center"><div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;color:var(--red)">${totalNeg}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Негативных</div></div>
+          <div style="text-align:center"><div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;color:var(--accent)">${total}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Всего</div></div>
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px"><span>Позитивных ${pct}%</span><span>Негативных ${100-pct}%</span></div>
+        <div style="background:var(--bg3);border-radius:3px;height:8px;overflow:hidden;display:flex">
+          <div style="height:100%;width:${pct}%;background:var(--green);transition:width .3s"></div>
+          <div style="height:100%;width:${100-pct}%;background:var(--red);transition:width .3s"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        ${byPlatform.map(p => `
+          <div style="background:var(--bg3);border-radius:3px;padding:8px 12px;flex:1;min-width:120px;border-left:3px solid ${p.color}">
+            <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:4px">${p.name}</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="font-size:10px;color:var(--green)">+${p.pos}</span>
+              <span style="font-size:10px;color:var(--red)">-${p.neg}</span>
+              ${p.lastRating ? `<span style="font-size:10px;color:${p.color};margin-left:auto">★ ${parseFloat(p.lastRating).toFixed(1)}</span>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderReviewsPlatforms() {
+  document.getElementById('reviewsPlatforms').innerHTML = PLATFORMS.map(p => {
+    const rows = REVIEWS.filter(r => r.platform === p.id).slice(0, 10);
+    const totalPos = rows.reduce((s,r) => s+(parseInt(r.positive)||0), 0);
+    const totalNeg = rows.reduce((s,r) => s+(parseInt(r.negative)||0), 0);
+    const lastRating = rows.length ? parseFloat(rows[0].rating).toFixed(1) : '—';
+
+    return `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;overflow:hidden">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;border-top:3px solid ${p.color}">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
+          <a href="${p.url}" target="_blank" style="font-size:10px;color:var(--muted);text-decoration:none">Открыть →</a>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          ${lastRating !== '—' ? `<div style="font-size:18px;font-weight:700;color:${p.color}">★ ${lastRating}</div>` : ''}
+          <button class="btn-add" style="margin-left:0" onclick="openReviewModal('${p.id}')">+ Внести</button>
+        </div>
+      </div>
+      <div style="padding:12px 16px">
+        <div style="display:flex;gap:10px;margin-bottom:12px">
+          <div style="flex:1;text-align:center;background:var(--bg3);border-radius:3px;padding:8px">
+            <div style="font-size:16px;font-weight:700;color:var(--green)">${totalPos}</div>
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Позитивных</div>
+          </div>
+          <div style="flex:1;text-align:center;background:var(--bg3);border-radius:3px;padding:8px">
+            <div style="font-size:16px;font-weight:700;color:var(--red)">${totalNeg}</div>
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Негативных</div>
+          </div>
+          <div style="flex:1;text-align:center;background:var(--bg3);border-radius:3px;padding:8px">
+            <div style="font-size:16px;font-weight:700;color:var(--accent)">${totalPos+totalNeg}</div>
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Всего</div>
+          </div>
+        </div>
+        ${rows.length ? `
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead><tr>
+            <th style="background:var(--bg3);border:1px solid var(--border);padding:6px 10px;text-align:left;font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase">Дата</th>
+            <th style="background:var(--bg3);border:1px solid var(--border);padding:6px 10px;text-align:center;font-size:8px;letter-spacing:1px;color:var(--green);text-transform:uppercase">+</th>
+            <th style="background:var(--bg3);border:1px solid var(--border);padding:6px 10px;text-align:center;font-size:8px;letter-spacing:1px;color:var(--red);text-transform:uppercase">−</th>
+            <th style="background:var(--bg3);border:1px solid var(--border);padding:6px 10px;text-align:center;font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase">★</th>
+            <th style="background:var(--bg3);border:1px solid var(--border);padding:6px 10px"></th>
+          </tr></thead>
+          <tbody>
+            ${rows.map((r,i) => `<tr style="${i%2===0?'':'background:rgba(0,0,0,.1)'}">
+              <td style="border:1px solid var(--border);padding:6px 10px;color:var(--dim)">${r.date}</td>
+              <td style="border:1px solid var(--border);padding:6px 10px;text-align:center;color:var(--green);font-weight:600">${r.positive||0}</td>
+              <td style="border:1px solid var(--border);padding:6px 10px;text-align:center;color:var(--red);font-weight:600">${r.negative||0}</td>
+              <td style="border:1px solid var(--border);padding:6px 10px;text-align:center;color:${p.color}">${r.rating ? '★ '+parseFloat(r.rating).toFixed(1) : '—'}</td>
+              <td style="border:1px solid var(--border);padding:6px 10px;text-align:center;white-space:nowrap">
+                <button class="kbt e" onclick="openEditReview('${r.id}','${p.id}')">✎</button>
+                <button class="kbt d" onclick="delReview('${r.id}')">✕</button>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>` : `<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Данных пока нет — нажми «+ Внести»</div>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openReviewModal(platformId) {
+  _revId = null;
+  _revPlatform = platformId;
+  const p = PLATFORMS.find(x => x.id === platformId);
+  document.getElementById('revModalTitle').textContent = p.name;
+  document.getElementById('rev_date').value = new Date().toLocaleDateString('ru-RU').split('.').join('.');
+  document.getElementById('rev_positive').value = '';
+  document.getElementById('rev_negative').value = '';
+  document.getElementById('rev_rating').value = '';
+  document.getElementById('rev_comment').value = '';
+  om('reviewOv');
+}
+
+function openEditReview(id, platformId) {
+  _revId = id;
+  _revPlatform = platformId;
+  const r = REVIEWS.find(x => x.id === id); if (!r) return;
+  const p = PLATFORMS.find(x => x.id === platformId);
+  document.getElementById('revModalTitle').textContent = p.name;
+  document.getElementById('rev_date').value = r.date;
+  document.getElementById('rev_positive').value = r.positive||'';
+  document.getElementById('rev_negative').value = r.negative||'';
+  document.getElementById('rev_rating').value = r.rating||'';
+  document.getElementById('rev_comment').value = r.comment||'';
+  om('reviewOv');
+}
+
+async function saveReview() {
+  const obj = {
+    id: _revId || undefined,
+    platform: _revPlatform,
+    date: document.getElementById('rev_date').value.trim(),
+    positive: parseInt(document.getElementById('rev_positive').value)||0,
+    negative: parseInt(document.getElementById('rev_negative').value)||0,
+    rating: parseFloat(document.getElementById('rev_rating').value)||0,
+    comment: document.getElementById('rev_comment').value.trim(),
+  };
+  if (!obj.date) { alert('Введи дату'); return; }
+  await api('POST', '/api/review', obj);
+  await loadReviews();
+  cm('reviewOv');
+  toast('Сохранено ✓');
+}
+
+async function delReview(id) {
+  if (!confirm('Удалить запись?')) return;
+  await api('DELETE', `/api/review/${id}`);
+  await loadReviews();
+  toast('Удалено');
+}
   loadData();
 loadPayroll();
 loadTasks();
+loadReviews();
 </script>
 </body>
 </html>
