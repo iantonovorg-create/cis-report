@@ -405,7 +405,7 @@ app.get('/api/reviews', requireAuth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/review', requireAuth, requireEditor, async (req, res) => {
+app.post('/api/review', requireAuth, requireReviewsEditor, async (req, res) => {
   try {
     const r = req.body;
     if (!r.id) r.id = Date.now().toString(36)+Math.random().toString(36).slice(2,5);
@@ -418,7 +418,7 @@ app.post('/api/review', requireAuth, requireEditor, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/review/:id', requireAuth, requireEditor, async (req, res) => {
+app.delete('/api/review/:id', requireAuth, requireReviewsEditor, async (req, res) => {
   try {
     await pool.query('DELETE FROM reviews WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
