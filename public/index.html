@@ -319,6 +319,8 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
     <input type="hidden" id="pr_sub">
     <div class="fgrid">
       <div class="fg"><label>Оклад (₽)</label><input id="pr_salary" type="number" placeholder="0"></div>
+<div class="fg"><label>План смен</label><input id="pr_plan_days" type="number" placeholder="22"></div>
+<div class="fg"><label>Факт смен</label><input id="pr_fact_days" type="number" placeholder="0"></div>
       <div class="fg"><label>Система премирования</label>
         <select id="pr_bonus_type" onchange="updateBonusFields(this.value,null)">
           <option value="">— не выбрано —</option>
