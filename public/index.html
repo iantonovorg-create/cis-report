@@ -835,7 +835,7 @@ const salaryActual = plan > 0 && fact > 0 ? Math.round((sal / plan) * fact) : sa
   let extraTotal = 0;
   extras.forEach(e => { extraTotal += parseFloat(e.amount) || 0; });
 
-  return Math.round(sal + bonus + extraTotal);
+  return Math.round(salaryActual + bonus + extraTotal);
 }
 
 function fmt(n) { return new Intl.NumberFormat('ru-RU').format(Math.round(n)) + ' ₽'; }
