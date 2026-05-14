@@ -790,6 +790,9 @@ async function loadPayroll() {
 function calcTotal(p) {
   let bonus = 0;
   const sal = parseFloat(p.salary) || 0;
+const plan = parseFloat(p.plan_days) || 0;
+const fact = parseFloat(p.fact_days) || 0;
+const salaryActual = plan > 0 && fact > 0 ? Math.round((sal / plan) * fact) : sal;
 
   if (p.bonus_type === '105р за клиента') {
     bonus = (parseFloat(p.bonus_clients) || 0) * 105;
