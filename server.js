@@ -92,6 +92,16 @@ async function initDB() {
   extra_bonuses TEXT DEFAULT '[]',
   total NUMERIC DEFAULT 0
 )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS reviews (
+  id TEXT PRIMARY KEY,
+  date TEXT,
+  platform TEXT,
+  rating NUMERIC DEFAULT 0,
+  positive INTEGER DEFAULT 0,
+  negative INTEGER DEFAULT 0,
+  comment TEXT DEFAULT ''
+)`);
   
   for (const u of INITIAL_USERS) {
     await pool.query(
@@ -376,6 +386,34 @@ app.post('/api/payroll', requireAuth, requireEditor, async (req, res) => {
 app.delete('/api/payroll/:id', requireAuth, requireEditor, async (req, res) => {
   try {
     await pool.query('DELETE FROM payroll WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── API: REVIEWS ─────────────────────────────────────────────────────────────
+app.get('/api/reviews', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM reviews ORDER BY date DESC');
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/review', requireAuth, requireEditor, async (req, res) => {
+  try {
+    const r = req.body;
+    if (!r.id) r.id = Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    await pool.query(
+      `INSERT INTO reviews (id,date,platform,rating,positive,negative,comment)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (id) DO UPDATE SET date=$2,platform=$3,rating=$4,positive=$5,negative=$6,comment=$7`,
+      [r.id,r.date,r.platform,r.rating||0,r.positive||0,r.negative||0,r.comment||'']);
+    res.json({ ok: true, id: r.id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/review/:id', requireAuth, requireEditor, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM reviews WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
