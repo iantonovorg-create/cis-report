@@ -17,6 +17,7 @@ const INITIAL_USERS = [
   { email: 'natali.evstigneeva@kodland.team', role: 'editor' },
   { email: 't.bushmanova@kodland.team',        role: 'editor' },
   { email: 'v.nemezhanskaya@kodland.org',      role: 'viewer' },
+  { email: 'k.abduganieva@kodland.team', role: 'reviews_editor' },
 ];
 
 app.use(express.json());
