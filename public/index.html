@@ -957,7 +957,8 @@ function openPayrollModal(empId, empName, block, sub) {
   }
 
   document.getElementById('prModalTitle').textContent = empName;
-  document.getElementById('pr_salary').value = pr?.salary || '';
+  const emp = DB.employees.find(x => x.id === empId);
+document.getElementById('pr_salary').value = pr?.salary || emp?.salary_base || '';
   document.getElementById('pr_bonus_type').value = pr?.bonus_type || '';
   document.getElementById('pr_block').value = block;
   document.getElementById('pr_sub').value = sub;
