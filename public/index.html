@@ -318,7 +318,8 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
     <input type="hidden" id="pr_block">
     <input type="hidden" id="pr_sub">
     <div class="fgrid">
-      <div class="fg"><label>Оклад (₽)</label><input id="pr_salary" type="number" placeholder="0"></div>
+      <div class="fg"><label>Оклад (₽) — из карточки</label><input id="pr_salary" type="number" placeholder="0" readonly style="opacity:.6;cursor:not-allowed"></div>
+<div class="fg"><label>Ставка в день</label><input id="pr_rate" type="number" placeholder="—" readonly style="opacity:.6;cursor:not-allowed"></div>
 <div class="fg"><label>План смен</label><input id="pr_plan_days" type="number" placeholder="22"></div>
 <div class="fg"><label>Факт смен</label><input id="pr_fact_days" type="number" placeholder="0"></div>
       <div class="fg"><label>Система премирования</label>
