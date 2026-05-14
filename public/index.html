@@ -520,7 +520,15 @@ function toggleOps(id){document.getElementById('ox_'+id)?.classList.toggle('show
 function renderGrid(key,block){document.getElementById('g-'+key).innerHTML=byM(DB.employees).filter(e=>e.block===block).map(e=>card(e)).join('');}
 function fg(block,filter,btn){btn.closest('.frow').querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');document.querySelectorAll('#g-'+block+' .ecard').forEach(c=>{const s=c.querySelector('.sbadge')?.textContent||'';if(filter==='all'){c.style.display='';return;}if(filter==='watch'&&s.includes('Требует')){c.style.display='';return;}if(filter==='risk'&&(s.includes('Зона')||s.includes('Увольнение'))){c.style.display='';return;}c.style.display=s===filter?'':'none';});}
 function toggleTL(id){document.getElementById('tb-'+id).classList.toggle('hidden');document.getElementById('ch-'+id).classList.toggle('open');}
-function showTab(name,btn){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.getElementById('p-'+name).classList.add('on');btn.classList.add('on');}
+function showTab(name,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('p-'+name).classList.add('on');
+  btn.classList.add('on');
+  if(name==='reviews') renderReviews();
+  if(name==='payroll') renderPayroll();
+  if(name==='tasks') renderTasks();
+}
 function switchMonth(m){curMonth=m;renderAll();}
 function parseKD(s){const m=s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
 function renderKM(){const q=(document.getElementById('kmQ')?.value||'').toLowerCase().trim();const rows=DB.meetings.filter(r=>{if(q&&!(r.name||'').toLowerCase().includes(q))return false;if(kmFilter==='all')return true;if(kmFilter==='cur')return r.month===curMonth;const dt=parseKD(r.date||'');if(!dt)return true;if(kmFilter==='2025')return dt.getFullYear()===2025;return true;});document.getElementById('kmBody').innerHTML=rows.map(r=>{const dc=r.dyn==='Улучшение'?'du':r.dyn==='Спад'?'dd':r.dyn?'df':'';return`<tr><td style="font-weight:600;white-space:nowrap">${r.name||'—'}</td><td style="white-space:nowrap">${r.date||'—'}</td><td>${r.topic||'—'}</td><td>${r.tasks||'—'}</td><td style="white-space:nowrap">${r.next||'—'}</td><td class="${dc}">${r.dyn||'—'}</td><td style="white-space:nowrap">${r.tl||'—'}</td><td style="white-space:nowrap"><button class="kbt e" onclick="openEditKM('${r.id}')">✎</button><button class="kbt d" onclick="delKM('${r.id}')">✕</button></td></tr>`;}).join('');}
