@@ -385,7 +385,7 @@ app.post('/api/payroll', requireAuth, requireEditor, async (req, res) => {
        p.new_mot_base||25000,p.new_mot_clients_plan||0,p.new_mot_clients_fact||0,
        p.new_mot_repeat_plan||0,p.new_mot_repeat_fact||0,
        p.new_mot_first_plan||0,p.new_mot_first_fact||0,
-       JSON.stringify(p.extra_bonuses||[]),p.total||0]);
+       JSON.stringify(p.extra_bonuses||[]),p.total||0,parseFloat(p.plan_days)||0,parseFloat(p.fact_days)||0]);
     res.json({ ok: true, id: p.id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
