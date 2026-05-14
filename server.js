@@ -378,7 +378,7 @@ app.post('/api/payroll', requireAuth, requireEditor, async (req, res) => {
          new_mot_base=$12,new_mot_clients_plan=$13,new_mot_clients_fact=$14,
          new_mot_repeat_plan=$15,new_mot_repeat_fact=$16,
          new_mot_first_plan=$17,new_mot_first_fact=$18,
-         extra_bonuses=$19,total=$20`,
+         extra_bonuses=$19,total=$20,plan_days=$21,fact_days=$22`,
       [p.id,p.month,p.employee_id||'',p.name,p.block,p.sub||'',
        p.salary||0,p.bonus_type||'',
        p.bonus_clients||0,p.bonus_tickets||0,p.bonus_chats||0,
