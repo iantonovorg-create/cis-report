@@ -370,7 +370,7 @@ app.post('/api/payroll', requireAuth, requireEditor, async (req, res) => {
         new_mot_base,new_mot_clients_plan,new_mot_clients_fact,
         new_mot_repeat_plan,new_mot_repeat_fact,
         new_mot_first_plan,new_mot_first_fact,
-        extra_bonuses,total)
+        extra_bonuses,total,plan_days,fact_days)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
        ON CONFLICT (id) DO UPDATE SET
          month=$2,employee_id=$3,name=$4,block=$5,sub=$6,salary=$7,bonus_type=$8,
