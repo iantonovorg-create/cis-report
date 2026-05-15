@@ -1065,9 +1065,58 @@ function addExtraBonus() {
     const fot = parseFloat(document.getElementById('extra_vr_fot').value) || 0;
     amount = fot * (pct / 100);
     label = `${pct}% от ФОТ ${fmt(fot)}`;
-  } else if (type === 'Другое') {
-    amount = parseFloat(document.getElementById('extra_other_amount').value) || 0;
-    label = document.getElementById('extra_other_comment').value || 'Доп. выплата';
+  } else if (type === 'Менеджер НД') {
+  amount = 2000; label = 'Менеджер НД — фикс';
+  _extraBonuses.push({ type, label, amount });
+  renderExtraBonuses();
+  document.getElementById('extraAddForm').innerHTML = '';
+  document.getElementById('extra_type').value = '';
+  return;
+} else if (type === '1 место по клиентам') {
+  amount = 10000; label = '1 место по кол-ву клиентов';
+  _extraBonuses.push({ type, label, amount });
+  renderExtraBonuses();
+  document.getElementById('extraAddForm').innerHTML = '';
+  document.getElementById('extra_type').value = '';
+  return;
+} else if (type === '2 место по клиентам') {
+  amount = 7500; label = '2 место по кол-ву клиентов';
+  _extraBonuses.push({ type, label, amount });
+  renderExtraBonuses();
+  document.getElementById('extraAddForm').innerHTML = '';
+  document.getElementById('extra_type').value = '';
+  return;
+} else if (type === '3 место по клиентам') {
+  amount = 5000; label = '3 место по кол-ву клиентов';
+  _extraBonuses.push({ type, label, amount });
+  renderExtraBonuses();
+  document.getElementById('extraAddForm').innerHTML = '';
+  document.getElementById('extra_type').value = '';
+  return;
+} else if (type === 'Обучение') {
+  amount = 2000; label = 'Обучение — фикс';
+  _extraBonuses.push({ type, label, amount });
+  renderExtraBonuses();
+  document.getElementById('extraAddForm').innerHTML = '';
+  document.getElementById('extra_type').value = '';
+  return;
+} else if (type === 'Работа с отзывами') {
+  amount = 3000; label = 'Работа с отзывами — фикс';
+  _extraBonuses.push({ type, label, amount });
+  renderExtraBonuses();
+  document.getElementById('extraAddForm').innerHTML = '';
+  document.getElementById('extra_type').value = '';
+  return;
+} else if (type === 'SMM') {
+  amount = 3000; label = 'SMM — фикс';
+  _extraBonuses.push({ type, label, amount });
+  renderExtraBonuses();
+  document.getElementById('extraAddForm').innerHTML = '';
+  document.getElementById('extra_type').value = '';
+  return;
+} else if (type === 'Другое') {
+  amount = parseFloat(document.getElementById('extra_other_amount').value) || 0;
+  label = document.getElementById('extra_other_comment').value || 'Доп. выплата';
   }
 
   if (amount > 0 || type === 'Другое') {
