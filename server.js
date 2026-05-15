@@ -110,6 +110,14 @@ async function initDB() {
   total NUMERIC DEFAULT 0
 )`);
 
+  await pool.query(`CREATE TABLE IF NOT EXISTS ops_report (
+    id TEXT PRIMARY KEY,
+    period TEXT NOT NULL,
+    week INTEGER NOT NULL,
+    data JSONB NOT NULL DEFAULT '{}',
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
   await pool.query(`CREATE TABLE IF NOT EXISTS reviews (
   id TEXT PRIMARY KEY,
   date TEXT,
@@ -456,6 +464,33 @@ app.delete('/api/review/:id', requireAuth, requireReviewsEditor, async (req, res
   try {
     await pool.query('DELETE FROM reviews WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── API: OPS REPORT ──────────────────────────────────────────────────────────
+app.get('/api/ops', requireAuth, async (req, res) => {
+  try {
+    const period = req.query.period || '';
+    const { rows } = await pool.query(
+      'SELECT * FROM ops_report WHERE period=$1 ORDER BY week ASC',
+      [period]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/ops', requireAuth, requireOpsEditor, async (req, res) => {
+  try {
+    const { period, week, data } = req.body;
+    if (!period || week === undefined) return res.status(400).json({ error: 'period and week required' });
+    const id = period.replace(/\s+/g, '_') + '_w' + week;
+    await pool.query(
+      `INSERT INTO ops_report (id, period, week, data, updated_at)
+       VALUES ($1,$2,$3,$4,NOW())
+       ON CONFLICT (id) DO UPDATE SET data=$4, updated_at=NOW()`,
+      [id, period, week, JSON.stringify(data)]
+    );
+    res.json({ ok: true, id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
