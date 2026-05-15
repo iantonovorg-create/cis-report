@@ -189,6 +189,25 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
 .hc-cf-btn{font-size:10px;padding:4px 12px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif;transition:all .15s}
 .hc-cf-btn:hover,.hc-cf-btn.on{border-color:var(--accent);color:var(--accent);background:rgba(200,184,154,.07)}
 .hc-done-card{opacity:.65}.hc-done-card:hover{opacity:1}
+
+/* viewer mode — hide all edit controls */
+body.viewer-mode .abt.ed,
+body.viewer-mode .abt.dl,
+body.viewer-mode .btn-add,
+body.viewer-mode .btn-akm,
+body.viewer-mode .btn-nm:not(#reloadBtn),
+body.viewer-mode .kbt,
+body.viewer-mode #usersBtn,
+body.viewer-mode button[onclick*="openAdd"],
+body.viewer-mode button[onclick*="openEdit"],
+body.viewer-mode button[onclick*="openNew"],
+body.viewer-mode button[onclick*="openPayroll"],
+body.viewer-mode button[onclick*="saveTask"],
+body.viewer-mode button[onclick*="delTask"],
+body.viewer-mode .ops-bsave,
+body.viewer-mode .ops-bclear,
+body.viewer-mode .pr-save-btn
+{ display:none !important }
 </style>
 </head>
 <body class="loading">
@@ -531,6 +550,9 @@ function applyRoleRestrictions(role){
     if(hTab) hTab.style.display='';
     const uBtn=document.getElementById('usersBtn');
     if(uBtn) uBtn.style.display='';
+  }
+  if(role==='viewer'){
+    document.body.classList.add('viewer-mode');
   }
   if(role==='reviews_editor'){
     document.querySelectorAll('.tab').forEach(t=>{if(!t.textContent.includes('Отзывы'))t.style.display='none';});
