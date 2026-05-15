@@ -325,11 +325,11 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
     <input type="hidden" id="pr_sub">
     <div class="fgrid">
       <div class="fg"><label>Оклад (₽) — из карточки</label><input id="pr_salary" type="number" placeholder="0" readonly style="opacity:.6;cursor:not-allowed"></div>
-<div class="fg"><label>Ставка в день</label><input id="pr_rate" type="number" placeholder="—" readonly style="opacity:.6;cursor:not-allowed"></div>
+<div class="fg"><label>Ставка в день</label><input id="pr_rate" type="text" placeholder="—" readonly style="opacity:.6;cursor:not-allowed"></div>
 <div class="fg"><label>План смен — из карточки</label><input id="pr_plan_days" type="number" placeholder="22" readonly style="opacity:.6;cursor:not-allowed"></div>
-<div class="fg"><label>Факт смен</label><input id="pr_fact_days" type="number" placeholder="0"></div>
+<div class="fg"><label>Факт смен</label><input id="pr_fact_days" type="number" placeholder="0" oninput="updatePreview()"></div>
       <div class="fg"><label>Система премирования</label>
-        <select id="pr_bonus_type" onchange="updateBonusFields(this.value,null)">
+        <select id="pr_bonus_type" onchange="updateBonusFields(this.value,null);updatePreview()">
           <option value="">— не выбрано —</option>
           <option>105р за клиента</option>
           <option>55р за тикет</option>
@@ -963,7 +963,11 @@ function renderPayrollTable() {
               const total = pr ? calcTotal(pr) : 0;
               const extras = pr ? (typeof pr.extra_bonuses === 'string' ? JSON.parse(pr.extra_bonuses || '[]') : (pr.extra_bonuses || [])) : [];
               const extraTotal = extras.reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
-              const bonusAmt = total - (parseFloat(pr?.salary)||0) - extraTotal;
+              const prSal = parseFloat(pr?.salary) || 0;
+              const prPlan = parseFloat(pr?.plan_days) || 0;
+              const prFact = parseFloat(pr?.fact_days) || 0;
+              const salaryActual = prPlan > 0 && prFact > 0 ? Math.round((prSal / prPlan) * prFact) : prSal;
+              const bonusAmt = total - salaryActual - extraTotal;
               const odd = sec.emps.indexOf(emp) % 2 === 0;
               return `<tr style="${odd?'':'background:rgba(0,0,0,.13)'}">
                 <td style="border:1px solid var(--border);padding:10px 12px;color:var(--text);font-weight:600">${emp.name}</td>
@@ -1013,17 +1017,18 @@ document.getElementById('pr_fact_days').value = pr?.fact_days || '';
 
   updateBonusFields(pr?.bonus_type || '', pr);
   renderExtraBonuses();
+  updatePreview();
   om('payrollOv');
 }
 
 function updateBonusFields(type, pr) {
   const f = document.getElementById('pr_bonus_fields');
   if (type === '105р за клиента') {
-    f.innerHTML = `<div class="fg"><label>Кол-во клиентов</label><input id="pr_clients" type="number" value="${pr?.bonus_clients||''}" placeholder="0"></div>`;
+    f.innerHTML = `<div class="fg"><label>Кол-во клиентов</label><input id="pr_clients" type="number" value="${pr?.bonus_clients||''}" placeholder="0" oninput="updatePreview()"></div>`;
   } else if (type === '55р за тикет') {
-    f.innerHTML = `<div class="fg"><label>Кол-во тикетов</label><input id="pr_tickets" type="number" value="${pr?.bonus_tickets||''}" placeholder="0"></div>`;
+    f.innerHTML = `<div class="fg"><label>Кол-во тикетов</label><input id="pr_tickets" type="number" value="${pr?.bonus_tickets||''}" placeholder="0" oninput="updatePreview()"></div>`;
   } else if (type === '45р за чат') {
-    f.innerHTML = `<div class="fg"><label>Кол-во чатов</label><input id="pr_chats" type="number" value="${pr?.bonus_chats||''}" placeholder="0"></div>`;
+    f.innerHTML = `<div class="fg"><label>Кол-во чатов</label><input id="pr_chats" type="number" value="${pr?.bonus_chats||''}" placeholder="0" oninput="updatePreview()"></div>`;
   } else if (type === 'Новая мотивация') {
     f.innerHTML = `
       <div class="fg"><label>Базовая ставка (₽)</label><input id="pr_nm_base" type="number" value="${pr?.new_mot_base||25000}"></div>
@@ -1053,6 +1058,38 @@ function updateBonusFields(type, pr) {
   }
 }
 
+function updatePreview() {
+  const emp = DB.employees.find(x => x.id === _prEmpId);
+  const bonusType = document.getElementById('pr_bonus_type').value;
+  const sal = parseFloat(document.getElementById('pr_salary').value) || 0;
+  const plan = parseFloat(document.getElementById('pr_plan_days').value) || 0;
+  const fact = parseFloat(document.getElementById('pr_fact_days').value) || 0;
+  const obj = {
+    salary: sal,
+    plan_days: plan,
+    fact_days: fact,
+    bonus_type: bonusType,
+    bonus_clients: document.getElementById('pr_clients')?.value || 0,
+    bonus_tickets: document.getElementById('pr_tickets')?.value || 0,
+    bonus_chats: document.getElementById('pr_chats')?.value || 0,
+    new_mot_base: document.getElementById('pr_nm_base')?.value || 25000,
+    new_mot_clients_plan: document.getElementById('pr_cp')?.value || 0,
+    new_mot_clients_fact: document.getElementById('pr_cf')?.value || 0,
+    new_mot_repeat_plan: document.getElementById('pr_rp')?.value || 0,
+    new_mot_repeat_fact: document.getElementById('pr_rf')?.value || 0,
+    new_mot_first_plan: document.getElementById('pr_fp')?.value || 0,
+    new_mot_first_fact: document.getElementById('pr_ff')?.value || 0,
+    extra_bonuses: _extraBonuses,
+    tax_zone: emp?.tax_zone || ''
+  };
+  const total = calcTotal(obj);
+  const el = document.getElementById('pr_preview');
+  if (el) el.textContent = total > 0 ? fmt(total) + ' ₽' : '—';
+  const rate = plan > 0 ? Math.round(sal / plan) : 0;
+  const rateEl = document.getElementById('pr_rate');
+  if (rateEl) rateEl.value = rate ? rate + ' ₽/день' : '—';
+}
+
 function renderExtraBonuses() {
   document.getElementById('pr_extras_list').innerHTML = _extraBonuses.map((e, i) => `
     <div style="background:var(--bg3);border-radius:3px;padding:10px 12px;margin-bottom:8px;position:relative">
@@ -1060,6 +1097,7 @@ function renderExtraBonuses() {
       <div style="font-size:11px;color:var(--dim)">${e.label||''} → <b style="color:var(--green)">${fmt(e.amount||0)}</b></div>
       <button onclick="removeExtra(${i})" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button>
     </div>`).join('');
+  updatePreview();
 }
 
 function removeExtra(i) {
