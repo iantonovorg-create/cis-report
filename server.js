@@ -58,6 +58,13 @@ async function initDB() {
     vacation TEXT, status TEXT, birthdate TEXT, functions TEXT, extra TEXT, comment TEXT,
     dismiss TEXT, city TEXT, tz TEXT, phone TEXT, tg TEXT, salary_base NUMERIC DEFAULT 0, tax_zone TEXT DEFAULT '')`);
 
+  await pool.query(`CREATE TABLE IF NOT EXISTS presence (
+    email TEXT PRIMARY KEY,
+    name TEXT,
+    picture TEXT,
+    seen_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
   await pool.query(`CREATE TABLE IF NOT EXISTS meetings (
     id TEXT PRIMARY KEY, month TEXT, name TEXT, date TEXT,
     topic TEXT, tasks TEXT, next TEXT, dyn TEXT, tl TEXT)`);
@@ -209,6 +216,30 @@ app.get('/app', requireAuth, (req, res) => {
 });
 
 // ── API: DATA ────────────────────────────────────────────────────────────────
+// ── PRESENCE ─────────────────────────────────────────────────────────────────
+app.post('/api/presence', requireAuth, async (req, res) => {
+  try {
+    const u = req.session.user;
+    await pool.query(
+      `INSERT INTO presence (email, name, picture, seen_at) VALUES ($1,$2,$3,NOW())
+       ON CONFLICT (email) DO UPDATE SET name=$2, picture=$3, seen_at=NOW()`,
+      [u.email, u.name, u.picture || '']
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/presence', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT email, name, picture, seen_at FROM presence
+       WHERE seen_at > NOW() - INTERVAL '45 seconds'
+       ORDER BY seen_at DESC`
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/data', requireAuth, async (req, res) => {
   try {
     const [emp, meet] = await Promise.all([
