@@ -96,6 +96,9 @@ async function initDB() {
   new_mot_repeat_fact NUMERIC DEFAULT 0,
   new_mot_first_plan NUMERIC DEFAULT 0,
   new_mot_first_fact NUMERIC DEFAULT 0,
+  krm_rsr NUMERIC DEFAULT 0,
+  krm_pct NUMERIC DEFAULT 0,
+  krm_saved NUMERIC DEFAULT 0,
   extra_bonuses TEXT DEFAULT '[]',
   total NUMERIC DEFAULT 0
 )`);
@@ -222,7 +225,7 @@ app.post('/api/employee', requireAuth, requireEditor, async (req, res) => {
     if (!e.id) e.id = Date.now().toString(36)+Math.random().toString(36).slice(2,5);
     await pool.query(
       `INSERT INTO employees (id,month,block,sub,name,role,entry,schedule,plan,fact,vacation,status,functions,extra,comment,dismiss,city,tz,phone,tg,birthdate,salary_base,tax_zone)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
        ON CONFLICT (id) DO UPDATE SET month=$2,block=$3,sub=$4,name=$5,role=$6,entry=$7,schedule=$8,plan=$9,fact=$10,vacation=$11,status=$12,functions=$13,extra=$14,comment=$15,dismiss=$16,city=$17,tz=$18,phone=$19,tg=$20,birthdate=$21,salary_base=$22,tax_zone=$23`,
       [e.id,e.month,e.block,e.sub||'',e.name,e.role||'',e.entry||'',e.schedule||'',e.plan||'',e.fact||'',e.vacation||'',e.status||'',e.functions||'',e.extra||'',e.comment||'',e.dismiss||'',e.city||'',e.tz||'',e.phone||'',e.tg||'',e.birthdate||'',parseFloat(e.salary_base)||0,e.tax_zone||'']);
     res.json({ ok: true, id: e.id });
@@ -370,22 +373,22 @@ app.post('/api/payroll', requireAuth, requireEditor, async (req, res) => {
         new_mot_base,new_mot_clients_plan,new_mot_clients_fact,
         new_mot_repeat_plan,new_mot_repeat_fact,
         new_mot_first_plan,new_mot_first_fact,
-        extra_bonuses,total,plan_days,fact_days)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+        extra_bonuses,total,plan_days,fact_days,krm_rsr,krm_pct,krm_saved)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
        ON CONFLICT (id) DO UPDATE SET
          month=$2,employee_id=$3,name=$4,block=$5,sub=$6,salary=$7,bonus_type=$8,
          bonus_clients=$9,bonus_tickets=$10,bonus_chats=$11,
          new_mot_base=$12,new_mot_clients_plan=$13,new_mot_clients_fact=$14,
          new_mot_repeat_plan=$15,new_mot_repeat_fact=$16,
          new_mot_first_plan=$17,new_mot_first_fact=$18,
-         extra_bonuses=$19,total=$20,plan_days=$21,fact_days=$22`,
+         extra_bonuses=$19,total=$20,plan_days=$21,fact_days=$22,krm_rsr=$24,krm_pct=$25,krm_saved=$26`,
       [p.id,p.month,p.employee_id||'',p.name,p.block,p.sub||'',
        p.salary||0,p.bonus_type||'',
        p.bonus_clients||0,p.bonus_tickets||0,p.bonus_chats||0,
        p.new_mot_base||25000,p.new_mot_clients_plan||0,p.new_mot_clients_fact||0,
        p.new_mot_repeat_plan||0,p.new_mot_repeat_fact||0,
        p.new_mot_first_plan||0,p.new_mot_first_fact||0,
-       JSON.stringify(p.extra_bonuses||[]),p.total||0,parseFloat(p.plan_days)||0,parseFloat(p.fact_days)||0]);
+       JSON.stringify(p.extra_bonuses||[]),p.total||0,parseFloat(p.plan_days)||0,parseFloat(p.fact_days)||0,parseFloat(p.krm_rsr)||0,parseFloat(p.krm_pct)||0,parseFloat(p.krm_saved)||0]);
     res.json({ ok: true, id: p.id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
