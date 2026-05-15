@@ -200,6 +200,7 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
     <select class="msel" id="msel" onchange="switchMonth(this.value)"></select>
     <button class="btn-nm" onclick="openNewMonth()">+ Новый месяц</button>
 <button class="btn-nm" onclick="loadData()" style="border-color:var(--blue);color:var(--blue)" id="reloadBtn">↻ Обновить</button>
+  <button class="btn-nm" id="usersBtn" onclick="openUsersModal()" style="display:none;border-color:var(--sage);color:var(--sage)">⚙ Доступы</button>
   </div>
   <div class="hdr-stats" id="hdrStats"></div>
 </div>
@@ -528,6 +529,8 @@ function applyRoleRestrictions(role){
   if(role==='admin'){
     const hTab=document.getElementById('headCsTab');
     if(hTab) hTab.style.display='';
+    const uBtn=document.getElementById('usersBtn');
+    if(uBtn) uBtn.style.display='';
   }
   if(role==='reviews_editor'){
     document.querySelectorAll('.tab').forEach(t=>{if(!t.textContent.includes('Отзывы'))t.style.display='none';});
@@ -2356,6 +2359,123 @@ async function headCsRender() {
     <div class="mbtns"><button class="bcancel" onclick="cm('hcTaskOv')">Отмена</button><button class="bsave" onclick="hcSaveTask()">Сохранить</button></div>
   </div>
 </div>
+
+<!-- USERS MODAL -->
+<div class="ov" id="usersOv">
+  <div class="modal" style="max-width:600px">
+    <button class="mclose" onclick="cm('usersOv')">✕</button>
+    <h2 style="margin-bottom:6px">⚙ Управление доступами</h2>
+    <div style="font-size:11px;color:var(--dim);margin-bottom:20px">Добавление, изменение и удаление пользователей</div>
+
+    <div id="usersList" style="margin-bottom:20px"></div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:16px">
+      <div style="font-family:'Unbounded',sans-serif;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:12px">Добавить пользователя</div>
+      <div class="fgrid">
+        <div class="fg full"><label>Email (Google аккаунт)</label><input id="u_email" placeholder="user@kodland.team" type="email"></div>
+        <div class="fg full"><label>Роль</label>
+          <select id="u_role">
+            <option value="viewer">viewer — просмотр всего</option>
+            <option value="editor">editor — редактирование всего</option>
+            <option value="reviews_editor">reviews_editor — только отзывы</option>
+            <option value="ops_editor">ops_editor — только опер. показатели</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button class="bsave" onclick="addUser()">Добавить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ROLE_LABELS = {
+  'admin': '👑 Admin',
+  'editor': '✏️ Editor',
+  'viewer': '👁 Viewer',
+  'reviews_editor': '⭐ Отзывы',
+  'ops_editor': '📊 Опер. данные',
+};
+const ROLE_COLORS = {
+  'admin': 'var(--gold)',
+  'editor': 'var(--accent)',
+  'viewer': 'var(--dim)',
+  'reviews_editor': 'var(--purple)',
+  'ops_editor': 'var(--sage)',
+};
+
+let _usersList = [];
+
+async function openUsersModal() {
+  om('usersOv');
+  await loadUsers();
+}
+
+async function loadUsers() {
+  try {
+    _usersList = await api('GET', '/api/users');
+    renderUsersList();
+  } catch(e) { toast('Ошибка загрузки пользователей'); }
+}
+
+function renderUsersList() {
+  const el = document.getElementById('usersList');
+  if (!_usersList.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Нет пользователей</div>';
+    return;
+  }
+  el.innerHTML = _usersList.map(u => {
+    const roleLabel = ROLE_LABELS[u.role] || u.role;
+    const roleColor = ROLE_COLORS[u.role] || 'var(--dim)';
+    const isAdmin = u.role === 'admin';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;margin-bottom:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.email}</div>
+        <div style="font-size:10px;color:${roleColor};margin-top:2px">${roleLabel}</div>
+      </div>
+      <select onchange="changeRole('${u.email}',this.value)" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:4px 8px;font-family:'Golos Text',sans-serif;font-size:11px;border-radius:2px;outline:none;cursor:pointer" ${isAdmin?'disabled':''}>
+        <option value="viewer" ${u.role==='viewer'?'selected':''}>viewer</option>
+        <option value="editor" ${u.role==='editor'?'selected':''}>editor</option>
+        <option value="reviews_editor" ${u.role==='reviews_editor'?'selected':''}>reviews_editor</option>
+        <option value="ops_editor" ${u.role==='ops_editor'?'selected':''}>ops_editor</option>
+        ${isAdmin?'<option value="admin" selected>admin</option>':''}
+      </select>
+      ${!isAdmin?`<button onclick="removeUser('${u.email}')" style="background:rgba(200,122,122,.08);color:var(--red);border:1px solid rgba(200,122,122,.2);padding:4px 10px;border-radius:2px;font-family:'Golos Text',sans-serif;font-size:11px;cursor:pointer">✕</button>`:'<div style="width:46px"></div>'}
+    </div>`;
+  }).join('');
+}
+
+async function addUser() {
+  const email = document.getElementById('u_email').value.trim().toLowerCase();
+  const role = document.getElementById('u_role').value;
+  if (!email) { alert('Введи email'); return; }
+  if (!email.includes('@')) { alert('Некорректный email'); return; }
+  try {
+    await api('POST', '/api/users', { email, role });
+    document.getElementById('u_email').value = '';
+    await loadUsers();
+    toast('Пользователь добавлен ✓');
+  } catch(e) { toast('Ошибка: ' + (e.message||'неизвестная')); }
+}
+
+async function changeRole(email, role) {
+  try {
+    await api('POST', '/api/users', { email, role });
+    await loadUsers();
+    toast('Роль обновлена ✓');
+  } catch(e) { toast('Ошибка обновления роли'); }
+}
+
+async function removeUser(email) {
+  if (!confirm(`Удалить доступ для ${email}?`)) return;
+  try {
+    await api('DELETE', `/api/users/${encodeURIComponent(email)}`);
+    await loadUsers();
+    toast('Пользователь удалён ✓');
+  } catch(e) { toast('Ошибка удаления'); }
+}
+</script>
 
 </body>
 </html>
