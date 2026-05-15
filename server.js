@@ -45,6 +45,12 @@ function requireReviewsEditor(req, res, next) {
   if (r === 'admin' || r === 'editor' || r === 'reviews_editor') return next();
   res.status(403).json({ error: 'forbidden' });
 }
+
+function requireOpsEditor(req, res, next) {
+  const r = req.session?.user?.role;
+  if (r === 'admin' || r === 'editor' || r === 'ops_editor') return next();
+  res.status(403).json({ error: 'Forbidden' });
+}
 function requireAdmin(req, res, next) {
   if (req.session?.user?.role === 'admin') return next();
   res.status(403).json({ error: 'forbidden — admin only' });
