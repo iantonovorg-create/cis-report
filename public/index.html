@@ -9,6 +9,7 @@
 :root{--bg:#181818;--bg2:#202020;--bg3:#282828;--border:#363636;--border2:#484848;--text:#e4e2df;--dim:#888;--muted:#3a3a3a;--accent:#c8b89a;--gold:#d4c4a8;--green:#7ac890;--warn:#c8a87a;--red:#c87a7a;--purple:#a87ac8;--blue:#8aaac8;--sage:#9aac8a}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body.loading .tabs,.loading .main,.loading .hdr-mid,.loading #hdrStats,.loading .presence-notif{visibility:hidden;pointer-events:none}
 .hdr{background:#111;border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:stretch;position:sticky;top:0;z-index:300;flex-wrap:wrap}
 .hdr-logo{font-family:'Unbounded',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--accent);border-right:1px solid var(--border);padding:0 22px 0 0;display:flex;align-items:center;margin-right:22px}
 .hdr-title{font-size:11px;color:var(--dim);letter-spacing:1px;display:flex;align-items:center;margin-right:22px;border-right:1px solid var(--border);padding-right:22px}
@@ -185,7 +186,7 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
 .ops-bclear{padding:9px 16px;background:transparent;border:1px solid var(--border2);color:var(--dim);font-family:'Golos Text',sans-serif;font-size:12px;cursor:pointer;border-radius:2px}.ops-bclear:hover{border-color:var(--text);color:var(--text)}
 </style>
 </head>
-<body>
+<body class="loading">
 <div class="hdr">
   <div class="hdr-logo">CIS CS</div>
   <div class="hdr-title">Отчёт по команде</div>
@@ -537,6 +538,7 @@ async function loadData(){
     const me=await api('GET','/auth/me');
     window._userRole=me.role;
     applyRoleRestrictions(me.role);
+    document.body.classList.remove('loading');
     startPresence(me.email);
     const months=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];
     if(!curMonth||!months.includes(curMonth))curMonth=months[months.length-1]||'';
