@@ -1,5 +1,6 @@
 const express = require('express');
 const { Pool } = require('pg');
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 const session = require('express-session');
 const path = require('path');
 
@@ -115,6 +116,17 @@ async function initDB() {
   extra_bonuses TEXT DEFAULT '[]',
   total NUMERIC DEFAULT 0
 )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS head_tasks (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    priority TEXT,
+    deadline TEXT,
+    category TEXT,
+    progress TEXT DEFAULT '0',
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS ops_report (
     id TEXT PRIMARY KEY,
@@ -469,6 +481,40 @@ app.post('/api/review', requireAuth, requireReviewsEditor, async (req, res) => {
 app.delete('/api/review/:id', requireAuth, requireReviewsEditor, async (req, res) => {
   try {
     await pool.query('DELETE FROM reviews WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── API: HEAD CS TASKS ───────────────────────────────────────────────────────
+app.get('/api/head-tasks', requireAuth, async (req, res) => {
+  const r = req.session?.user?.role;
+  if (r !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const { rows } = await pool.query('SELECT * FROM head_tasks ORDER BY created_at ASC');
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/head-task', requireAuth, async (req, res) => {
+  const r = req.session?.user?.role;
+  if (r !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const { id, title, priority, deadline, category, progress, description } = req.body;
+    await pool.query(
+      `INSERT INTO head_tasks (id, title, priority, deadline, category, progress, description)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (id) DO UPDATE SET title=$2, priority=$3, deadline=$4, category=$5, progress=$6, description=$7`,
+      [id||uid(), title, priority, deadline||'', category, progress||'0', description||'']
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/head-task/:id', requireAuth, async (req, res) => {
+  const r = req.session?.user?.role;
+  if (r !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    await pool.query('DELETE FROM head_tasks WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
