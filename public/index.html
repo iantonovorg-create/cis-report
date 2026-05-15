@@ -501,7 +501,7 @@ function renderStats(){
   document.getElementById('evsN').textContent=byM(DB.employees).filter(e=>e.block==='КМ').length;
 }
 function renderBirthdays(){
-  const all=byM(DB.employees).filter(e=>e.birthdate&&e.birthdate.trim()&&!['HEAD','TL_BUSH','TL_EVS'].includes(e.block));
+  const all=byM(DB.employees).filter(e=>e.birthdate&&e.birthdate.trim());
   const today=new Date();
   const thisYear=today.getFullYear();
 
@@ -539,7 +539,7 @@ function renderBirthdays(){
     </div>`;
 }
 function renderVacations(){
-  const all=byM(DB.employees).filter(e=>e.vacation&&e.vacation.trim()&&!['HEAD','TL_BUSH','TL_EVS'].includes(e.block));
+  const all=byM(DB.employees).filter(e=>e.vacation&&e.vacation.trim());
   if(!all.length){
     document.getElementById('vacationWidget').innerHTML='';
     return;
