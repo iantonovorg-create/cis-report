@@ -576,24 +576,24 @@ function renderVacations(){
     return;
   }
 
-  document.getElementById('vacationWidget').innerHTML=`
-    <div style="background:linear-gradient(135deg,#1a2028,#202830);border:1px solid #405060;border-radius:4px;padding:10px 14px;min-width:200px">
-      <div style="font-size:8px;letter-spacing:2px;color:var(--blue);text-transform:uppercase;margin-bottom:8px">✈ Отпуск</div>
-      ${active.map(p=>{
-        const ini=p.name.split(' ').slice(0,2).map(w=>w[0]).join('');
-        const label=p.isNow
-          ? (p.daysLeft<=0?'Заканчивается сегодня':'ещё '+p.daysLeft+' дн.')
-          : 'через '+p.daysUntil+' дн.';
-        const color=p.isNow?'var(--blue)':'var(--dim)';
-        return\`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#3a6080);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#111;flex-shrink:0">\${ini}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">\${p.name.split(' ').slice(0,2).join(' ')}</div>
-            <div style="font-size:10px;color:\${color}">\${p.label} · \${label}</div>
-          </div>
-        </div>\`;
-      }).join('')}
-    </div>`;
+  const rows=active.map(p=>{
+    const ini=p.name.split(' ').slice(0,2).map(w=>w[0]).join('');
+    const label=p.isNow
+      ? (p.daysLeft<=0?'Заканчивается сегодня':'ещё '+p.daysLeft+' дн.')
+      : 'через '+p.daysUntil+' дн.';
+    const color=p.isNow?'var(--blue)':'var(--dim)';
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#3a6080);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#111;flex-shrink:0">'+ini+'</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.name.split(' ').slice(0,2).join(' ')+'</div>'
+      +'<div style="font-size:10px;color:'+color+'">'+p.label+' · '+label+'</div>'
+      +'</div></div>';
+  }).join('');
+  document.getElementById('vacationWidget').innerHTML=
+    '<div style="background:linear-gradient(135deg,#1a2028,#202830);border:1px solid #405060;border-radius:4px;padding:10px 14px;min-width:200px">'
+    +'<div style="font-size:8px;letter-spacing:2px;color:var(--blue);text-transform:uppercase;margin-bottom:8px">✈ Отпуск</div>'
+    +rows
+    +'</div>';
 }
 
 function renderHead(){const h=byM(DB.employees).find(e=>e.block==='HEAD');if(!h){document.getElementById('headCard').innerHTML='';return;}document.getElementById('headCard').innerHTML=`<div class="head-card"><div class="ava av-gold">${ini(h.name)}</div><div class="head-info"><div class="head-name">${h.name}</div><div class="head-role">${h.role||'HEAD'}</div><div class="head-meta"><div class="hm">Вход: <b>${h.entry||'—'}</b></div><div class="hm">Стаж: <b>${tenure(h.entry)}</b></div><div class="hm">График: <b>${h.schedule||'—'}</b></div><div class="hm">Город: <b>${h.city||'—'}</b></div><div class="hm">ЧП: <b>${h.tz||'—'}</b></div><div class="hm">TG: <b>${h.tg||'—'}</b></div></div></div><button class="abt ed" onclick="openEditEmp('${h.id}','HEAD')">✎ Редактировать</button></div>`;}
