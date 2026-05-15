@@ -972,7 +972,7 @@ function renderPayrollTable() {
                 <td style="border:1px solid var(--border);padding:10px 12px;color:var(--green)">${pr && bonusAmt > 0 ? fmt(bonusAmt) : '—'}</td>
                 <td style="border:1px solid var(--border);padding:10px 12px;color:var(--blue)">${extraTotal > 0 ? fmt(extraTotal) : '—'}</td>
                 <td style="border:1px solid var(--border);padding:10px 12px;text-align:right;font-weight:700;color:var(--accent);font-family:'Unbounded',sans-serif">${pr ? fmt(total) : '—'}</td>
-                <td style="border:1px solid var(--border);padding:10px 12px;text-align:right;font-weight:700;color:var(--blue);font-family:'Unbounded',sans-serif">${pr && pr.tax_zone === 'РФ' ? fmt(Math.round(total / 0.94)) : pr ? fmt(total) : '—'}</td>
+                <td style="border:1px solid var(--border);padding:10px 12px;text-align:right;font-weight:700;color:var(--blue);font-family:'Unbounded',sans-serif">${pr && emp?.tax_zone === 'РФ' ? fmt(Math.round(total / 0.94)) : pr ? fmt(total) : '—'}</td>
                 <td style="border:1px solid var(--border);padding:10px 12px;text-align:center;white-space:nowrap">
                   <button class="abt ed" onclick="openPayrollModal('${emp.id}','${emp.name.replace(/'/g,"\\'")}','${emp.block}','${emp.sub||''}')">✎</button>
                   ${pr ? `<button class="abt dl" style="margin-left:4px" onclick="deletePayroll('${pr.id}')">✕</button>` : ''}
