@@ -1142,6 +1142,14 @@ function showExtraForm(type) {
     f.innerHTML = `<div style="display:flex;gap:8px;align-items:flex-end;margin-top:8px"><div class="fg" style="flex:1"><label>Кол-во часов</label><input id="extra_hours" type="number" placeholder="0"></div><div class="fg" style="flex:1"><label>Ставка</label><input value="300 ₽/час" disabled style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:8px 11px;border-radius:2px;font-size:12px;width:100%"></div><button class="bsave" style="white-space:nowrap" onclick="addExtraBonus()">+ Добавить</button></div>`;
   } else if (type === 'Бонус ВР') {
     f.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:flex-end;margin-top:8px"><div class="fg"><label>% бонуса</label><input id="extra_vr_pct" type="number" placeholder="0"></div><div class="fg"><label>Базовая ставка</label><input value="24000" disabled style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:8px 11px;border-radius:2px;font-size:12px;width:100%"></div><div class="fg"><label>ФОТ бонуса (₽)</label><input id="extra_vr_fot" type="number" placeholder="0"></div><button class="bsave" style="grid-column:1/-1" onclick="addExtraBonus()">+ Добавить</button></div>`;
+  } else if (['Менеджер НД','1 место по клиентам','2 место по клиентам','3 место по клиентам','Обучение','Работа с отзывами','SMM'].includes(type)) {
+  const amounts = {'Менеджер НД':2000,'1 место по клиентам':10000,'2 место по клиентам':7500,'3 место по клиентам':5000,'Обучение':2000,'Работа с отзывами':3000,'SMM':3000};
+  const amt = amounts[type];
+  f.innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-top:8px;padding:10px;background:var(--bg3);border-radius:3px">
+    <div style="flex:1;font-size:12px;color:var(--text)">${type}</div>
+    <div style="font-size:14px;font-weight:700;color:var(--green)">${fmt(amt)}</div>
+    <button class="bsave" onclick="_extraBonuses.push({type:'${type}',label:'${type} — фикс',amount:${amt}});renderExtraBonuses();document.getElementById('extraAddForm').innerHTML='';document.getElementById('extra_type').value='';">+ Добавить</button>
+  </div>`;
   } else if (type === 'Другое') {
     f.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:flex-end;margin-top:8px"><div class="fg"><label>Сумма (₽)</label><input id="extra_other_amount" type="number" placeholder="0"></div><div class="fg"><label>Комментарий</label><input id="extra_other_comment" placeholder="Описание выплаты"></div><button class="bsave" style="grid-column:1/-1" onclick="addExtraBonus()">+ Добавить</button></div>`;
   } else {
