@@ -868,7 +868,11 @@ const salaryActual = plan > 0 && fact > 0 ? Math.round((sal / plan) * fact) : sa
   let extraTotal = 0;
   extras.forEach(e => { extraTotal += parseFloat(e.amount) || 0; });
 
-  return Math.round(salaryActual + bonus + extraTotal);
+  const total = Math.round(salaryActual + bonus + extraTotal);
+const taxZone = p.tax_zone || '';
+const totalWithTax = taxZone === 'РФ' ? Math.round(total / 0.94) : total;
+p._totalWithTax = totalWithTax;
+return total;
 }
 
 function fmt(n) { return new Intl.NumberFormat('ru-RU').format(Math.round(n)) + ' ₽'; }
