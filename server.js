@@ -56,7 +56,7 @@ async function initDB() {
     id TEXT PRIMARY KEY, month TEXT, block TEXT, sub TEXT, name TEXT,
     role TEXT, entry TEXT, schedule TEXT, plan TEXT, fact TEXT,
     vacation TEXT, status TEXT, birthdate TEXT, functions TEXT, extra TEXT, comment TEXT,
-    dismiss TEXT, city TEXT, tz TEXT, phone TEXT, tg TEXT, birthdate TEXT, salary_base NUMERIC DEFAULT 0)`);
+    dismiss TEXT, city TEXT, tz TEXT, phone TEXT, tg TEXT, birthdate TEXT, salary_base NUMERIC DEFAULT 0, tax_zone TEXT DEFAULT '')`);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS meetings (
     id TEXT PRIMARY KEY, month TEXT, name TEXT, date TEXT,
@@ -221,10 +221,10 @@ app.post('/api/employee', requireAuth, requireEditor, async (req, res) => {
     const e = req.body;
     if (!e.id) e.id = Date.now().toString(36)+Math.random().toString(36).slice(2,5);
     await pool.query(
-      `INSERT INTO employees (id,month,block,sub,name,role,entry,schedule,plan,fact,vacation,status,functions,extra,comment,dismiss,city,tz,phone,tg,birthdate,salary_base)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
-       ON CONFLICT (id) DO UPDATE SET month=$2,block=$3,sub=$4,name=$5,role=$6,entry=$7,schedule=$8,plan=$9,fact=$10,vacation=$11,status=$12,functions=$13,extra=$14,comment=$15,dismiss=$16,city=$17,tz=$18,phone=$19,tg=$20,birthdate=$21,salary_base=$22`,
-      [e.id,e.month,e.block,e.sub||'',e.name,e.role||'',e.entry||'',e.schedule||'',e.plan||'',e.fact||'',e.vacation||'',e.status||'',e.functions||'',e.extra||'',e.comment||'',e.dismiss||'',e.city||'',e.tz||'',e.phone||'',e.tg||'',e.birthdate||'',parseFloat(e.salary_base)||0]);
+      `INSERT INTO employees (id,month,block,sub,name,role,entry,schedule,plan,fact,vacation,status,functions,extra,comment,dismiss,city,tz,phone,tg,birthdate,salary_base,tax_zone)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+       ON CONFLICT (id) DO UPDATE SET month=$2,block=$3,sub=$4,name=$5,role=$6,entry=$7,schedule=$8,plan=$9,fact=$10,vacation=$11,status=$12,functions=$13,extra=$14,comment=$15,dismiss=$16,city=$17,tz=$18,phone=$19,tg=$20,birthdate=$21,salary_base=$22,tax_zone=$23`,
+      [e.id,e.month,e.block,e.sub||'',e.name,e.role||'',e.entry||'',e.schedule||'',e.plan||'',e.fact||'',e.vacation||'',e.status||'',e.functions||'',e.extra||'',e.comment||'',e.dismiss||'',e.city||'',e.tz||'',e.phone||'',e.tg||'',e.birthdate||'',parseFloat(e.salary_base)||0,e.tax_zone||'']);
     res.json({ ok: true, id: e.id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -371,7 +371,7 @@ app.post('/api/payroll', requireAuth, requireEditor, async (req, res) => {
         new_mot_repeat_plan,new_mot_repeat_fact,
         new_mot_first_plan,new_mot_first_fact,
         extra_bonuses,total,plan_days,fact_days)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
        ON CONFLICT (id) DO UPDATE SET
          month=$2,employee_id=$3,name=$4,block=$5,sub=$6,salary=$7,bonus_type=$8,
          bonus_clients=$9,bonus_tickets=$10,bonus_chats=$11,
