@@ -335,6 +335,7 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
           <option>55р за тикет</option>
           <option>45р за чат</option>
           <option>Новая мотивация</option>
+          <option>КРМ</option>
         </select>
       </div>
       <div class="fg full" id="pr_bonus_fields"></div>
@@ -861,6 +862,10 @@ const salaryActual = plan > 0 && fact > 0 ? Math.round((sal / plan) * fact) : sa
     }
 
     bonus = base * k1 * k2 * k3;
+  } else if (p.bonus_type === 'КРМ') {
+    const pct = parseFloat(p.krm_pct) || 0;
+    const saved = parseFloat(p.krm_saved) || 0;
+    bonus = Math.round(saved * (pct / 100));
   }
 
   // Доп бонусы
@@ -1067,9 +1072,33 @@ function updateBonusFields(type, pr) {
           <input id="pr_ff" type="number" value="${pr?.new_mot_first_fact||''}" placeholder="факт %" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:6px 8px;border-radius:2px;font-size:11px;outline:none">
         </div>
       </div>`;
+  } else if (type === 'КРМ') {
+    f.innerHTML = `
+      <div class="fg"><label>RSR (%)</label><input id="pr_krm_rsr" type="number" value="${pr?.krm_rsr||''}" placeholder="0" oninput="updatePreview()"></div>
+      <div class="fg"><label>% в ЗП от суммы удержаний</label><input id="pr_krm_pct" type="number" value="${pr?.krm_pct||''}" placeholder="0" oninput="updatePreview()"></div>
+      <div class="fg"><label>Сумма сохранений (₽)</label><input id="pr_krm_saved" type="number" value="${pr?.krm_saved||''}" placeholder="0" oninput="updatePreview()"></div>
+      <div class="fg full" style="margin-top:4px;padding:8px 12px;background:var(--bg3);border-radius:3px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Бонус КРМ</div>
+        <div id="krm_bonus_preview" style="font-family:'Unbounded',sans-serif;font-size:14px;font-weight:700;color:var(--green)">—</div>
+      </div>`;
+    setTimeout(() => {
+      ['pr_krm_pct','pr_krm_saved'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateKrmBonusPreview);
+      });
+      updateKrmBonusPreview();
+    }, 0);
   } else {
     f.innerHTML = '';
   }
+}
+
+function updateKrmBonusPreview() {
+  const pct = parseFloat(document.getElementById('pr_krm_pct')?.value) || 0;
+  const saved = parseFloat(document.getElementById('pr_krm_saved')?.value) || 0;
+  const bonus = Math.round(saved * (pct / 100));
+  const el = document.getElementById('krm_bonus_preview');
+  if (el) el.textContent = bonus > 0 ? fmt(bonus) + ' ₽' : '—';
 }
 
 function updatePreview() {
@@ -1093,6 +1122,9 @@ function updatePreview() {
     new_mot_repeat_fact: document.getElementById('pr_rf')?.value || 0,
     new_mot_first_plan: document.getElementById('pr_fp')?.value || 0,
     new_mot_first_fact: document.getElementById('pr_ff')?.value || 0,
+    krm_rsr: document.getElementById('pr_krm_rsr')?.value || 0,
+    krm_pct: document.getElementById('pr_krm_pct')?.value || 0,
+    krm_saved: document.getElementById('pr_krm_saved')?.value || 0,
     extra_bonuses: _extraBonuses,
     tax_zone: emp?.tax_zone || ''
   };
@@ -1216,9 +1248,33 @@ function showExtraForm(type) {
   </div>`;
   } else if (type === 'Другое') {
     f.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:flex-end;margin-top:8px"><div class="fg"><label>Сумма (₽)</label><input id="extra_other_amount" type="number" placeholder="0"></div><div class="fg"><label>Комментарий</label><input id="extra_other_comment" placeholder="Описание выплаты"></div><button class="bsave" style="grid-column:1/-1" onclick="addExtraBonus()">+ Добавить</button></div>`;
+  } else if (type === 'КРМ') {
+    f.innerHTML = `
+      <div class="fg"><label>RSR (%)</label><input id="pr_krm_rsr" type="number" value="${pr?.krm_rsr||''}" placeholder="0" oninput="updatePreview()"></div>
+      <div class="fg"><label>% в ЗП от суммы удержаний</label><input id="pr_krm_pct" type="number" value="${pr?.krm_pct||''}" placeholder="0" oninput="updatePreview()"></div>
+      <div class="fg"><label>Сумма сохранений (₽)</label><input id="pr_krm_saved" type="number" value="${pr?.krm_saved||''}" placeholder="0" oninput="updatePreview()"></div>
+      <div class="fg full" style="margin-top:4px;padding:8px 12px;background:var(--bg3);border-radius:3px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Бонус КРМ</div>
+        <div id="krm_bonus_preview" style="font-family:'Unbounded',sans-serif;font-size:14px;font-weight:700;color:var(--green)">—</div>
+      </div>`;
+    setTimeout(() => {
+      ['pr_krm_pct','pr_krm_saved'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateKrmBonusPreview);
+      });
+      updateKrmBonusPreview();
+    }, 0);
   } else {
     f.innerHTML = '';
   }
+}
+
+function updateKrmBonusPreview() {
+  const pct = parseFloat(document.getElementById('pr_krm_pct')?.value) || 0;
+  const saved = parseFloat(document.getElementById('pr_krm_saved')?.value) || 0;
+  const bonus = Math.round(saved * (pct / 100));
+  const el = document.getElementById('krm_bonus_preview');
+  if (el) el.textContent = bonus > 0 ? fmt(bonus) + ' ₽' : '—';
 }
 
 async function savePayroll() {
@@ -1244,6 +1300,9 @@ async function savePayroll() {
     new_mot_repeat_fact: document.getElementById('pr_rf')?.value || 0,
     new_mot_first_plan: document.getElementById('pr_fp')?.value || 0,
     new_mot_first_fact: document.getElementById('pr_ff')?.value || 0,
+    krm_rsr: document.getElementById('pr_krm_rsr')?.value || 0,
+    krm_pct: document.getElementById('pr_krm_pct')?.value || 0,
+    krm_saved: document.getElementById('pr_krm_saved')?.value || 0,
     extra_bonuses: _extraBonuses,
   };
   obj.total = calcTotal(obj);
