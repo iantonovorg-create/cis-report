@@ -184,6 +184,10 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
 .ops-save-bar{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
 .ops-bsave{padding:9px 20px;background:var(--accent);border:none;color:#111;font-family:'Golos Text',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border-radius:2px}.ops-bsave:hover{opacity:.85}
 .ops-bclear{padding:9px 16px;background:transparent;border:1px solid var(--border2);color:var(--dim);font-family:'Golos Text',sans-serif;font-size:12px;cursor:pointer;border-radius:2px}.ops-bclear:hover{border-color:var(--text);color:var(--text)}
+
+.hc-cf-btn{font-size:10px;padding:4px 12px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif;transition:all .15s}
+.hc-cf-btn:hover,.hc-cf-btn.on{border-color:var(--accent);color:var(--accent);background:rgba(200,184,154,.07)}
+.hc-done-card{opacity:.65}.hc-done-card:hover{opacity:1}
 </style>
 </head>
 <body class="loading">
@@ -205,6 +209,7 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
   <button class="tab" onclick="showTab('ops',this)">Опер. показатели</button>
   <button class="tab" onclick="showTab('reviews',this)">Отзывы</button>
   <button class="tab" onclick="showTab('payroll',this)">ЗП Ведомость</button>
+  <button class="tab" id="headCsTab" onclick="showTab('headcs',this)" style="display:none;margin-left:auto;color:var(--gold);border-bottom-color:transparent;letter-spacing:3px">✦ Head CS</button>
 </div>
 <div class="main">
   <div class="panel on" id="p-team">
@@ -304,6 +309,8 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
   </div>
 </div>
   
+  <div class="panel" id="p-headcs"><div id="headCsContent"></div></div>
+
   <div class="panel" id="p-payroll">
   <div id="payrollSummary" style="margin-bottom:24px"></div>
   <div id="payrollContent"></div>
@@ -517,6 +524,10 @@ function pickCustomMonth(){
 
 async function api(method,url,body){const opts={method,headers:{'Content-Type':'application/json'}};if(body)opts.body=JSON.stringify(body);const r=await fetch(url,opts);return r.json();}
 function applyRoleRestrictions(role){
+  if(role==='admin'){
+    const hTab=document.getElementById('headCsTab');
+    if(hTab) hTab.style.display='';
+  }
   if(role==='reviews_editor'){
     document.querySelectorAll('.tab').forEach(t=>{if(!t.textContent.includes('Отзывы'))t.style.display='none';});
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
@@ -764,6 +775,7 @@ function showTab(name,btn){
   if(name==='payroll') renderPayroll();
   if(name==='tasks') renderTasks();
   if(name==='ops') opsRender();
+  if(name==='headcs') headCsRender();
 }
 function switchMonth(m){curMonth=m;renderAll();}
 function parseKD(s){const m=s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
@@ -2101,6 +2113,248 @@ function opsRender() {
   opsLoadData();
 }
 </script>
+
+<style>
+.hc-cf-btn{font-size:10px;padding:4px 12px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif;transition:all .15s}
+.hc-cf-btn:hover,.hc-cf-btn.on{border-color:var(--accent);color:var(--accent);background:rgba(200,184,154,.07)}
+.hc-done-card{opacity:.65}.hc-done-card:hover{opacity:1}
+</style>
+
+<script>
+const HC_PRIORITY_COLOR = { 'Высокий':'var(--red)', 'Средний':'var(--warn)', 'Низкий':'var(--green)' };
+const HC_PROGRESS_LABEL = { '0':'Начато','25':'В работе','50':'Половина','75':'Доработка','100':'Завершено' };
+const HC_PROGRESS_COLOR = { '0':'var(--muted)','25':'var(--blue)','50':'var(--warn)','75':'var(--purple)','100':'var(--green)' };
+const HC_CATS = ['Стратегия','Команда','Процессы','Продукт','Прочее'];
+
+let HC_TASKS = [];
+let _hcFilter = 'all';
+let _hcEditId = null;
+let _hcLoaded = false;
+
+async function hcLoad() {
+  try { HC_TASKS = await api('GET', '/api/head-tasks'); if(!Array.isArray(HC_TASKS)) HC_TASKS=[]; }
+  catch(e) { HC_TASKS=[]; }
+}
+
+async function hcSave(task) {
+  try { await api('POST', '/api/head-task', task); } catch(e) { toast('Ошибка сохранения'); }
+}
+
+async function hcDel(id) {
+  try { await api('DELETE', '/api/head-task/'+id); } catch(e) { toast('Ошибка удаления'); }
+}
+
+function hcFilter(cat, btn) {
+  _hcFilter=cat;
+  document.querySelectorAll('.hc-cf-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  hcRenderCols();
+}
+
+function hcOpenAdd() {
+  _hcEditId=null;
+  document.getElementById('hc_title').textContent='Новая задача';
+  ['hc_t_title','hc_t_deadline','hc_t_description'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('hc_t_priority').value='Средний';
+  document.getElementById('hc_t_progress').value='0';
+  document.getElementById('hc_t_category').value='Стратегия';
+  om('hcTaskOv');
+}
+
+function hcOpenEdit(id) {
+  _hcEditId=id;
+  const t=HC_TASKS.find(x=>x.id===id); if(!t) return;
+  document.getElementById('hc_title').textContent='Редактировать задачу';
+  document.getElementById('hc_t_title').value=t.title||'';
+  document.getElementById('hc_t_priority').value=t.priority||'Средний';
+  document.getElementById('hc_t_deadline').value=t.deadline||'';
+  document.getElementById('hc_t_category').value=t.category||'Прочее';
+  document.getElementById('hc_t_progress').value=t.progress||'0';
+  document.getElementById('hc_t_description').value=t.description||'';
+  om('hcTaskOv');
+}
+
+async function hcSaveTask() {
+  const title=document.getElementById('hc_t_title').value.trim();
+  if(!title){alert('Введи название задачи');return;}
+  const obj={id:_hcEditId||uid(),title,
+    priority:document.getElementById('hc_t_priority').value,
+    deadline:document.getElementById('hc_t_deadline').value.trim(),
+    category:document.getElementById('hc_t_category').value,
+    progress:document.getElementById('hc_t_progress').value,
+    description:document.getElementById('hc_t_description').value.trim()};
+  if(_hcEditId){const idx=HC_TASKS.findIndex(x=>x.id===_hcEditId);if(idx!==-1)HC_TASKS[idx]=obj;}
+  else HC_TASKS.push(obj);
+  await hcSave(obj);
+  cm('hcTaskOv');
+  hcRenderAll();
+  toast('Задача сохранена ✓');
+}
+
+async function hcDelTask(id) {
+  if(!confirm('Удалить задачу?'))return;
+  HC_TASKS=HC_TASKS.filter(x=>x.id!==id);
+  await hcDel(id);
+  hcRenderAll();
+  toast('Удалено');
+}
+
+async function hcMarkDone(id) {
+  const t=HC_TASKS.find(x=>x.id===id);if(!t)return;
+  t.progress='100'; await hcSave(t); hcRenderAll(); toast('Задача завершена ✓');
+}
+
+async function hcMarkActive(id) {
+  const t=HC_TASKS.find(x=>x.id===id);if(!t)return;
+  t.progress='75'; await hcSave(t); hcRenderAll(); toast('Задача возвращена в работу');
+}
+
+function hcTaskCard(t, isDone) {
+  const pct=parseInt(t.progress||'0');
+  const pc=HC_PROGRESS_COLOR[t.progress]||'var(--muted)';
+  const pl=HC_PROGRESS_LABEL[t.progress]||t.progress+'%';
+  const priColor=HC_PRIORITY_COLOR[t.priority]||'var(--dim)';
+  const circum=2*Math.PI*17;
+  return `<div class="ecard${isDone?' hc-done-card':''}" style="margin-bottom:10px;border-top:3px solid ${priColor};cursor:default">
+    <div class="cbody">
+      <div class="ctop">
+        <div style="flex:1">
+          <div class="cname"${isDone?' style="text-decoration:line-through;opacity:.65"':''}>${t.title}</div>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+            <span style="font-size:9px;padding:2px 7px;border-radius:2px;background:rgba(0,0,0,.2);color:${priColor};border:1px solid ${priColor}44">${t.priority||'—'}</span>
+            ${t.category?`<span style="font-size:9px;padding:2px 7px;border-radius:2px;background:var(--bg3);color:var(--blue);border:1px solid rgba(138,170,200,.25)">${t.category}</span>`:''}
+            ${t.deadline?`<span style="font-size:9px;padding:2px 7px;border-radius:2px;background:var(--bg3);color:var(--dim)">📅 ${t.deadline}</span>`:''}
+            <span style="font-size:9px;padding:2px 7px;border-radius:2px;background:var(--bg3);color:${pc}">${pl}</span>
+          </div>
+        </div>
+        <div style="position:relative;width:44px;height:44px;flex-shrink:0">
+          <svg width="44" height="44" viewBox="0 0 44 44">
+            <circle cx="22" cy="22" r="17" fill="none" stroke="var(--border)" stroke-width="4"/>
+            <circle cx="22" cy="22" r="17" fill="none" stroke="${pc}" stroke-width="4"
+              stroke-dasharray="${circum.toFixed(2)}" stroke-dashoffset="${(circum*(1-pct/100)).toFixed(2)}"
+              stroke-linecap="round" transform="rotate(-90 22 22)"/>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--text)">${pct}%</div>
+        </div>
+      </div>
+      ${t.description?`<div class="ccomment">${t.description}</div>`:''}
+      <div style="margin-top:10px;background:var(--bg3);border-radius:3px;height:4px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${pc};transition:width .3s;border-radius:3px"></div>
+      </div>
+    </div>
+    <div style="padding:10px 15px;border-top:1px solid var(--border);display:flex;gap:8px;background:rgba(0,0,0,.15)">
+      <button class="abt ed" onclick="hcOpenEdit('${t.id}')">✎ Редактировать</button>
+      ${!isDone
+        ?`<button class="abt" style="background:rgba(122,200,144,.08);color:var(--green);border:1px solid rgba(122,200,144,.2)" onclick="hcMarkDone('${t.id}')">✓ Завершить</button>`
+        :`<button class="abt" style="background:rgba(138,170,200,.08);color:var(--blue);border:1px solid rgba(138,170,200,.2)" onclick="hcMarkActive('${t.id}')">↩ В работу</button>`}
+      <button class="abt dl" onclick="hcDelTask('${t.id}')">✕ Удалить</button>
+    </div>
+  </div>`;
+}
+
+function hcRenderSummary() {
+  const all=HC_TASKS, total=all.length;
+  const done=all.filter(t=>t.progress==='100').length;
+  const active=total-done;
+  const pct=total?Math.round(all.reduce((s,t)=>s+parseInt(t.progress||0),0)/total):0;
+  const high=all.filter(t=>t.priority==='Высокий'&&t.progress!=='100').length;
+  const mid=all.filter(t=>t.priority==='Средний'&&t.progress!=='100').length;
+  const low=all.filter(t=>t.priority==='Низкий'&&t.progress!=='100').length;
+  const rc=pct===100?'var(--green)':pct>=50?'var(--warn)':'var(--blue)';
+  const circum=2*Math.PI*26;
+  const catRows=HC_CATS.map(c=>{
+    const ct=all.filter(t=>t.category===c).length; if(!ct)return '';
+    const cd=all.filter(t=>t.category===c&&t.progress==='100').length;
+    const cp=ct?Math.round(cd/ct*100):0;
+    const cc=cp===100?'var(--green)':cp>=50?'var(--warn)':'var(--blue)';
+    return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--dim)">${c}</span><span style="font-size:10px;color:var(--muted)">${cd}/${ct} · ${cp}%</span></div><div style="background:var(--bg3);border-radius:3px;height:5px;overflow:hidden"><div style="height:100%;width:${cp}%;background:${cc};border-radius:3px;transition:width .3s"></div></div></div>`;
+  }).join('');
+  document.getElementById('hcSummary').innerHTML=`
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:18px 20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div><div style="font-family:'Unbounded',sans-serif;font-size:12px;font-weight:600;color:var(--gold)">Антонов Иван Дмитриевич</div><div style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:3px">Head CS · Личные задачи</div></div>
+        <div style="position:relative;width:64px;height:64px;flex-shrink:0">
+          <svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="var(--border)" stroke-width="6"/><circle cx="32" cy="32" r="26" fill="none" stroke="${rc}" stroke-width="6" stroke-dasharray="${circum.toFixed(2)}" stroke-dashoffset="${(circum*(1-pct/100)).toFixed(2)}" stroke-linecap="round" transform="rotate(-90 32 32)"/></svg>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700;color:var(--text)">${pct}%</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <div style="text-align:center;background:var(--bg3);border-radius:3px;padding:7px 12px;flex:1"><div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">${total}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Всего</div></div>
+        <div style="text-align:center;background:var(--bg3);border-radius:3px;padding:7px 12px;flex:1"><div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--blue)">${active}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">В работе</div></div>
+        <div style="text-align:center;background:var(--bg3);border-radius:3px;padding:7px 12px;flex:1"><div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--green)">${done}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Закрыто</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${high?`<span style="font-size:10px;padding:3px 8px;border-radius:2px;background:rgba(200,122,122,.15);color:var(--red);border:1px solid rgba(200,122,122,.28)">🔴 Высокий: ${high}</span>`:''}
+        ${mid?`<span style="font-size:10px;padding:3px 8px;border-radius:2px;background:rgba(200,168,122,.15);color:var(--warn);border:1px solid rgba(200,168,122,.28)">🟡 Средний: ${mid}</span>`:''}
+        ${low?`<span style="font-size:10px;padding:3px 8px;border-radius:2px;background:rgba(122,200,144,.15);color:var(--green);border:1px solid rgba(122,200,144,.28)">🟢 Низкий: ${low}</span>`:''}
+      </div>
+      <div style="margin-top:12px;background:var(--bg3);border-radius:3px;height:6px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${rc};transition:width .3s;border-radius:3px"></div></div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:18px 20px">
+      <div style="font-family:'Unbounded',sans-serif;font-size:12px;font-weight:600;color:var(--gold);margin-bottom:4px">По категориям</div>
+      <div style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:16px">Распределение задач</div>
+      ${catRows||'<div style="color:var(--muted);font-size:11px">Нет данных</div>'}
+    </div>
+  </div>`;
+}
+
+function hcRenderCols() {
+  const filtered=_hcFilter==='all'?HC_TASKS:HC_TASKS.filter(t=>t.category===_hcFilter);
+  const active=filtered.filter(t=>t.progress!=='100');
+  const done=filtered.filter(t=>t.progress==='100');
+  document.getElementById('hcColActive').innerHTML=active.length?active.map(t=>hcTaskCard(t,false)).join(''):'<div style="text-align:center;padding:32px;color:var(--muted);font-size:12px">Нет активных задач</div>';
+  document.getElementById('hcColDone').innerHTML=done.length?done.map(t=>hcTaskCard(t,true)).join(''):'<div style="text-align:center;padding:32px;color:var(--muted);font-size:12px">Завершённых задач пока нет</div>';
+  document.getElementById('hcCntActive').textContent=active.length;
+  document.getElementById('hcCntDone').textContent=done.length;
+}
+
+function hcRenderAll(){hcRenderSummary();hcRenderCols();}
+
+async function headCsRender() {
+  if(!_hcLoaded){await hcLoad();_hcLoaded=true;}
+  document.getElementById('headCsContent').innerHTML=`
+    <div id="hcSummary"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="hc-cf-btn on" onclick="hcFilter('all',this)">Все</button>
+      ${HC_CATS.map(c=>`<button class="hc-cf-btn" onclick="hcFilter('${c}',this)">${c}</button>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="font-family:'Unbounded',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--blue)">В работе</div>
+          <span id="hcCntActive" style="font-size:10px;padding:2px 8px;border-radius:2px;background:var(--bg3);color:var(--dim)">0</span>
+        </div>
+        <div id="hcColActive"></div>
+        <button onclick="hcOpenAdd()" style="width:100%;padding:10px;border:1px dashed var(--border2);background:transparent;color:var(--dim);font-family:'Golos Text',sans-serif;font-size:11px;cursor:pointer;border-radius:4px;margin-top:4px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--dim)'">+ Добавить задачу</button>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="font-family:'Unbounded',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--green)">Завершено</div>
+          <span id="hcCntDone" style="font-size:10px;padding:2px 8px;border-radius:2px;background:var(--bg3);color:var(--dim)">0</span>
+        </div>
+        <div id="hcColDone"></div>
+      </div>
+    </div>`;
+  hcRenderAll();
+}
+</script>
+
+<div class="ov" id="hcTaskOv">
+  <div class="modal">
+    <button class="mclose" onclick="cm('hcTaskOv')">✕</button>
+    <h2 id="hc_title">Новая задача</h2>
+    <div class="fgrid">
+      <div class="fg full"><label>Название задачи</label><input id="hc_t_title" placeholder="Что нужно сделать?"></div>
+      <div class="fg"><label>Приоритет</label><select id="hc_t_priority"><option>Высокий</option><option selected>Средний</option><option>Низкий</option></select></div>
+      <div class="fg"><label>Дедлайн</label><input id="hc_t_deadline" placeholder="дд.мм.гггг"></div>
+      <div class="fg"><label>Категория</label><select id="hc_t_category"><option>Стратегия</option><option>Команда</option><option>Процессы</option><option>Продукт</option><option>Прочее</option></select></div>
+      <div class="fg"><label>Прогресс</label><select id="hc_t_progress"><option value="0">0% — Начато</option><option value="25">25% — В работе</option><option value="50">50% — Половина</option><option value="75">75% — Доработка</option><option value="100">100% — Завершено</option></select></div>
+      <div class="fg full"><label>Описание / комментарий</label><textarea id="hc_t_description" rows="3" placeholder="Детали задачи, контекст..."></textarea></div>
+    </div>
+    <div class="mbtns"><button class="bcancel" onclick="cm('hcTaskOv')">Отмена</button><button class="bsave" onclick="hcSaveTask()">Сохранить</button></div>
+  </div>
+</div>
 
 </body>
 </html>
