@@ -374,14 +374,14 @@ app.post('/api/payroll', requireAuth, requireEditor, async (req, res) => {
         new_mot_repeat_plan,new_mot_repeat_fact,
         new_mot_first_plan,new_mot_first_fact,
         extra_bonuses,total,plan_days,fact_days,krm_rsr,krm_pct,krm_saved)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
        ON CONFLICT (id) DO UPDATE SET
          month=$2,employee_id=$3,name=$4,block=$5,sub=$6,salary=$7,bonus_type=$8,
          bonus_clients=$9,bonus_tickets=$10,bonus_chats=$11,
          new_mot_base=$12,new_mot_clients_plan=$13,new_mot_clients_fact=$14,
          new_mot_repeat_plan=$15,new_mot_repeat_fact=$16,
          new_mot_first_plan=$17,new_mot_first_fact=$18,
-         extra_bonuses=$19,total=$20,plan_days=$21,fact_days=$22,krm_rsr=$24,krm_pct=$25,krm_saved=$26`,
+         extra_bonuses=$19,total=$20,plan_days=$21,fact_days=$22,krm_rsr=$23,krm_pct=$24,krm_saved=$25`,
       [p.id,p.month,p.employee_id||'',p.name,p.block,p.sub||'',
        p.salary||0,p.bonus_type||'',
        p.bonus_clients||0,p.bonus_tickets||0,p.bonus_chats||0,
