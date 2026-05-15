@@ -528,16 +528,17 @@ function renderTL(){['TL_BUSH','TL_EVS'].forEach(block=>{
   const key=block==='TL_BUSH'?'bush':'evs';
   const tl=byM(DB.employees).find(e=>e.block===block);
   if(!tl)return;
-  document.getElementById(key+'-ava').textContent=ini(tl.name);
   document.getElementById(key+'-info').innerHTML=`
     <div class="tl-name">${tl.name}</div>
     <div class="tl-role">${tl.role||'Team Lead'}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:5px">
-      <div style="font-size:10px;color:var(--dim)">Вход: <b style="color:var(--text)">${tl.entry||'—'}</b></div>
-      <div style="font-size:10px;color:var(--dim)">Стаж: <b style="color:var(--text)">${tenure(tl.entry)}</b></div>
-      <div style="font-size:10px;color:var(--dim)">График: <b style="color:var(--text)">${tl.schedule||'—'}</b></div>
-      <div style="font-size:10px;color:var(--dim)">План: <b style="color:var(--text)">${tl.plan||'—'}</b></div>
-      <div style="font-size:10px;color:var(--dim)">TG: <b style="color:var(--accent)">${tl.tg||'—'}</b></div>
+    <div class="head-meta" style="margin-top:5px">
+      <div class="hm">Вход: <b>${tl.entry||'—'}</b></div>
+      <div class="hm">Стаж: <b>${tenure(tl.entry)}</b></div>
+      <div class="hm">График: <b>${tl.schedule||'—'}</b></div>
+      <div class="hm">План: <b>${tl.plan||'—'}</b></div>
+      <div class="hm">Город: <b>${tl.city||'—'}</b></div>
+      <div class="hm">ЧП: <b>${tl.tz||'—'}</b></div>
+      <div class="hm">TG: <b>${tl.tg||'—'}</b></div>
     </div>`;
   document.getElementById(key+'-sched').textContent=tl.schedule||'—';
 });}
