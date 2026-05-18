@@ -1755,6 +1755,7 @@ const OPS_PER_WEEK = [
   'ops-0u-total','ops-mail-sent','ops-came','ops-not-came','ops-not-came-comment'
 ];
 const OPS_LAST_VAL = ['krm-ret-sum','ops-disband','ops-disband-wip','ops-disband-no'];
+const OPS_AVG_FIELDS = ['krm-sla'];
 const OPS_TEXT = ['t1-done','t1-plan','t2-done','t2-plan','thp-best','ops-disband-no-comment','ops-not-came-comment'];
 
 let opsStore = {1:{},2:{},3:{},4:{}};
@@ -1804,6 +1805,10 @@ function opsLoadMonth() {
       let last='0';
       for(let w=4;w>=1;w--){ const v=opsStore[w]?.[id]; if(v&&v!=='0'&&v!==''){last=v;break;} }
       opsSv(id,last);
+    } else if(OPS_AVG_FIELDS.includes(id)){
+      let sum=0, cnt=0;
+      for(let w=1;w<=4;w++){ const v=parseFloat(opsStore[w]?.[id]||0)||0; if(v>0){sum+=v;cnt++;} }
+      opsSv(id, cnt>0 ? (sum/cnt).toFixed(1) : '0');
     } else {
       let t=0; for(let w=1;w<=4;w++) t+=parseFloat(opsStore[w]?.[id]||0)||0;
       opsSv(id,t||'0');
