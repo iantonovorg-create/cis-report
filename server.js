@@ -82,6 +82,7 @@ async function initDB() {
 
   await pool.query(`CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
+  month TEXT DEFAULT '',
   tl TEXT,
   title TEXT,
   priority TEXT,
@@ -90,6 +91,7 @@ async function initDB() {
   progress TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 )`);
+  await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS month TEXT DEFAULT ''`).catch(()=>{});
 
   await pool.query(`CREATE TABLE IF NOT EXISTS payroll (
   id TEXT PRIMARY KEY,
@@ -144,6 +146,7 @@ async function initDB() {
 
   await pool.query(`CREATE TABLE IF NOT EXISTS reviews (
   id TEXT PRIMARY KEY,
+  month TEXT DEFAULT '',
   date TEXT,
   platform TEXT,
   rating NUMERIC DEFAULT 0,
@@ -151,6 +154,7 @@ async function initDB() {
   negative INTEGER DEFAULT 0,
   comment TEXT DEFAULT ''
 )`);
+  await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS month TEXT DEFAULT ''`).catch(()=>{});
   
   for (const u of INITIAL_USERS) {
     await pool.query(
@@ -404,10 +408,10 @@ app.post('/api/task', requireAuth, requireEditor, async (req, res) => {
     const t = req.body;
     if (!t.id) t.id = Date.now().toString(36)+Math.random().toString(36).slice(2,5);
     await pool.query(
-      `INSERT INTO tasks (id,tl,title,priority,deadline,description,progress,created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
-       ON CONFLICT (id) DO UPDATE SET tl=$2,title=$3,priority=$4,deadline=$5,description=$6,progress=$7`,
-      [t.id,t.tl||'',t.title||'',t.priority||'Средний',t.deadline||'',t.description||'',t.progress||'0']);
+      `INSERT INTO tasks (id,month,tl,title,priority,deadline,description,progress,created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+       ON CONFLICT (id) DO UPDATE SET month=$2,tl=$3,title=$4,priority=$5,deadline=$6,description=$7,progress=$8`,
+      [t.id,t.month||'',t.tl||'',t.title||'',t.priority||'Средний',t.deadline||'',t.description||'',t.progress||'0']);
     res.json({ ok: true, id: t.id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -467,7 +471,10 @@ app.delete('/api/payroll/:id', requireAuth, requireEditor, async (req, res) => {
 // ── API: REVIEWS ─────────────────────────────────────────────────────────────
 app.get('/api/reviews', requireAuth, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM reviews ORDER BY date DESC');
+    const month = req.query.month || '';
+    const { rows } = month
+      ? await pool.query('SELECT * FROM reviews WHERE month=\$1 ORDER BY date DESC', [month])
+      : await pool.query('SELECT * FROM reviews ORDER BY date DESC');
     res.json(rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -477,10 +484,10 @@ app.post('/api/review', requireAuth, requireReviewsEditor, async (req, res) => {
     const r = req.body;
     if (!r.id) r.id = Date.now().toString(36)+Math.random().toString(36).slice(2,5);
     await pool.query(
-      `INSERT INTO reviews (id,date,platform,rating,positive,negative,comment)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
-       ON CONFLICT (id) DO UPDATE SET date=$2,platform=$3,rating=$4,positive=$5,negative=$6,comment=$7`,
-      [r.id,r.date,r.platform,r.rating||0,r.positive||0,r.negative||0,r.comment||'']);
+      `INSERT INTO reviews (id,month,date,platform,rating,positive,negative,comment)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (id) DO UPDATE SET month=$2,date=$3,platform=$4,rating=$5,positive=$6,negative=$7,comment=$8`,
+      [r.id,r.month||'',r.date,r.platform,r.rating||0,r.positive||0,r.negative||0,r.comment||'']);
     res.json({ ok: true, id: r.id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -499,6 +506,7 @@ app.delete('/api/month/:month', requireAuth, requireAdmin, async (req, res) => {
     await pool.query('DELETE FROM employees WHERE month=$1', [month]);
     await pool.query('DELETE FROM payroll WHERE month=$1', [month]);
     await pool.query('DELETE FROM tasks WHERE month=$1', [month]).catch(()=>{});
+    await pool.query('DELETE FROM reviews WHERE month=$1', [month]).catch(()=>{});
     await pool.query('DELETE FROM ops_report WHERE period=$1', [month]).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
