@@ -117,6 +117,12 @@ async function initDB() {
   total NUMERIC DEFAULT 0
 )`);
 
+  await pool.query(`CREATE TABLE IF NOT EXISTS custom_roles (
+    name TEXT PRIMARY KEY,
+    tabs TEXT[] NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
   await pool.query(`CREATE TABLE IF NOT EXISTS head_tasks (
     id TEXT PRIMARY KEY,
     title TEXT,
@@ -268,11 +274,12 @@ app.get('/api/presence', requireAuth, async (req, res) => {
 
 app.get('/api/data', requireAuth, async (req, res) => {
   try {
-    const [emp, meet] = await Promise.all([
+    const [emp, meet, roles] = await Promise.all([
       pool.query('SELECT * FROM employees ORDER BY month,block,name'),
-      pool.query('SELECT * FROM meetings ORDER BY month,date')
+      pool.query('SELECT * FROM meetings ORDER BY month,date'),
+      pool.query('SELECT * FROM custom_roles ORDER BY name')
     ]);
-    res.json({ employees: emp.rows, meetings: meet.rows });
+    res.json({ employees: emp.rows, meetings: meet.rows, customRoles: roles.rows||[] });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -481,6 +488,46 @@ app.post('/api/review', requireAuth, requireReviewsEditor, async (req, res) => {
 app.delete('/api/review/:id', requireAuth, requireReviewsEditor, async (req, res) => {
   try {
     await pool.query('DELETE FROM reviews WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── API: DELETE MONTH ────────────────────────────────────────────────────────
+app.delete('/api/month/:month', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const month = decodeURIComponent(req.params.month);
+    await pool.query('DELETE FROM employees WHERE month=$1', [month]);
+    await pool.query('DELETE FROM payroll WHERE month=$1', [month]);
+    await pool.query('DELETE FROM tasks WHERE month=$1', [month]).catch(()=>{});
+    await pool.query('DELETE FROM ops_report WHERE period=$1', [month]).catch(()=>{});
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── API: CUSTOM ROLES ────────────────────────────────────────────────────────
+app.get('/api/custom-roles', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM custom_roles ORDER BY name');
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/custom-role', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { name, tabs } = req.body;
+    if (!name) return res.status(400).json({ error: 'name required' });
+    await pool.query(
+      `INSERT INTO custom_roles (name, tabs) VALUES ($1,$2)
+       ON CONFLICT (name) DO UPDATE SET tabs=$2`,
+      [name.toLowerCase().replace(/\s+/g,'_'), JSON.stringify(tabs||[])]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/custom-role/:name', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM custom_roles WHERE name=$1', [req.params.name]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
