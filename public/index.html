@@ -292,8 +292,8 @@ body.viewer-mode .pr-save-btn
   <div class="panel" id="p-km">
     <div class="km-ctrl">
       <input class="srch" id="kmQ" type="text" placeholder="Поиск по имени…" oninput="renderKM()">
-      <button class="fb on" onclick="kp('all',this)">Все</button>
-      <button class="fb" onclick="kp('cur',this)">Текущий месяц</button>
+      <button class="fb" onclick="kp('all',this)">Все</button>
+      <button class="fb on" onclick="kp('cur',this)" id="kmFilterCur">Текущий месяц</button>
       <button class="fb" onclick="kp('2025',this)">2025</button>
       <button class="btn-akm" onclick="openAddKM()">+ Добавить встречу</button>
     </div>
@@ -309,6 +309,7 @@ body.viewer-mode .pr-save-btn
   <div class="panel" id="p-tasks">
 
   <!-- СВОДКА -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button onclick="openTrash()" style="font-size:10px;padding:5px 14px;border:1px solid var(--border2);background:transparent;color:var(--dim);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif;transition:all .15s" onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.color='var(--dim)';this.style.borderColor='var(--border2)'">🗑 Корзина</button></div>
   <div id="tasksSummary" style="margin-bottom:24px"></div>
 
   <!-- ДВЕ КОЛОНКИ -->
@@ -496,7 +497,7 @@ body.viewer-mode .pr-save-btn
 
 <script>
 let DB={employees:[],meetings:[],customRoles:[]};
-let curMonth='',kmFilter='all',_eId=null,_eBlock=null,_kId=null,selNewMonth='';
+let curMonth='',kmFilter='cur',_eId=null,_eBlock=null,_kId=null,selNewMonth='';
 const ALL_MONTHS=['Январь 2026','Февраль 2026','Март 2026','Апрель 2026','Май 2026','Июнь 2026','Июль 2026','Август 2026','Сентябрь 2026','Октябрь 2026','Ноябрь 2026','Декабрь 2026'];
 
 const MONTH_NAMES=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
@@ -832,9 +833,9 @@ function showTab(name,btn){
   if(name==='ops') opsRender();
   if(name==='headcs') headCsRender();
 }
-function switchMonth(m){curMonth=m;renderAll();loadTasks();loadReviews();}
+function switchMonth(m){curMonth=m;renderAll();loadTasks();loadReviews();kmFilter='cur';renderKM();}
 function parseKD(s){const m=s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
-function renderKM(){const q=(document.getElementById('kmQ')?.value||'').toLowerCase().trim();const rows=DB.meetings.filter(r=>{if(q&&!(r.name||'').toLowerCase().includes(q))return false;if(kmFilter==='all')return true;if(kmFilter==='cur')return r.month===curMonth;const dt=parseKD(r.date||'');if(!dt)return true;if(kmFilter==='2025')return dt.getFullYear()===2025;return true;});document.getElementById('kmBody').innerHTML=rows.map(r=>{const dc=r.dyn==='Улучшение'?'du':r.dyn==='Спад'?'dd':r.dyn?'df':'';return`<tr><td style="font-weight:600;white-space:nowrap">${r.name||'—'}</td><td style="white-space:nowrap">${r.date||'—'}</td><td>${r.topic||'—'}</td><td>${r.tasks||'—'}</td><td style="white-space:nowrap">${r.next||'—'}</td><td class="${dc}">${r.dyn||'—'}</td><td style="white-space:nowrap">${r.tl||'—'}</td><td style="white-space:nowrap"><button class="kbt e" onclick="openEditKM('${r.id}')">✎</button><button class="kbt d" onclick="delKM('${r.id}')">✕</button></td></tr>`;}).join('');}
+function renderKM(){const q=(document.getElementById('kmQ')?.value||'').toLowerCase().trim();const rows=DB.meetings.filter(r=>{if(q&&!(r.name||'').toLowerCase().includes(q))return false;if(kmFilter==='cur')return r.month===curMonth;if(kmFilter==='all')return true;const dt=parseKD(r.date||'');if(!dt)return false;if(kmFilter==='2025')return dt.getFullYear()===2025;if(kmFilter==='2026')return dt.getFullYear()===2026;return true;});document.getElementById('kmBody').innerHTML=rows.map(r=>{const dc=r.dyn==='Улучшение'?'du':r.dyn==='Спад'?'dd':r.dyn?'df':'';return`<tr><td style="font-weight:600;white-space:nowrap">${r.name||'—'}</td><td style="white-space:nowrap">${r.date||'—'}</td><td>${r.topic||'—'}</td><td>${r.tasks||'—'}</td><td style="white-space:nowrap">${r.next||'—'}</td><td class="${dc}">${r.dyn||'—'}</td><td style="white-space:nowrap">${r.tl||'—'}</td><td style="white-space:nowrap"><button class="kbt e" onclick="openEditKM('${r.id}')">✎</button><button class="kbt d" onclick="delKM('${r.id}')">✕</button></td></tr>`;}).join('');}
 function kp(p,btn){kmFilter=p;btn.closest('.km-ctrl').querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderKM();}
 const EF=['name','role','sub','entry','schedule','plan','fact','vacation','status','dismiss','functions','extra','comment','city','tz','phone','tg','birthdate','salary_base','tax_zone'];
 function openAddEmp(block){_eId=null;_eBlock=block;document.getElementById('empTitle').textContent='Добавить сотрудника';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value='';});om('empOv');}
@@ -857,7 +858,7 @@ async function moveEmp(id, currentBlock) {
 const KF=['name','date','tl','topic','tasks','next','dyn'];
 function openAddKM(){_kId=null;document.getElementById('kmTitle').textContent='Добавить встречу';KF.forEach(k=>{const el=document.getElementById('k_'+k);if(el)el.value='';});om('kmOv');}
 function openEditKM(id){_kId=id;const r=DB.meetings.find(x=>x.id===id);if(!r)return;document.getElementById('kmTitle').textContent='Редактировать встречу';KF.forEach(k=>{const el=document.getElementById('k_'+k);if(el)el.value=r[k]||'';});om('kmOv');}
-async function saveKM(){const obj={month:curMonth};KF.forEach(k=>{obj[k]=(document.getElementById('k_'+k)?.value||'').trim();});if(!obj.name){alert('Введи имя');return;}if(_kId)obj.id=_kId;await api('POST','/api/meeting',obj);await loadData();cm('kmOv');toast('Сохранено ✓');}
+async function saveKM(){const existing=_kId?DB.meetings.find(x=>x.id===_kId):null;const obj={month:existing?existing.month:curMonth};KF.forEach(k=>{obj[k]=(document.getElementById('k_'+k)?.value||'').trim();});if(!obj.name){alert('Введи имя');return;}if(_kId)obj.id=_kId;await api('POST','/api/meeting',obj);await loadData();cm('kmOv');toast('Сохранено ✓');}
 async function delKM(id){if(!confirm('Удалить встречу?'))return;await api('DELETE',`/api/meeting/${id}`);await loadData();toast('Удалено');}
 function openNewMonth(){selNewMonth='';const used=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];document.getElementById('mchips').innerHTML=ALL_MONTHS.map(m=>`<button class="mchip${used.includes(m)?' used':''}" onclick="pickMonth('${m}',this)">${m}${used.includes(m)?' ✓':''}</button>`).join('');document.querySelector('[name=cmode][value=copy]').checked=true;om('monthOv');}
 function pickMonth(m,btn){document.querySelectorAll('.mchip:not(.used)').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');selNewMonth=m;}
@@ -1078,10 +1079,49 @@ async function saveTask() {
 }
 
 async function delTask(id) {
-  if (!confirm('Удалить задачу?')) return;
+  if (!confirm('Переместить задачу в корзину?\nВосстановить можно в течение 30 дней через кнопку "Корзина".')) return;
   await api('DELETE', `/api/task/${id}`);
   await loadTasks();
-  toast('Удалено');
+  toast('Задача перемещена в корзину');
+}
+
+async function openTrash() {
+  try {
+    const deleted = await api('GET', '/api/tasks?trash=1');
+    const el = document.getElementById('trashList');
+    if (!deleted.length) {
+      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">Корзина пуста</div>';
+    } else {
+      el.innerHTML = deleted.map(t => {
+        const deletedDays = Math.floor((Date.now() - new Date(t.deleted_at).getTime()) / 86400000);
+        const daysLeft = 30 - deletedDays;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;margin-bottom:8px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600;color:var(--text)">${t.title||'—'}</div>
+            <div style="font-size:10px;color:var(--dim);margin-top:2px">${t.tl||'—'} · ${t.month||'—'} · Удалено ${deletedDays} дн. назад</div>
+            <div style="font-size:9px;color:var(--warn);margin-top:1px">Удалится через ${daysLeft} дн.</div>
+          </div>
+          <button onclick="restoreTask('${t.id}')" style="font-size:10px;padding:4px 10px;border:1px solid rgba(122,200,144,.3);background:transparent;color:var(--green);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif;white-space:nowrap">↩ Восстановить</button>
+          <button onclick="permDeleteTask('${t.id}')" style="font-size:10px;padding:4px 10px;border:1px solid rgba(200,122,122,.3);background:transparent;color:var(--red);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif">✕</button>
+        </div>`;
+      }).join('');
+    }
+    om('trashOv');
+  } catch(e) { toast('Ошибка загрузки корзины'); }
+}
+
+async function restoreTask(id) {
+  await api('POST', `/api/task/${id}/restore`, {});
+  toast('Задача восстановлена ✓');
+  openTrash();
+  await loadTasks();
+}
+
+async function permDeleteTask(id) {
+  if (!confirm('Удалить задачу навсегда? Это действие нельзя отменить.')) return;
+  await api('DELETE', `/api/task/${id}/permanent`);
+  toast('Удалено навсегда');
+  openTrash();
 }
  // ══════════════════════════════════════════════════════
 // PAYROLL
@@ -2722,6 +2762,16 @@ async function deleteCustomRole(name) {
       <button class="bcancel" onclick="cm('customRoleOv')">Отмена</button>
       <button class="bsave" onclick="saveCustomRole()">Сохранить</button>
     </div>
+  </div>
+</div>
+
+<!-- TRASH MODAL -->
+<div class="ov" id="trashOv">
+  <div class="modal" style="max-width:560px">
+    <button class="mclose" onclick="cm('trashOv')">✕</button>
+    <h2 style="margin-bottom:6px">🗑 Корзина — задачи</h2>
+    <div style="font-size:11px;color:var(--dim);margin-bottom:16px">Задачи хранятся 30 дней, затем удаляются автоматически</div>
+    <div id="trashList"></div>
   </div>
 </div>
 
