@@ -2510,6 +2510,7 @@ async function loadUsers() {
   try {
     _usersList = await api('GET', '/api/users');
     renderUsersList();
+    renderCustomRolesList();
   } catch(e) { toast('Ошибка загрузки пользователей'); }
 }
 
@@ -2690,12 +2691,7 @@ async function deleteCustomRole(name) {
   } catch(e) { toast('Ошибка: '+e.message); }
 }
 
-// Override loadUsers to also render custom roles
-const _origLoadUsers = loadUsers;
-async function loadUsers() {
-  await _origLoadUsers();
-  renderCustomRolesList();
-}
+// Custom roles rendered directly in openUsersModal
 </script>
 
 <!-- CUSTOM ROLE MODAL -->
