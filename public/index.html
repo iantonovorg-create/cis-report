@@ -832,7 +832,7 @@ function showTab(name,btn){
   if(name==='ops') opsRender();
   if(name==='headcs') headCsRender();
 }
-function switchMonth(m){curMonth=m;renderAll();}
+function switchMonth(m){curMonth=m;renderAll();loadTasks();loadReviews();}
 function parseKD(s){const m=s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
 function renderKM(){const q=(document.getElementById('kmQ')?.value||'').toLowerCase().trim();const rows=DB.meetings.filter(r=>{if(q&&!(r.name||'').toLowerCase().includes(q))return false;if(kmFilter==='all')return true;if(kmFilter==='cur')return r.month===curMonth;const dt=parseKD(r.date||'');if(!dt)return true;if(kmFilter==='2025')return dt.getFullYear()===2025;return true;});document.getElementById('kmBody').innerHTML=rows.map(r=>{const dc=r.dyn==='Улучшение'?'du':r.dyn==='Спад'?'dd':r.dyn?'df':'';return`<tr><td style="font-weight:600;white-space:nowrap">${r.name||'—'}</td><td style="white-space:nowrap">${r.date||'—'}</td><td>${r.topic||'—'}</td><td>${r.tasks||'—'}</td><td style="white-space:nowrap">${r.next||'—'}</td><td class="${dc}">${r.dyn||'—'}</td><td style="white-space:nowrap">${r.tl||'—'}</td><td style="white-space:nowrap"><button class="kbt e" onclick="openEditKM('${r.id}')">✎</button><button class="kbt d" onclick="delKM('${r.id}')">✕</button></td></tr>`;}).join('');}
 function kp(p,btn){kmFilter=p;btn.closest('.km-ctrl').querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderKM();}
@@ -932,12 +932,13 @@ const PROGRESS_COLOR = { '0':'var(--muted)','25':'var(--blue)','50':'var(--warn)
 
 async function loadTasks() {
   try {
-    TASKS = await (await fetch('/api/tasks')).json();
+    TASKS = await api('GET', '/api/tasks?month='+encodeURIComponent(curMonth));
     renderTasks();
   } catch(e) { console.error(e); }
 }
 
 function renderTasks() {
+  // Filter by month (tasks already loaded per month from API)
   renderTasksSummary();
   renderTasksList('Таня', 'tasks-bush');
   renderTasksList('Наташа', 'tasks-evs');
@@ -1066,7 +1067,7 @@ function openEditTask(id) {
 }
 
 async function saveTask() {
-  const obj = { tl: _tTL };
+  const obj = { tl: _tTL, month: curMonth };
   TF.forEach(k => { obj[k] = (document.getElementById('t_'+k)?.value||'').trim(); });
   if (!obj.title) { alert('Введи название задачи'); return; }
   if (_tId) obj.id = _tId;
@@ -1607,7 +1608,7 @@ let _revId = null, _revPlatform = null;
 
 async function loadReviews() {
   try {
-    REVIEWS = await (await fetch('/api/reviews')).json();
+    REVIEWS = await api('GET', '/api/reviews?month='+encodeURIComponent(curMonth));
     renderReviews();
   } catch(e) { console.error(e); }
 }
@@ -1756,6 +1757,7 @@ function openEditReview(id, platformId) {
 async function saveReview() {
   const obj = {
     id: _revId || undefined,
+    month: curMonth,
     platform: _revPlatform,
     date: document.getElementById('rev_date').value.trim(),
     positive: parseInt(document.getElementById('rev_positive').value)||0,
