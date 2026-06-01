@@ -220,6 +220,7 @@ body.viewer-mode .pr-save-btn
     <button class="btn-nm" onclick="openNewMonth()">+ Новый месяц</button>
 <button class="btn-nm" onclick="loadData()" style="border-color:var(--blue);color:var(--blue)" id="reloadBtn">↻ Обновить</button>
   <button class="btn-nm" id="usersBtn" onclick="openUsersModal()" style="display:none;border-color:var(--sage);color:var(--sage)">⚙ Доступы</button>
+  <button class="btn-nm" id="delMonthBtn" onclick="openDelMonth()" style="display:none;border-color:var(--red);color:var(--red)">✕ Удалить месяц</button>
   </div>
   <div class="hdr-stats" id="hdrStats"></div>
 </div>
@@ -494,7 +495,7 @@ body.viewer-mode .pr-save-btn
   <div class="presence-notif" id="presenceNotif"></div>
 
 <script>
-let DB={employees:[],meetings:[]};
+let DB={employees:[],meetings:[],customRoles:[]};
 let curMonth='',kmFilter='all',_eId=null,_eBlock=null,_kId=null,selNewMonth='';
 const ALL_MONTHS=['Январь 2026','Февраль 2026','Март 2026','Апрель 2026','Май 2026','Июнь 2026','Июль 2026','Август 2026','Сентябрь 2026','Октябрь 2026','Ноябрь 2026','Декабрь 2026'];
 
@@ -545,26 +546,54 @@ function pickCustomMonth(){
 
 async function api(method,url,body){const opts={method,headers:{'Content-Type':'application/json'}};if(body)opts.body=JSON.stringify(body);const r=await fetch(url,opts);return r.json();}
 function applyRoleRestrictions(role){
+  const TAB_MAP = {
+    'team':'Команда','km':'Работа с КМ','tasks':'Задачи',
+    'ops':'Опер','reviews':'Отзывы','payroll':'ЗП Ведомость'
+  };
   if(role==='admin'){
     const hTab=document.getElementById('headCsTab');
     if(hTab) hTab.style.display='';
     const uBtn=document.getElementById('usersBtn');
     if(uBtn) uBtn.style.display='';
-  }
-  if(role==='viewer'){
-    document.body.classList.add('viewer-mode');
+    const dBtn=document.getElementById('delMonthBtn');
+    if(dBtn) dBtn.style.display='';
+    return;
   }
   if(role==='reviews_editor'){
     document.querySelectorAll('.tab').forEach(t=>{if(!t.textContent.includes('Отзывы'))t.style.display='none';});
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
     document.getElementById('p-reviews')?.classList.add('on');
     document.getElementById('hdrStats')?.style&&(document.getElementById('hdrStats').style.display='none');
-  } else if(role==='ops_editor'){
+    return;
+  }
+  if(role==='ops_editor'){
     document.querySelectorAll('.tab').forEach(t=>{if(!t.textContent.includes('Опер'))t.style.display='none';});
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
     document.getElementById('p-ops')?.classList.add('on');
     document.getElementById('hdrStats')?.style&&(document.getElementById('hdrStats').style.display='none');
     setTimeout(opsRender,100);
+    return;
+  }
+  // Custom role
+  const customRole=(DB.customRoles||[]).find(r=>r.name===role);
+  if(customRole&&customRole.tabs&&customRole.tabs.length>0){
+    const allowed=customRole.tabs;
+    document.querySelectorAll('.tab').forEach(t=>{
+      if(t.id==='headCsTab')return;
+      const matches=allowed.some(tid=>t.textContent.includes(TAB_MAP[tid]||tid));
+      if(!matches)t.style.display='none';
+    });
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+    const firstPanel=document.getElementById('p-'+allowed[0]);
+    if(firstPanel)firstPanel.classList.add('on');
+    document.getElementById('hdrStats')?.style&&(document.getElementById('hdrStats').style.display='none');
+    if(allowed.includes('ops'))setTimeout(opsRender,100);
+    return;
+  }
+  // viewer — sees all, no edit buttons
+  if(role==='viewer'){
+    document.querySelectorAll('.abt.ed,.abt.dl,.btn-add').forEach(el=>el.style.display='none');
+    document.querySelectorAll('button[onclick*="openEditEmp"],button[onclick*="openAddEmp"],button[onclick*="openEditTL"]').forEach(el=>el.style.display='none');
   }
 }
 async function loadData(){
@@ -832,7 +861,22 @@ async function saveKM(){const obj={month:curMonth};KF.forEach(k=>{obj[k]=(docume
 async function delKM(id){if(!confirm('Удалить встречу?'))return;await api('DELETE',`/api/meeting/${id}`);await loadData();toast('Удалено');}
 function openNewMonth(){selNewMonth='';const used=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];document.getElementById('mchips').innerHTML=ALL_MONTHS.map(m=>`<button class="mchip${used.includes(m)?' used':''}" onclick="pickMonth('${m}',this)">${m}${used.includes(m)?' ✓':''}</button>`).join('');document.querySelector('[name=cmode][value=copy]').checked=true;om('monthOv');}
 function pickMonth(m,btn){document.querySelectorAll('.mchip:not(.used)').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');selNewMonth=m;}
-async function confirmNewMonth(){if(!selNewMonth){alert('Выбери месяц');return;}const mode=document.querySelector('[name=cmode]:checked').value;if(mode==='copy'){const empToCopy=byM(DB.employees).map(e=>({...e,id:uid(),month:selNewMonth,fact:''}));for(const e of empToCopy)await api('POST','/api/employee',e);}curMonth=selNewMonth;await loadData();cm('monthOv');toast(`Месяц ${selNewMonth} создан`);}
+async function confirmNewMonth(){
+  if(!selNewMonth){alert('Выбери месяц');return;}
+  const mode=document.querySelector('[name=cmode]:checked').value;
+  if(mode==='copy'){
+    // Check if month already has employees — prevent duplicates
+    const existing=DB.employees.filter(e=>e.month===selNewMonth);
+    if(existing.length>0){
+      if(!confirm(`В месяце ${selNewMonth} уже есть ${existing.length} сотрудников. Перезаписать?`))return;
+      // Delete existing employees for this month first
+      for(const e of existing) await api('DELETE','/api/employee/'+e.id).catch(()=>{});
+    }
+    const empToCopy=byM(DB.employees).map(e=>({...e,id:uid(),month:selNewMonth,fact:'',vacation:'',comment:''}));
+    for(const e of empToCopy)await api('POST','/api/employee',e);
+  }
+  curMonth=selNewMonth;await loadData();cm('monthOv');toast(`Месяц ${selNewMonth} создан`);
+}
 function openRolePopup(role){
   const rows=byM(DB.employees).filter(e=>e.role===role);
   const colors={'Стабилен':'var(--green)','Требует наблюдения':'var(--warn)','Зона риска':'var(--red)','Увольнение':'var(--red)','Потенциал роста':'var(--purple)'};
@@ -1754,7 +1798,7 @@ const OPS_PER_WEEK = [
   'ops-krm-check','ops-krm-score','ops-under','ops-over','ops-absent',
   'ops-0u-total','ops-mail-sent','ops-came','ops-not-came','ops-not-came-comment'
 ];
-const OPS_LAST_VAL = ['krm-ret-sum','ops-disband','ops-disband-wip','ops-disband-no'];
+const OPS_LAST_VAL = ['krm-ret-sum','krm-saved-sum','ops-disband','ops-disband-wip','ops-disband-no'];
 const OPS_AVG_FIELDS = ['krm-sla'];
 const OPS_TEXT = ['t1-done','t1-plan','t2-done','t2-plan','thp-best','ops-disband-no-comment','ops-not-came-comment'];
 
@@ -2396,12 +2440,20 @@ async function headCsRender() {
 
     <div id="usersList" style="margin-bottom:20px"></div>
 
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-family:'Unbounded',sans-serif;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase">Кастомные роли</div>
+        <button onclick="openCustomRoleModal()" style="font-size:10px;padding:3px 10px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif">+ Создать роль</button>
+      </div>
+      <div id="customRolesList"></div>
+    </div>
+
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:16px">
       <div style="font-family:'Unbounded',sans-serif;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:12px">Добавить пользователя</div>
       <div class="fgrid">
         <div class="fg full"><label>Email (Google аккаунт)</label><input id="u_email" placeholder="user@kodland.team" type="email"></div>
         <div class="fg full"><label>Роль</label>
-          <select id="u_role">
+          <select id="u_role" id="uRoleSel">
             <option value="viewer">viewer — просмотр всего</option>
             <option value="editor">editor — редактирование всего</option>
             <option value="reviews_editor">reviews_editor — только отзывы</option>
@@ -2437,6 +2489,21 @@ let _usersList = [];
 async function openUsersModal() {
   om('usersOv');
   await loadUsers();
+  refreshRoleSelect();
+}
+
+function refreshRoleSelect() {
+  const sel = document.getElementById('u_role');
+  if (!sel) return;
+  // Remove old custom options
+  Array.from(sel.options).forEach(o => { if (!['viewer','editor','reviews_editor','ops_editor'].includes(o.value)) o.remove(); });
+  // Add current custom roles
+  (DB.customRoles||[]).forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.name;
+    opt.textContent = r.name + ' — кастомная роль';
+    sel.appendChild(opt);
+  });
 }
 
 async function loadUsers() {
@@ -2466,6 +2533,7 @@ function renderUsersList() {
         <option value="editor" ${u.role==='editor'?'selected':''}>editor</option>
         <option value="reviews_editor" ${u.role==='reviews_editor'?'selected':''}>reviews_editor</option>
         <option value="ops_editor" ${u.role==='ops_editor'?'selected':''}>ops_editor</option>
+        ${(DB.customRoles||[]).map(r=>`<option value="${r.name}" ${u.role===r.name?'selected':''}>${r.name}</option>`).join('')}
         ${isAdmin?'<option value="admin" selected>admin</option>':''}
       </select>
       ${!isAdmin?`<button onclick="removeUser('${u.email}')" style="background:rgba(200,122,122,.08);color:var(--red);border:1px solid rgba(200,122,122,.2);padding:4px 10px;border-radius:2px;font-family:'Golos Text',sans-serif;font-size:11px;cursor:pointer">✕</button>`:'<div style="width:46px"></div>'}
@@ -2503,6 +2571,161 @@ async function removeUser(email) {
   } catch(e) { toast('Ошибка удаления'); }
 }
 </script>
+
+<!-- DELETE MONTH MODAL -->
+<div class="ov" id="delMonthOv">
+  <div class="modal" style="max-width:420px">
+    <button class="mclose" onclick="cm('delMonthOv')">✕</button>
+    <h2 style="color:var(--red)">✕ Удалить месяц</h2>
+    <p class="mnote" style="margin-bottom:16px">Выбери месяц для удаления. Все сотрудники, задачи и ЗП данные за этот месяц будут удалены безвозвратно.</p>
+    <div id="delMonthChips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+    <div class="mbtns">
+      <button class="bcancel" onclick="cm('delMonthOv')">Отмена</button>
+      <button style="padding:8px 20px;background:var(--red);border:none;color:#fff;font-family:'Golos Text',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border-radius:2px" onclick="confirmDelMonth()">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let _delMonth = '';
+
+function openDelMonth() {
+  _delMonth = '';
+  const used = [...new Set(DB.employees.map(e=>e.month).filter(Boolean))].sort();
+  document.getElementById('delMonthChips').innerHTML = used.map(m =>
+    `<button style="padding:7px 14px;border:1px solid var(--border);background:transparent;color:var(--dim);border-radius:2px;cursor:pointer;font-family:'Golos Text',sans-serif;font-size:12px;transition:all .15s"
+      onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.style.borderColor='var(--border)');this.style.borderColor='var(--red)';this.style.color='var(--red)';_delMonth='${m}'"
+    >${m}</button>`
+  ).join('');
+  om('delMonthOv');
+}
+
+async function confirmDelMonth() {
+  if (!_delMonth) { alert('Выбери месяц для удаления'); return; }
+  if (!confirm(`Удалить ВСЕ данные за ${_delMonth}? Это действие нельзя отменить.`)) return;
+  try {
+    await api('DELETE', '/api/month/' + encodeURIComponent(_delMonth));
+    if (curMonth === _delMonth) {
+      const months = [...new Set(DB.employees.map(e=>e.month).filter(m=>m!==_delMonth))];
+      curMonth = months[months.length-1] || '';
+    }
+    await loadData();
+    cm('delMonthOv');
+    toast(`Месяц ${_delMonth} удалён`);
+  } catch(e) { toast('Ошибка удаления: ' + e.message); }
+}
+</script>
+
+<script>
+// ── CUSTOM ROLES MANAGEMENT ───────────────────────────────────────────────────
+const ALL_TABS = [
+  {id:'team', label:'Команда'},
+  {id:'km', label:'Работа с КМ'},
+  {id:'tasks', label:'Задачи'},
+  {id:'ops', label:'Опер. показатели'},
+  {id:'reviews', label:'Отзывы'},
+  {id:'payroll', label:'ЗП Ведомость'},
+];
+
+function renderCustomRolesList() {
+  const el = document.getElementById('customRolesList');
+  if (!el) return;
+  const roles = DB.customRoles || [];
+  if (!roles.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:4px 0">Кастомных ролей нет</div>';
+    return;
+  }
+  el.innerHTML = roles.map(r => {
+    const tabLabels = (r.tabs||[]).map(t => ALL_TABS.find(x=>x.id===t)?.label||t).join(', ');
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;margin-bottom:6px">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600;color:var(--accent)">${r.name}</div>
+        <div style="font-size:10px;color:var(--dim);margin-top:2px">Вкладки: ${tabLabels||'—'}</div>
+      </div>
+      <button onclick="openCustomRoleModal('${r.name}')" style="font-size:10px;padding:3px 8px;border:1px solid var(--border2);background:transparent;color:var(--dim);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif">✎</button>
+      <button onclick="deleteCustomRole('${r.name}')" style="font-size:10px;padding:3px 8px;border:1px solid rgba(200,122,122,.3);background:transparent;color:var(--red);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif">✕</button>
+    </div>`;
+  }).join('');
+}
+
+let _editRoleName = null;
+
+function openCustomRoleModal(existingName) {
+  _editRoleName = existingName || null;
+  const existing = existingName ? (DB.customRoles||[]).find(r=>r.name===existingName) : null;
+  document.getElementById('crName').value = existing ? existing.name : '';
+  const tabs = existing?.tabs || [];
+  document.querySelectorAll('.cr-tab-check').forEach(cb => {
+    cb.checked = tabs.includes(cb.value);
+  });
+  document.getElementById('crModalTitle').textContent = existing ? 'Редактировать роль' : 'Создать роль';
+  om('customRoleOv');
+}
+
+async function saveCustomRole() {
+  const name = document.getElementById('crName').value.trim();
+  if (!name) { alert('Введи название роли'); return; }
+  const tabs = Array.from(document.querySelectorAll('.cr-tab-check:checked')).map(cb=>cb.value);
+  if (!tabs.length) { alert('Выбери хотя бы одну вкладку'); return; }
+  try {
+    await api('POST', '/api/custom-role', { name, tabs });
+    const idx = (DB.customRoles||[]).findIndex(r=>r.name===name);
+    if (idx!==-1) DB.customRoles[idx] = {name, tabs};
+    else (DB.customRoles=DB.customRoles||[]).push({name, tabs});
+    cm('customRoleOv');
+    renderCustomRolesList();
+    refreshRoleSelect();
+    toast('Роль сохранена ✓');
+  } catch(e) { toast('Ошибка: '+e.message); }
+}
+
+async function deleteCustomRole(name) {
+  if (!confirm('Удалить роль "'+name+'"? Пользователи с этой ролью потеряют доступ.')) return;
+  try {
+    await api('DELETE', '/api/custom-role/'+encodeURIComponent(name));
+    DB.customRoles = (DB.customRoles||[]).filter(r=>r.name!==name);
+    renderCustomRolesList();
+    refreshRoleSelect();
+    toast('Роль удалена ✓');
+  } catch(e) { toast('Ошибка: '+e.message); }
+}
+
+// Override loadUsers to also render custom roles
+const _origLoadUsers = loadUsers;
+async function loadUsers() {
+  await _origLoadUsers();
+  renderCustomRolesList();
+}
+</script>
+
+<!-- CUSTOM ROLE MODAL -->
+<div class="ov" id="customRoleOv">
+  <div class="modal" style="max-width:440px">
+    <button class="mclose" onclick="cm('customRoleOv')">✕</button>
+    <h2 id="crModalTitle">Создать роль</h2>
+    <div class="fgrid">
+      <div class="fg full">
+        <label>Название роли (латиница, без пробелов)</label>
+        <input id="crName" placeholder="например: analyst или km_lead">
+      </div>
+      <div class="fg full">
+        <label>Доступные вкладки</label>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" class="cr-tab-check" value="team" style="accent-color:var(--accent)"> Команда</label>
+<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" class="cr-tab-check" value="km" style="accent-color:var(--accent)"> Работа с КМ</label>
+<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" class="cr-tab-check" value="tasks" style="accent-color:var(--accent)"> Задачи</label>
+<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" class="cr-tab-check" value="ops" style="accent-color:var(--accent)"> Опер. показатели</label>
+<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" class="cr-tab-check" value="reviews" style="accent-color:var(--accent)"> Отзывы</label>
+<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" class="cr-tab-check" value="payroll" style="accent-color:var(--accent)"> ЗП Ведомость</label>
+        </div>
+      </div>
+    </div>
+    <div class="mbtns">
+      <button class="bcancel" onclick="cm('customRoleOv')">Отмена</button>
+      <button class="bsave" onclick="saveCustomRole()">Сохранить</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
