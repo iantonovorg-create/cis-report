@@ -1854,6 +1854,7 @@ function opsSv(id,v){ const e=document.getElementById('ops_'+id); if(e) e.value=
 function opsNv(id){ return parseFloat(opsGv(id))||0; }
 
 function opsSetWeek(w, btn) {
+  // Save current week to store before switching (in-memory only, not to DB)
   if(opsCurWeek>0) opsSaveWeek(opsCurWeek);
   opsCurWeek=w;
   document.querySelectorAll('.ops-wtab').forEach(b=>b.classList.remove('on'));
@@ -1973,9 +1974,17 @@ async function opsSaveData() {
   opsUpdateChart();
   opsRecalc();
   try {
-    const week = opsCurWeek;
-    const data = week>0 ? opsStore[week] : opsStore;
-    await api('POST','/api/ops',{period:opsPeriod, week, data});
+    if(opsCurWeek>0){
+      // Save current week only
+      await api('POST','/api/ops',{period:opsPeriod, week:opsCurWeek, data:opsStore[opsCurWeek]||{}});
+    } else {
+      // Save all weeks that have data
+      for(let w=1;w<=4;w++){
+        if(opsStore[w] && Object.keys(opsStore[w]).length>0){
+          await api('POST','/api/ops',{period:opsPeriod, week:w, data:opsStore[w]});
+        }
+      }
+    }
     toast('Опер. данные сохранены ✓');
   } catch(e){ toast('Ошибка сохранения: '+e.message); }
 }
@@ -1983,10 +1992,14 @@ async function opsSaveData() {
 async function opsLoadData() {
   try {
     const rows = await api('GET','/api/ops?period='+encodeURIComponent(opsPeriod));
+    // Reset store before loading fresh data
+    opsStore = {1:{},2:{},3:{},4:{}};
     rows.forEach(r=>{
       if(r.week>0 && r.week<=4) opsStore[r.week]=r.data||{};
     });
-    opsLoadMonth();
+    // Show correct view based on current week selection
+    if(opsCurWeek===0) opsLoadMonth();
+    else opsLoadWeek(opsCurWeek);
     opsUpdateChart();
     opsRecalc();
   } catch(e){ console.log('ops load error',e); }
@@ -2225,8 +2238,8 @@ function opsHTML() {
 
 function opsRender() {
   const newPeriod = curMonth || document.getElementById('monthSel')?.value || '';
-  if (newPeriod !== opsPeriod) {
-    // Period changed — reset store to avoid showing stale data
+  const periodChanged = newPeriod !== opsPeriod;
+  if (periodChanged) {
     opsStore = {1:{},2:{},3:{},4:{}};
     opsCurWeek = 0;
   }
