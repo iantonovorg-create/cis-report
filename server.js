@@ -89,9 +89,11 @@ async function initDB() {
   deadline TEXT,
   description TEXT,
   progress TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ DEFAULT NULL
 )`);
   await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS month TEXT DEFAULT ''`).catch(()=>{});
+  await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL`).catch(()=>{});
 
   await pool.query(`CREATE TABLE IF NOT EXISTS payroll (
   id TEXT PRIMARY KEY,
@@ -164,6 +166,13 @@ async function initDB() {
 
 
   console.log('DB ready');
+  // Auto-cleanup: permanently delete tasks in trash older than 30 days
+  setInterval(async () => {
+    try {
+      const res = await pool.query("DELETE FROM tasks WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'");
+      if (res.rowCount > 0) console.log(`Auto-cleanup: deleted ${res.rowCount} tasks from trash`);
+    } catch(e) { console.error('Auto-cleanup error:', e.message); }
+  }, 1000 * 60 * 60 * 24); // run every 24 hours
 }
 
 // ── LOGIN PAGE ───────────────────────────────────────────────────────────────
@@ -398,8 +407,17 @@ async function seedData() {
 // ── API: TASKS ───────────────────────────────────────────────────────────────
 app.get('/api/tasks', requireAuth, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM tasks ORDER BY created_at DESC');
-    res.json(rows);
+    const month = req.query.month || '';
+    const trash = req.query.trash === '1';
+    let result;
+    if (trash) {
+      result = await pool.query('SELECT * FROM tasks WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC');
+    } else if (month) {
+      result = await pool.query('SELECT * FROM tasks WHERE month=$1 AND (deleted_at IS NULL) ORDER BY created_at DESC', [month]);
+    } else {
+      result = await pool.query('SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY created_at DESC');
+    }
+    res.json(result.rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -417,6 +435,20 @@ app.post('/api/task', requireAuth, requireEditor, async (req, res) => {
 });
 
 app.delete('/api/task/:id', requireAuth, requireEditor, async (req, res) => {
+  try {
+    await pool.query('UPDATE tasks SET deleted_at=NOW() WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/task/:id/restore', requireAuth, requireEditor, async (req, res) => {
+  try {
+    await pool.query('UPDATE tasks SET deleted_at=NULL WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/task/:id/permanent', requireAuth, requireAdmin, async (req, res) => {
   try {
     await pool.query('DELETE FROM tasks WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
