@@ -136,10 +136,11 @@ async function initDB() {
     progress TEXT DEFAULT '0',
     description TEXT,
     month TEXT DEFAULT '',
+    deleted_at TIMESTAMPTZ DEFAULT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`);
-  // Миграция: добавляем month если ещё нет (безопасно для существующих данных)
   await pool.query(`ALTER TABLE head_tasks ADD COLUMN IF NOT EXISTS month TEXT DEFAULT ''`);
+  await pool.query(`ALTER TABLE head_tasks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL`);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS ops_report (
     id TEXT PRIMARY KEY,
@@ -582,13 +583,22 @@ app.get('/api/head-tasks', requireAuth, async (req, res) => {
   if (r !== 'admin') return res.status(403).json({ error: 'Forbidden' });
   try {
     const month = req.query.month || '';
-    // Возвращаем задачи текущего месяца + задачи без месяца (старые данные, миграция)
-    const { rows } = month
-      ? await pool.query(
-          'SELECT * FROM head_tasks WHERE (month=$1 OR month=$2 OR month IS NULL) ORDER BY created_at ASC',
-          [month, '']
-        )
-      : await pool.query('SELECT * FROM head_tasks ORDER BY created_at ASC');
+    const trash = req.query.trash === '1';
+    let rows_result;
+    if (trash) {
+      rows_result = await pool.query(
+        'SELECT * FROM head_tasks WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC'
+      );
+    } else if (month) {
+      // Возвращаем задачи месяца + задачи без месяца (legacy — мигрируются на фронте)
+      rows_result = await pool.query(
+        'SELECT * FROM head_tasks WHERE (month=$1 OR month=$2 OR month IS NULL) AND deleted_at IS NULL ORDER BY created_at ASC',
+        [month, '']
+      );
+    } else {
+      rows_result = await pool.query('SELECT * FROM head_tasks WHERE deleted_at IS NULL ORDER BY created_at ASC');
+    }
+    const { rows } = rows_result;
     res.json(rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -609,6 +619,25 @@ app.post('/api/head-task', requireAuth, async (req, res) => {
 });
 
 app.delete('/api/head-task/:id', requireAuth, async (req, res) => {
+  const r = req.session?.user?.role;
+  if (r !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    // Soft delete — перемещаем в корзину
+    await pool.query('UPDATE head_tasks SET deleted_at=NOW() WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/head-task/:id/restore', requireAuth, async (req, res) => {
+  const r = req.session?.user?.role;
+  if (r !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    await pool.query('UPDATE head_tasks SET deleted_at=NULL WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/head-task/:id/permanent', requireAuth, async (req, res) => {
   const r = req.session?.user?.role;
   if (r !== 'admin') return res.status(403).json({ error: 'Forbidden' });
   try {
