@@ -854,24 +854,34 @@ const EF=['name','role','sub','entry','schedule','plan','fact','vacation','statu
 
 // Маппинг должность → подгруппа (автоподстановка)
 const ROLE_SUB_MAP = {
-  'OPS manager':       'OPS',
-  'Operations':        'OPS',
-  'КМ':                'КМ',
-  'Client manager':    'КМ',
-  'Кризис-менеджер':   'КРМ',
-  'Crisis manager':    'КРМ',
-  'Чат-менеджер':      'МЧ',
-  'Chat manager':      'МЧ',
-  'ВР менеджер':       'ВР',
-  'ВР manager':        'ВР',
-  'TechSup manager':   'ТХП',
-  'Tech support':      'ТХП',
+  'OPS manager':             'OPS',
+  'КМ':                      'КМ',
+  'Кризис-менеджер':         'КРМ',
+  'Чат-менеджер':            'МЧ',
+  'ВР менеджер':             'ВР',
+  'TechSup manager':         'ТХП',
+  'Team Lead Operational':   'КРМ/ТХП',
+  'Head · Client Service':   'HEAD',
+  // legacy aliases — auto-map старые значения из БД но не показываем в списке
+  'Operations':              'OPS',
+  'Client manager':          'КМ',
+  'Crisis manager':          'КРМ',
+  'Chat manager':            'МЧ',
+  'ВР manager':              'ВР',
+  'Tech support':            'ТХП',
+  'Team Lead':               'КРМ/ТХП',
 };
 
 // Базовый набор (дополняется через localStorage)
 const DEFAULT_ROLES = [
-  'OPS manager','КМ','Кризис-менеджер','Чат-менеджер','ВР менеджер','TechSup manager',
-  'Team Lead','Head · Client Service'
+  'OPS manager',
+  'КМ',
+  'Кризис-менеджер',
+  'Чат-менеджер',
+  'ВР менеджер',
+  'TechSup manager',
+  'Team Lead Operational',
+  'Head · Client Service'
 ];
 const DEFAULT_SUBS = ['КМ','КРМ','ТХП','ВР','МЧ','OPS'];
 
@@ -896,10 +906,19 @@ function saveSubs(arr) { try { localStorage.setItem('cis_subs', JSON.stringify(a
 // Инпут-поля для каждого ключа дропдауна
 const CSX_INPUT = { role: 'f_role', sub: 'f_sub', arsub: 'ar_sub' };
 
+const LEGACY_ROLE_ALIASES = [
+  'Operations','Client manager','Crisis manager','Chat manager',
+  'ВР manager','Tech support','Team Lead',
+  'Team Lead · КМ','Team Lead · КРМ','Team Lead · КРМ + ТХП',
+  'Team Lead · КМ (Team 2)','Team Lead · КРМ · ТХП · ВР · Чаты'
+];
+
 function csxGetList(key) {
   if (key === 'role') {
     const fromDB = [...new Set(DB.employees.map(e => e.role).filter(Boolean))];
-    return [...new Set([...getRoles(), ...fromDB])].sort((a,b) => a.localeCompare(b, 'ru'));
+    // Include DB roles only if they are not legacy aliases OR already in defaults
+    const canonical = [...new Set([...getRoles(), ...fromDB.filter(r => !LEGACY_ROLE_ALIASES.includes(r))])];
+    return canonical.sort((a,b) => a.localeCompare(b, 'ru'));
   }
   if (key === 'sub' || key === 'arsub') {
     const fromDB = [...new Set(DB.employees.map(e => e.sub).filter(Boolean))];
