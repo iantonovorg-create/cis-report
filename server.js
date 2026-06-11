@@ -585,8 +585,8 @@ app.get('/api/head-tasks', requireAuth, async (req, res) => {
     // Возвращаем задачи текущего месяца + задачи без месяца (старые данные, миграция)
     const { rows } = month
       ? await pool.query(
-          'SELECT * FROM head_tasks WHERE month=$1 OR month='' OR month IS NULL ORDER BY created_at ASC',
-          [month]
+          'SELECT * FROM head_tasks WHERE (month=$1 OR month=$2 OR month IS NULL) ORDER BY created_at ASC',
+          [month, '']
         )
       : await pool.query('SELECT * FROM head_tasks ORDER BY created_at ASC');
     res.json(rows);
