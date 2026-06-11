@@ -861,6 +861,7 @@ const ROLE_SUB_MAP = {
   'ВР менеджер':             'ВР',
   'TechSup manager':         'ТХП',
   'Team Lead Operational':   'КРМ/ТХП',
+  'Team Lead КМ':            'КМ',
   'Head · Client Service':   'HEAD',
   // legacy aliases — auto-map старые значения из БД но не показываем в списке
   'Operations':              'OPS',
@@ -881,6 +882,7 @@ const DEFAULT_ROLES = [
   'ВР менеджер',
   'TechSup manager',
   'Team Lead Operational',
+  'Team Lead КМ',
   'Head · Client Service'
 ];
 const DEFAULT_SUBS = ['КМ','КРМ','ТХП','ВР','МЧ','OPS'];
@@ -910,7 +912,8 @@ const LEGACY_ROLE_ALIASES = [
   'Operations','Client manager','Crisis manager','Chat manager',
   'ВР manager','Tech support','Team Lead',
   'Team Lead · КМ','Team Lead · КРМ','Team Lead · КРМ + ТХП',
-  'Team Lead · КМ (Team 2)','Team Lead · КРМ · ТХП · ВР · Чаты'
+  'Team Lead · КМ (Team 2)','Team Lead · КРМ · ТХП · ВР · Чаты',
+  'TSP','ТХП manager','KM','KRM'
 ];
 
 function csxGetList(key) {
@@ -1511,16 +1514,39 @@ function renderPayrollTable() {
     { label: 'OPS — Операционный блок', emps: emps.filter(e => e.block === 'OPS') },
   ];
 
-  // Секции блока Бушмановой: сначала известные порядком, потом остальные
-  const subLabels = { 'КРМ':'КРМ — Кризис-менеджеры', 'ТХП':'ТХП — Техподдержка', 'ВР':'ВР — Возвраты' };
-  const orderedBushSubs = ['КРМ','ТХП','ВР'].filter(s => bushSubs.includes(s))
-    .concat(bushSubs.filter(s => !['КРМ','ТХП','ВР'].includes(s)));
+  // Секции блока Бушмановой — по sub, с авто-определением ВР по роли
+  const subLabels = {
+    'КРМ': 'КРМ — Кризис-менеджеры',
+    'ТХП': 'ТХП — Техподдержка',
+    'ВР':  'ВР — Возвраты'
+  };
+
+  // Нормализуем sub: если пустой — пробуем определить по роли
+  function normSub(e) {
+    const s = (e.sub||'').trim();
+    if (s) return s;
+    const r = (e.role||'').toLowerCase();
+    if (r.includes('вр') || r.includes('br') || r === 'вр менеджер') return 'ВР';
+    if (r.includes('криз') || r.includes('crisis') || r === 'кризис-менеджер') return 'КРМ';
+    if (r.includes('tech') || r === 'techsup manager' || r.includes('тхп')) return 'ТХП';
+    return '';
+  }
+
+  // Собираем уникальные нормализованные sub
+  const bushSubsNorm = [...new Set(bushBlock.map(e => normSub(e)).filter(Boolean))];
+
+  // Порядок: КРМ → ТХП → ВР → остальные (исключаем Team 1/Team 2 — это КМ, не Бушманова)
+  const BUSH_KNOWN = ['КРМ','ТХП','ВР'];
+  const orderedBushSubs = BUSH_KNOWN.filter(s => bushSubsNorm.includes(s))
+    .concat(bushSubsNorm.filter(s => !BUSH_KNOWN.includes(s)));
+
   orderedBushSubs.forEach(sub => {
-    const subEmps = bushBlock.filter(e => (e.sub||'').trim() === sub);
+    const subEmps = bushBlock.filter(e => normSub(e) === sub);
     if (subEmps.length) sections.push({ label: subLabels[sub] || sub + ' — Блок Бушмановой', emps: subEmps });
   });
-  // Сотрудники блока без подгруппы
-  const noSubBush = bushBlock.filter(e => !(e.sub||'').trim());
+
+  // Сотрудники без определяемой подгруппы
+  const noSubBush = bushBlock.filter(e => !normSub(e));
   if (noSubBush.length) sections.push({ label: 'КРМ/ТХП — Без подгруппы', emps: noSubBush });
 
   // Секции КМ
