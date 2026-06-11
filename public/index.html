@@ -3082,11 +3082,54 @@ async function hcSaveTask() {
 }
 
 async function hcDelTask(id) {
-  if(!confirm('Удалить задачу?'))return;
-  HC_TASKS=HC_TASKS.filter(x=>x.id!==id);
-  await hcDel(id);
-  hcRenderAll();
-  toast('Удалено');
+  if(!confirm('Переместить задачу в корзину?'))return;
+  try {
+    await api('DELETE', '/api/head-task/'+id);
+    HC_TASKS = HC_TASKS.filter(x=>x.id!==id);
+    hcRenderAll();
+    toast('Задача в корзине — можно восстановить');
+  } catch(e) { toast('Ошибка удаления'); }
+}
+
+async function hcOpenTrash() {
+  try {
+    const trash = await api('GET', '/api/head-tasks?trash=1');
+    const list = Array.isArray(trash) ? trash : [];
+    const modal = document.getElementById('hcTrashOv');
+    document.getElementById('hcTrashList').innerHTML = list.length
+      ? list.map(t => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${t.title}</div>
+            <div style="font-size:10px;color:var(--dim);margin-top:2px">${t.category||'—'} · ${t.priority||'—'} · ${t.month||'—'}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="abt ed" onclick="hcRestoreTask('${t.id}')">↩ Восстановить</button>
+            <button class="abt dl" onclick="hcPermDeleteTask('${t.id}')">✕ Удалить</button>
+          </div>
+        </div>`).join('')
+      : '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">Корзина пуста</div>';
+    om('hcTrashOv');
+  } catch(e) { toast('Ошибка загрузки корзины'); }
+}
+
+async function hcRestoreTask(id) {
+  try {
+    await api('POST', '/api/head-task/'+id+'/restore', {});
+    toast('Задача восстановлена ✓');
+    hcOpenTrash();
+    await hcLoad();
+    hcRenderAll();
+  } catch(e) { toast('Ошибка восстановления'); }
+}
+
+async function hcPermDeleteTask(id) {
+  if(!confirm('Удалить задачу навсегда? Восстановить будет невозможно.'))return;
+  try {
+    await api('DELETE', '/api/head-task/'+id+'/permanent');
+    toast('Удалено навсегда');
+    hcOpenTrash();
+  } catch(e) { toast('Ошибка удаления'); }
 }
 
 async function hcMarkDone(id) {
@@ -3221,7 +3264,10 @@ async function headCsRender() {
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
           <div style="font-family:'Unbounded',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--green)">Завершено</div>
-          <span id="hcCntDone" style="font-size:10px;padding:2px 8px;border-radius:2px;background:var(--bg3);color:var(--dim)">0</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span id="hcCntDone" style="font-size:10px;padding:2px 8px;border-radius:2px;background:var(--bg3);color:var(--dim)">0</span>
+            <button onclick="hcOpenTrash()" style="font-size:10px;padding:2px 10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif" title="Корзина">🗑 Корзина</button>
+          </div>
         </div>
         <div id="hcColDone"></div>
       </div>
@@ -3567,6 +3613,17 @@ async function deleteCustomRole(name) {
       <button class="bcancel" onclick="cm('addRoleOv')">Отмена</button>
       <button class="bsave" onclick="confirmAddRole()">Добавить</button>
     </div>
+  </div>
+</div>
+
+
+<!-- HC TRASH MODAL -->
+<div class="ov" id="hcTrashOv">
+  <div class="modal" style="max-width:560px">
+    <button class="mclose" onclick="cm('hcTrashOv')">✕</button>
+    <h2 style="margin-bottom:6px">🗑 Корзина — Head CS задачи</h2>
+    <div style="font-size:11px;color:var(--dim);margin-bottom:16px">Задачи можно восстановить или удалить навсегда</div>
+    <div id="hcTrashList"></div>
   </div>
 </div>
 
