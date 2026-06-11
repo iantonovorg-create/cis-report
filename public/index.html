@@ -909,20 +909,23 @@ function csxGetList(key) {
 }
 
 function csxRender(key, filter) {
-  const drop = document.getElementById('csx_' + key + '_drop');
+  var drop = document.getElementById('csx_' + key + '_drop');
   if (!drop) return;
-  const all = csxGetList(key);
-  const q = (filter || '').toLowerCase().trim();
-  const items = q ? all.filter(v => v.toLowerCase().includes(q)) : all;
+  var all = csxGetList(key);
+  var q = (filter || '').toLowerCase().trim();
+  var items = q ? all.filter(function(v){ return v.toLowerCase().indexOf(q) >= 0; }) : all;
   if (!items.length) {
-    drop.innerHTML = '<div class="csx-empty">Ничего не найдено</div>';
-  } else {
-    drop.innerHTML = items.map(v =>
-      `<div class="csx-opt" onmousedown="event.preventDefault()" onclick="csxPick('${key}','${v.replace(/\/g,'\\').replace(/'/g,"\'")}')">` +
-      (q ? v.replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\]/g,'\$&')+')','gi'), '<b>$1</b>') : v) +
-      '</div>'
-    ).join('');
+    drop.innerHTML = '<div class="csx-empty">\u041d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e</div>';
+    return;
   }
+  var html = '';
+  for (var i = 0; i < items.length; i++) {
+    var v = items[i];
+    var safe = v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    var esc = v.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    html += '<div class="csx-opt" onmousedown="event.preventDefault()" onclick="csxPick(\'' + key + '\',\'' + esc + '\')">' + safe + '</div>';
+  }
+  drop.innerHTML = html;
 }
 
 let _csxOpen = null; // currently open dropdown key
@@ -979,10 +982,15 @@ function csxPick(key, val) {
   }
 }
 
-// Close on outside click
-document.addEventListener('click', e => {
-  if (!e.target.closest('.csx-wrap')) csxCloseAll();
-});
+// Close on outside click — deferred so DOM is ready
+(function() {
+  function _csxOutside(e) { if (!e.target.closest('.csx-wrap')) csxCloseAll(); }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){ document.addEventListener('click', _csxOutside); });
+  } else {
+    document.addEventListener('click', _csxOutside);
+  }
+})();
 
 function populateRoleList() { /* legacy stub */ }
 function populateSubList()  { /* legacy stub */ }
