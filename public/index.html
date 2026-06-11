@@ -108,6 +108,10 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
 .fg label{font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
 .fg input,.fg select,.fg textarea{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px 11px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none;transition:border-color .15s}
 .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--accent)}
+.combo-wrap{display:flex;gap:4px;align-items:center}
+.combo-wrap input{flex:1;min-width:0}
+.combo-add{flex-shrink:0;width:28px;height:30px;background:transparent;border:1px solid var(--border);color:var(--accent);font-size:17px;line-height:1;cursor:pointer;border-radius:2px;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;font-family:monospace}
+.combo-add:hover{background:rgba(200,184,154,.15);border-color:var(--accent)}
 .fg textarea{resize:vertical;min-height:54px}.fg select option{background:var(--bg3)}
 .mbtns{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
 .bsave{padding:9px 20px;background:var(--accent);border:none;color:#111;font-family:'Golos Text',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border-radius:2px}.bsave:hover{opacity:.85}
@@ -353,7 +357,7 @@ body.viewer-mode .pr-save-btn
 </div>
 
 <!-- MODALS -->
-<div class="ov" id="empOv"><div class="modal"><button class="mclose" onclick="cm('empOv')">✕</button><h2 id="empTitle">Сотрудник</h2><div class="fgrid"><div class="fg full"><label>ФИО</label><input id="f_name" placeholder="Фамилия Имя Отчество"></div><div class="fg"><label>Должность</label><input id="f_role" placeholder="Client manager"></div><div class="fg"><label>Подгруппа</label><input id="f_sub" placeholder="Team 1 / КРМ / ТХП"></div><div class="fg"><label>Дата входа</label><input id="f_entry" placeholder="дд.мм.гггг"></div><div class="fg"><label>График</label><input id="f_schedule" placeholder="09:00–18:00"></div><div class="fg"><label>План смен</label><input id="f_plan" placeholder="22"></div><div class="fg"><label>Факт смен</label><input id="f_fact"></div><div class="fg"><label>Отпуск</label><input id="f_vacation" placeholder="01.05–14.05"></div><div class="fg"><label>Статус</label><select id="f_status"><option value="">— не указан —</option><option>Стабилен</option><option>Требует наблюдения</option><option>Зона риска</option><option>Потенциал роста</option><option>Увольнение</option></select></div><div class="fg"><label>Дата увольнения</label><input id="f_dismiss"></div><div class="fg full"><label>Функции / KPI</label><textarea id="f_functions"></textarea></div><div class="fg full"><label>Доп. функции</label><textarea id="f_extra"></textarea></div><div class="fg full"><label>Комментарий</label><textarea id="f_comment"></textarea></div><div class="fg"><label>Город</label><input id="f_city"></div><div class="fg"><label>ЧП от МСК</label><input id="f_tz" placeholder="+2 ч"></div><div class="fg"><label>Телефон</label><input id="f_phone"></div><div class="fg"><label>Телеграм</label><input id="f_tg" placeholder="@username"></div><div class="fg"><label>Дата рождения</label><input id="f_birthdate" placeholder="дд.мм.гггг"></div><div class="fg"><label>Оклад (₽)</label><input id="f_salary_base" type="number" placeholder="20000"></div><div class="fg"><label>Налоговая зона</label>
+<div class="ov" id="empOv"><div class="modal"><button class="mclose" onclick="cm('empOv')">✕</button><h2 id="empTitle">Сотрудник</h2><div class="fgrid"><div class="fg full"><label>ФИО</label><input id="f_name" placeholder="Фамилия Имя Отчество"></div><div class="fg"><label>Должность</label><div class="combo-wrap"><input id="f_role" placeholder="Client manager" list="f_role_list" autocomplete="off"><datalist id="f_role_list"></datalist><button class="combo-add" type="button" title="Добавить новую роль" onclick="promptAddRole()">+</button></div></div><div class="fg"><label>Подгруппа</label><div class="combo-wrap"><input id="f_sub" placeholder="Team 1 / КРМ / ТХП" list="f_sub_list" autocomplete="off"><datalist id="f_sub_list"></datalist><button class="combo-add" type="button" title="Добавить новую подгруппу" onclick="promptAddSub()">+</button></div></div><div class="fg"><label>Дата входа</label><input id="f_entry" placeholder="дд.мм.гггг"></div><div class="fg"><label>График</label><input id="f_schedule" placeholder="09:00–18:00"></div><div class="fg"><label>План смен</label><input id="f_plan" placeholder="22"></div><div class="fg"><label>Факт смен</label><input id="f_fact"></div><div class="fg"><label>Отпуск</label><input id="f_vacation" placeholder="01.05–14.05"></div><div class="fg"><label>Статус</label><select id="f_status"><option value="">— не указан —</option><option>Стабилен</option><option>Требует наблюдения</option><option>Зона риска</option><option>Потенциал роста</option><option>Увольнение</option></select></div><div class="fg"><label>Дата увольнения</label><input id="f_dismiss"></div><div class="fg full"><label>Функции / KPI</label><textarea id="f_functions"></textarea></div><div class="fg full"><label>Доп. функции</label><textarea id="f_extra"></textarea></div><div class="fg full"><label>Комментарий</label><textarea id="f_comment"></textarea></div><div class="fg"><label>Город</label><input id="f_city"></div><div class="fg"><label>ЧП от МСК</label><input id="f_tz" placeholder="+2 ч"></div><div class="fg"><label>Телефон</label><input id="f_phone"></div><div class="fg"><label>Телеграм</label><input id="f_tg" placeholder="@username"></div><div class="fg"><label>Дата рождения</label><input id="f_birthdate" placeholder="дд.мм.гггг"></div><div class="fg"><label>Оклад (₽)</label><input id="f_salary_base" type="number" placeholder="20000"></div><div class="fg"><label>Налоговая зона</label>
   <select id="f_tax_zone">
     <option value="">— не указано —</option>
     <option value="РФ">РФ</option>
@@ -838,9 +842,70 @@ function parseKD(s){const m=s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);return m?ne
 function renderKM(){const q=(document.getElementById('kmQ')?.value||'').toLowerCase().trim();const rows=DB.meetings.filter(r=>{if(q&&!(r.name||'').toLowerCase().includes(q))return false;if(kmFilter==='cur')return r.month===curMonth;if(kmFilter==='all')return true;const dt=parseKD(r.date||'');if(!dt)return false;if(kmFilter==='2025')return dt.getFullYear()===2025;if(kmFilter==='2026')return dt.getFullYear()===2026;return true;});document.getElementById('kmBody').innerHTML=rows.map(r=>{const dc=r.dyn==='Улучшение'?'du':r.dyn==='Спад'?'dd':r.dyn?'df':'';return`<tr><td style="font-weight:600;white-space:nowrap">${r.name||'—'}</td><td style="white-space:nowrap">${r.date||'—'}</td><td>${r.topic||'—'}</td><td>${r.tasks||'—'}</td><td style="white-space:nowrap">${r.next||'—'}</td><td class="${dc}">${r.dyn||'—'}</td><td style="white-space:nowrap">${r.tl||'—'}</td><td style="white-space:nowrap"><button class="kbt e" onclick="openEditKM('${r.id}')">✎</button><button class="kbt d" onclick="delKM('${r.id}')">✕</button></td></tr>`;}).join('');}
 function kp(p,btn){kmFilter=p;btn.closest('.km-ctrl').querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderKM();}
 const EF=['name','role','sub','entry','schedule','plan','fact','vacation','status','dismiss','functions','extra','comment','city','tz','phone','tg','birthdate','salary_base','tax_zone'];
-function openAddEmp(block){_eId=null;_eBlock=block;document.getElementById('empTitle').textContent='Добавить сотрудника';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value='';});om('empOv');}
-function openEditEmp(id,block){_eId=id;_eBlock=block;const e=DB.employees.find(x=>x.id===id);if(!e)return;document.getElementById('empTitle').textContent='Редактировать';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value=e[k]||'';});om('empOv');}
-function openEditTL(block){_eBlock=block;const e=byM(DB.employees).find(x=>x.block===block);_eId=e?e.id:null;document.getElementById('empTitle').textContent=block==='TL_BUSH'?'Редактировать — Бушманова':'Редактировать — Евстигнеева';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value=e?e[k]||'':'';});om('empOv');}
+// ── РОЛИ И ПОДГРУППЫ — комбо-список ─────────────────────────────────────────
+// Базовые роли (расширяются пользователем через localStorage)
+const DEFAULT_ROLES = [
+  'Client manager','Crisis manager','Tech support','Chat manager',
+  'КМ','КРМ','ТХП','МЧ','Operations','Team Lead','Head · Client Service',
+  'ВР manager','KM Team 1','KM Team 2'
+];
+const DEFAULT_SUBS = ['КМ','КРМ','ТХП','ВР','МЧ','Team 1','Team 2','OPS'];
+
+function getRoles() {
+  try { return JSON.parse(localStorage.getItem('cis_roles') || 'null') || [...DEFAULT_ROLES]; }
+  catch(e) { return [...DEFAULT_ROLES]; }
+}
+function getSubs() {
+  try { return JSON.parse(localStorage.getItem('cis_subs') || 'null') || [...DEFAULT_SUBS]; }
+  catch(e) { return [...DEFAULT_SUBS]; }
+}
+function saveRoles(arr) { try { localStorage.setItem('cis_roles', JSON.stringify(arr)); } catch(e){} }
+function saveSubs(arr) { try { localStorage.setItem('cis_subs', JSON.stringify(arr)); } catch(e){} }
+
+function populateRoleList() {
+  // Также добавляем все уникальные роли из текущих сотрудников
+  const fromDB = [...new Set(DB.employees.map(e => e.role).filter(Boolean))];
+  const stored = getRoles();
+  const merged = [...new Set([...stored, ...fromDB])].sort();
+  const dl = document.getElementById('f_role_list');
+  if (!dl) return;
+  dl.innerHTML = merged.map(r => `<option value="${r}">`).join('');
+}
+
+function populateSubList() {
+  const fromDB = [...new Set(DB.employees.map(e => e.sub).filter(Boolean))];
+  const stored = getSubs();
+  const merged = [...new Set([...stored, ...fromDB])].sort();
+  const dl = document.getElementById('f_sub_list');
+  if (!dl) return;
+  dl.innerHTML = merged.map(s => `<option value="${s}">`).join('');
+}
+
+function promptAddRole() {
+  const val = prompt('Новая роль:');
+  if (!val || !val.trim()) return;
+  const roles = getRoles();
+  const trimmed = val.trim();
+  if (!roles.includes(trimmed)) { roles.push(trimmed); saveRoles(roles); }
+  document.getElementById('f_role').value = trimmed;
+  populateRoleList();
+  toast('Роль добавлена ✓');
+}
+
+function promptAddSub() {
+  const val = prompt('Новая подгруппа:');
+  if (!val || !val.trim()) return;
+  const subs = getSubs();
+  const trimmed = val.trim();
+  if (!subs.includes(trimmed)) { subs.push(trimmed); saveSubs(subs); }
+  document.getElementById('f_sub').value = trimmed;
+  populateSubList();
+  toast('Подгруппа добавлена ✓');
+}
+
+function openAddEmp(block){_eId=null;_eBlock=block;document.getElementById('empTitle').textContent='Добавить сотрудника';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value='';});populateRoleList();populateSubList();om('empOv');}
+function openEditEmp(id,block){_eId=id;_eBlock=block;const e=DB.employees.find(x=>x.id===id);if(!e)return;document.getElementById('empTitle').textContent='Редактировать';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value=e[k]||'';});populateRoleList();populateSubList();om('empOv');}
+function openEditTL(block){_eBlock=block;const e=byM(DB.employees).find(x=>x.block===block);_eId=e?e.id:null;document.getElementById('empTitle').textContent=block==='TL_BUSH'?'Редактировать — Бушманова':'Редактировать — Евстигнеева';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value=e?e[k]||'':'';});populateRoleList();populateSubList();om('empOv');}
 async function saveEmp(){const obj={month:curMonth,block:_eBlock};EF.forEach(k=>{obj[k]=(document.getElementById('f_'+k)?.value||'').trim();});if(!obj.name){alert('Введи ФИО');return;}if(_eId)obj.id=_eId;await api('POST','/api/employee',obj);await loadData();cm('empOv');toast('Сохранено ✓');}
 async function moveEmp(id, currentBlock) {
   const targets = {'КРМ/ТХП': 'КМ', 'КМ': 'КРМ/ТХП'};
@@ -873,7 +938,7 @@ async function confirmNewMonth(){
       // Delete existing employees for this month first
       for(const e of existing) await api('DELETE','/api/employee/'+e.id).catch(()=>{});
     }
-    const empToCopy=byM(DB.employees).map(e=>({...e,id:uid(),month:selNewMonth,fact:'',vacation:'',comment:''}));
+    const empToCopy=byM(DB.employees).map(e=>({...e,id:uid(),month:selNewMonth,fact:'',vacation:''}));
     for(const e of empToCopy)await api('POST','/api/employee',e);
   }
   curMonth=selNewMonth;opsStore={1:{},2:{},3:{},4:{}};opsCurWeek=0;opsPeriod='';await loadData();cm('monthOv');toast(`Месяц ${selNewMonth} создан`);
@@ -1263,13 +1328,48 @@ function renderPayrollTable() {
   const month = curMonth;
   const emps = byM(DB.employees).filter(e => !['HEAD','TL_BUSH','TL_EVS'].includes(e.block));
 
+  // Динамические подгруппы из поля sub сотрудников
+  const bushBlock = emps.filter(e => e.block === 'КРМ/ТХП');
+  const kmBlock = emps.filter(e => e.block === 'КМ');
+
+  // Уникальные sub в блоке КРМ/ТХП
+  const bushSubs = [...new Set(bushBlock.map(e => (e.sub||'').trim()).filter(Boolean))];
+
   const sections = [
     { label: 'OPS — Операционный блок', emps: emps.filter(e => e.block === 'OPS') },
-    { label: 'КРМ — Кризис-менеджеры', emps: emps.filter(e => e.block === 'КРМ/ТХП' && e.sub === 'КРМ') },
-    { label: 'ТХП — Техподдержка', emps: emps.filter(e => e.block === 'КРМ/ТХП' && e.sub === 'ТХП') },
-    { label: 'КМ — Клиентские менеджеры', emps: emps.filter(e => e.block === 'КМ' && e.sub !== 'МЧ') },
-    { label: 'МЧ — Чат-менеджеры', emps: emps.filter(e => e.role && e.role.toLowerCase().includes('chat')) },
   ];
+
+  // Секции блока Бушмановой: сначала известные порядком, потом остальные
+  const subLabels = { 'КРМ':'КРМ — Кризис-менеджеры', 'ТХП':'ТХП — Техподдержка', 'ВР':'ВР — Возвраты' };
+  const orderedBushSubs = ['КРМ','ТХП','ВР'].filter(s => bushSubs.includes(s))
+    .concat(bushSubs.filter(s => !['КРМ','ТХП','ВР'].includes(s)));
+  orderedBushSubs.forEach(sub => {
+    const subEmps = bushBlock.filter(e => (e.sub||'').trim() === sub);
+    if (subEmps.length) sections.push({ label: subLabels[sub] || sub + ' — Блок Бушмановой', emps: subEmps });
+  });
+  // Сотрудники блока без подгруппы
+  const noSubBush = bushBlock.filter(e => !(e.sub||'').trim());
+  if (noSubBush.length) sections.push({ label: 'КРМ/ТХП — Без подгруппы', emps: noSubBush });
+
+  // Секции КМ
+  const mchEmps = kmBlock.filter(e => {
+    const s = (e.sub||'').trim().toUpperCase();
+    const r = (e.role||'').toLowerCase();
+    return s === 'МЧ' || r.includes('chat') || r.includes('мч') || r.includes('чат-мен');
+  });
+  const kmMain = kmBlock.filter(e => !mchEmps.includes(e));
+  const kmTeamSubs = [...new Set(kmMain.map(e => (e.sub||'').trim()).filter(Boolean))];
+  if (kmTeamSubs.length > 1) {
+    kmTeamSubs.forEach(sub => {
+      const subEmps = kmMain.filter(e => (e.sub||'').trim() === sub);
+      if (subEmps.length) sections.push({ label: 'КМ — ' + sub, emps: subEmps });
+    });
+    const kmNoSub = kmMain.filter(e => !(e.sub||'').trim());
+    if (kmNoSub.length) sections.push({ label: 'КМ — Без подгруппы', emps: kmNoSub });
+  } else {
+    sections.push({ label: 'КМ — Клиентские менеджеры', emps: kmMain });
+  }
+  if (mchEmps.length) sections.push({ label: 'МЧ — Чат-менеджеры', emps: mchEmps });
 
   document.getElementById('payrollContent').innerHTML = sections.map(sec => {
     if (!sec.emps.length) return '';
@@ -1854,7 +1954,7 @@ function opsSv(id,v){ const e=document.getElementById('ops_'+id); if(e) e.value=
 function opsNv(id){ return parseFloat(opsGv(id))||0; }
 
 function opsSetWeek(w, btn) {
-  // Save current week to store before switching (in-memory only, not to DB)
+  // Сохраняем текущую неделю в store перед переключением
   if(opsCurWeek>0) opsSaveWeek(opsCurWeek);
   opsCurWeek=w;
   document.querySelectorAll('.ops-wtab').forEach(b=>b.classList.remove('on'));
@@ -1862,7 +1962,14 @@ function opsSetWeek(w, btn) {
   const lbl=w===0?'Итого за месяц':'Неделя '+w;
   const bEl=document.getElementById('ops_wb-bush'); if(bEl) bEl.textContent=lbl;
   const eEl=document.getElementById('ops_wb-evs'); if(eEl) eEl.textContent=lbl;
-  w===0 ? opsLoadMonth() : opsLoadWeek(w);
+
+  // Переключаем видимость блоков: инпуты только при w>0, итого при w=0
+  const inputBlock=document.getElementById('ops_input_block');
+  const summaryBlock=document.getElementById('ops_summary_block');
+  if(inputBlock) inputBlock.style.display=w===0?'none':'block';
+  if(summaryBlock) summaryBlock.style.display=w===0?'block':'none';
+
+  if(w===0){ opsRenderSummary(); } else { opsLoadWeek(w); opsRenderWeekMiniChart(w); }
   opsUpdateChart();
   opsRecalc();
 }
@@ -1955,6 +2062,230 @@ function opsRecalc() {
   setT('ops_d-imk', opsFmt(opsSumUpTo('ops-imk-err',upTo)));
 }
 
+function opsGetSummaryVal(id) {
+  // Логика для "Итого за месяц" по каждому типу поля
+  if (OPS_TEXT.includes(id)) {
+    let out=''; for(let w=1;w<=4;w++){ const v=(opsStore[w]?.[id]||'').trim(); if(v) out+=(out?'\n\n':'')+'── Неделя '+w+' ──\n'+v; } return out;
+  } else if (OPS_LAST_VAL.includes(id)) {
+    let last='0'; for(let w=4;w>=1;w--){ const v=opsStore[w]?.[id]; if(v&&v!=='0'&&v!==''){last=v;break;} } return last;
+  } else if (OPS_AVG_FIELDS.includes(id)) {
+    let sum=0,cnt=0; for(let w=1;w<=4;w++){ const v=parseFloat(opsStore[w]?.[id]||0)||0; if(v>0){sum+=v;cnt++;} } return cnt>0?(sum/cnt).toFixed(1):'0';
+  } else {
+    let t=0; for(let w=1;w<=4;w++) t+=parseFloat(opsStore[w]?.[id]||0)||0; return t||'0';
+  }
+}
+
+function opsRenderSummary() {
+  const el=document.getElementById('ops_summary_block'); if(!el) return;
+  // Считаем итоги
+  const G=(id)=>{ const v=opsGetSummaryVal(id); return parseFloat(v)||0; };
+  const Gs=(id)=>opsGetSummaryVal(id);
+
+  const krmReq=G('krm-req'), krmDone=G('krm-done'), krmRetSum=G('krm-ret-sum');
+  const krmSavedCnt=G('krm-saved-cnt'), krmSavedSum=G('krm-saved-sum');
+  const krmSla=Gs('krm-sla'), krmBacklog=G('krm-backlog'), krmTech=G('krm-tech');
+  const thpDone=G('thp-done'), thpKs=G('thp-ks'), thpUch=G('thp-uch'), thpSpeed=G('thp-speed');
+  const t1Chats=G('t1-chats'), t1Docs=G('t1-docs');
+  const t2Tickets=G('t2-tickets'), t2Clients=G('t2-clients'), t2Lb=G('t2-lb');
+  const disband=parseFloat(Gs('ops-disband'))||0;
+  const disbandWip=parseFloat(Gs('ops-disband-wip'))||0;
+  const mkcapReq=G('ops-mkcap-req'), mkcapPay=G('ops-mkcap-pay');
+  const vrReq=G('ops-vr-req'), agreeSent=G('ops-agree-sent'), agreeDone=G('ops-agree-done');
+  const imkErr=G('ops-imk-err');
+
+  // Данные по неделям для диаграммы динамики
+  const weeks=[1,2,3,4];
+  const wKrm=weeks.map(w=>parseFloat(opsStore[w]?.['krm-req']||0)||0);
+  const wThp=weeks.map(w=>parseFloat(opsStore[w]?.['thp-done']||0)||0);
+  const wT2=weeks.map(w=>parseFloat(opsStore[w]?.['t2-tickets']||0)||0);
+  const wSav=weeks.map(w=>parseFloat(opsStore[w]?.['krm-saved-sum']||0)||0);
+  const hasData=wKrm.some(v=>v>0)||wThp.some(v=>v>0)||wT2.some(v=>v>0);
+
+  const fmtR=(n)=>n>=1000?new Intl.NumberFormat('ru-RU').format(Math.round(n))+' ₽':Math.round(n)+' ₽';
+  const fmt=(n)=>new Intl.NumberFormat('ru-RU').format(Math.round(n||0));
+
+  // Тексты задач по неделям
+  const renderWeekTasks=(id)=>{
+    let rows=[]; for(let w=1;w<=4;w++){const v=(opsStore[w]?.[id]||'').trim();if(v)rows.push('<div style="margin-bottom:10px"><div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Неделя '+w+'</div><div style="font-size:11px;color:var(--dim);line-height:1.6;white-space:pre-line">'+v+'</div></div>');}
+    return rows.join('')||'<span style="color:var(--muted);font-size:11px">—</span>';
+  };
+
+  el.innerHTML = `
+  <div style="margin-bottom:28px">
+    <div class="sec-lbl" style="margin-bottom:16px">Итоговые показатели за месяц</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:24px">
+      <div class="ops-dchip"><span class="n">${fmt(krmReq)}</span><span class="l">КРМ запросов (тотал)</span><div class="s">Совершено: ${fmt(krmDone)} · Беклог: ${fmt(krmBacklog)}</div></div>
+      <div class="ops-dchip good"><span class="n">${fmtR(krmSavedSum)}</span><span class="l">Сумма сохранений</span><div class="s">Клиентов: ${fmt(krmSavedCnt)}</div></div>
+      <div class="ops-dchip"><span class="n">${fmtR(krmRetSum)}</span><span class="l">Сумма возвратов</span><div class="s">Технич.: ${fmt(krmTech)}</div></div>
+      <div class="ops-dchip"><span class="n">${krmSla} ч</span><span class="l">SLA КРМ (среднее)</span><div class="s">Среднее по заполненным неделям</div></div>
+      <div class="ops-dchip blue"><span class="n">${fmt(disband)}</span><span class="l">Расформировано (тотал)</span><div class="s">В работе: ${fmt(disbandWip)}</div></div>
+      <div class="ops-dchip blue"><span class="n">${fmt(mkcapReq)}</span><span class="l">Мат. капитал (накопит.)</span><div class="s">Оплат: ${fmt(mkcapPay)}</div></div>
+      <div class="ops-dchip blue"><span class="n">${fmt(vrReq)}</span><span class="l">Соглашения ВР (накопит.)</span><div class="s">Направлено: ${fmt(agreeSent)} · Подписано: ${fmt(agreeDone)}</div></div>
+      <div class="ops-dchip warn"><span class="n">${fmt(imkErr)}</span><span class="l">Ошибки ИМК (накопит.)</span><div class="s">Сумма по всем неделям</div></div>
+      <div class="ops-dchip"><span class="n">${fmt(thpDone)}</span><span class="l">ТХП — тикеты (тотал)</span><div class="s">КС: ${fmt(thpKs)} · УЧ: ${fmt(thpUch)} · Скорость: ${thpSpeed}ч</div></div>
+      <div class="ops-dchip"><span class="n">${fmt(t2Tickets)}</span><span class="l">КМ — тикеты (тотал)</span><div class="s">Уникальных клиентов: ${fmt(t2Clients)} · ЛБ: ${fmt(t2Lb)}</div></div>
+      <div class="ops-dchip"><span class="n">${fmt(t1Chats)}</span><span class="l">Чаты (тотал)</span><div class="s">Дочерки: ${fmt(t1Docs)}</div></div>
+    </div>
+
+    ${hasData ? `
+    <div class="ops-chart-card" style="margin-bottom:24px">
+      <div class="ops-chart-title">Динамика по неделям — сравнение</div>
+      <div class="ops-legend">
+        <span class="ops-legend-item"><span class="ops-legend-dot" style="background:#c87a7a"></span>КРМ запросы</span>
+        <span class="ops-legend-item"><span class="ops-legend-dot" style="background:#c8a87a"></span>ТХП тикеты</span>
+        <span class="ops-legend-item"><span class="ops-legend-dot" style="background:#9aac8a"></span>КМ тикеты</span>
+        <span class="ops-legend-item"><span class="ops-legend-dot" style="background:#7aaccb"></span>Сохранения (тыс. ₽)</span>
+      </div>
+      <div style="position:relative;width:100%;height:220px">
+        <canvas id="ops_summaryChart"></canvas>
+      </div>
+    </div>` : ''}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="ops-team-block">
+        <div class="ops-team-hdr">
+          <div class="ops-team-ava">ТБ</div>
+          <div><div class="ops-team-name">Бушманова Татьяна — итог</div><div class="ops-team-role">КРМ · ТХП · ВР · Чаты</div></div>
+        </div>
+        <div style="padding:14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">КРМ запросы</div><div style="font-weight:700;color:var(--accent)">${fmt(krmReq)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Сохранения</div><div style="font-weight:700;color:var(--green)">${fmtR(krmSavedSum)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Возвраты</div><div style="font-weight:700;color:var(--red)">${fmtR(krmRetSum)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">SLA КРМ</div><div style="font-weight:700;color:var(--text)">${krmSla} ч</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">ТХП тикеты</div><div style="font-weight:700;color:var(--text)">${fmt(thpDone)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Чаты</div><div style="font-weight:700;color:var(--text)">${fmt(t1Chats)}</div></div>
+          <div style="grid-column:1/-1"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Задачи (по неделям)</div>${renderWeekTasks('t1-done')}</div>
+        </div>
+      </div>
+      <div class="ops-team-block purple">
+        <div class="ops-team-hdr">
+          <div class="ops-team-ava" style="background:linear-gradient(135deg,var(--purple),#6a3aa0)">НЕ</div>
+          <div><div class="ops-team-name">Евстигнеева Наталья — итог</div><div class="ops-team-role">КМ (Team 2)</div></div>
+        </div>
+        <div style="padding:14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Тикеты (без дочерок)</div><div style="font-weight:700;color:var(--accent)">${fmt(t2Tickets)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Уникальных клиентов</div><div style="font-weight:700;color:var(--text)">${fmt(t2Clients)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">ЛБ проведено</div><div style="font-weight:700;color:var(--green)">${G('t2-lb')}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">В зоне риска</div><div style="font-weight:700;color:var(--red)">${G('t2-risk')}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Сохранено клиентов</div><div style="font-weight:700;color:var(--green)">${G('t2-saved')}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Передано в КРМ</div><div style="font-weight:700;color:var(--text)">${G('t2-krm')}</div></div>
+          <div style="grid-column:1/-1"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Задачи (по неделям)</div>${renderWeekTasks('t2-done')}</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+      <div class="ops-team-block" style="border-color:rgba(122,172,203,.2)">
+        <div class="ops-team-hdr">
+          <div class="ops-team-ava" style="background:linear-gradient(135deg,var(--blue),#3a6a8a)">НВ</div>
+          <div><div class="ops-team-name">Наташа Володина — итог</div><div class="ops-team-role">OPS</div></div>
+        </div>
+        <div style="padding:14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Мат. капитал</div><div style="font-weight:700;color:var(--accent)">${fmt(mkcapReq)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Оплат по мат. кап.</div><div style="font-weight:700;color:var(--green)">${fmt(mkcapPay)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Соглашения ВР</div><div style="font-weight:700;color:var(--text)">${fmt(vrReq)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Подписано</div><div style="font-weight:700;color:var(--green)">${fmt(agreeDone)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Ошибки ИМК</div><div style="font-weight:700;color:var(--red)">${fmt(imkErr)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Нал. вычет (запросы)</div><div style="font-weight:700;color:var(--text)">${G('ops-tax-req')}</div></div>
+        </div>
+      </div>
+      <div class="ops-team-block" style="border-color:rgba(154,172,138,.2)">
+        <div class="ops-team-hdr">
+          <div class="ops-team-ava" style="background:linear-gradient(135deg,var(--sage),#6a8a5a)">АГ</div>
+          <div><div class="ops-team-name">Аня Гороховская — итог</div><div class="ops-team-role">OPS</div></div>
+        </div>
+        <div style="padding:14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Расформировано (тотал)</div><div style="font-weight:700;color:var(--accent)">${fmt(disband)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">В работе</div><div style="font-weight:700;color:var(--text)">${fmt(disbandWip)}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Проверено по ЧЛ КРМ</div><div style="font-weight:700;color:var(--text)">${G('ops-krm-check')}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Средний балл КРМ</div><div style="font-weight:700;color:var(--green)">${G('ops-krm-score')}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Нулевые уроки</div><div style="font-weight:700;color:var(--text)">${G('ops-0u-total')}</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Группы недобор/перебор</div><div style="font-weight:700;color:var(--warn)">${G('ops-under')}↓ / ${G('ops-over')}↑</div></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  // Инициализируем диаграмму динамики
+  if(hasData) {
+    setTimeout(()=>{
+      const ctx=document.getElementById('ops_summaryChart'); if(!ctx) return;
+      if(ctx._chart) ctx._chart.destroy();
+      ctx._chart=new Chart(ctx,{
+        type:'bar',
+        data:{
+          labels:['Неделя 1','Неделя 2','Неделя 3','Неделя 4'],
+          datasets:[
+            {label:'КРМ запросы',data:wKrm,backgroundColor:'rgba(200,122,122,.7)',borderRadius:3},
+            {label:'ТХП тикеты',data:wThp,backgroundColor:'rgba(200,168,122,.7)',borderRadius:3},
+            {label:'КМ тикеты',data:wT2,backgroundColor:'rgba(154,172,138,.7)',borderRadius:3},
+            {label:'Сохранения (тыс. ₽)',data:wSav.map(v=>Math.round(v/1000)),backgroundColor:'rgba(122,172,203,.7)',borderRadius:3}
+          ]
+        },
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+c.parsed.y+(c.dataset.label.includes('₽')?'K':'')}}},
+          scales:{
+            x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'rgba(255,255,255,.45)',font:{size:10}}},
+            y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'rgba(255,255,255,.45)',font:{size:10}}}
+          }
+        }
+      });
+    },50);
+  }
+}
+
+function opsRenderWeekMiniChart(w) {
+  // Рендерит мини-диаграмму для конкретной недели (круговая + столбцы)
+  setTimeout(()=>{
+    const pieCtx=document.getElementById('ops_mini_pie'); if(!pieCtx) return;
+    if(pieCtx._chart) pieCtx._chart.destroy();
+    const krmR=parseFloat(opsStore[w]?.['krm-req']||0)||parseFloat(document.getElementById('ops_krm-req')?.value||0)||0;
+    const thpR=parseFloat(opsStore[w]?.['thp-done']||0)||parseFloat(document.getElementById('ops_thp-done')?.value||0)||0;
+    const t2R=parseFloat(opsStore[w]?.['t2-tickets']||0)||parseFloat(document.getElementById('ops_t2-tickets')?.value||0)||0;
+    const t1R=parseFloat(opsStore[w]?.['t1-chats']||0)||parseFloat(document.getElementById('ops_t1-chats')?.value||0)||0;
+    const total=krmR+thpR+t2R+t1R;
+    if(total===0){pieCtx.parentElement.style.display='none';return;}
+    pieCtx.parentElement.style.display='';
+    pieCtx._chart=new Chart(pieCtx,{
+      type:'doughnut',
+      data:{
+        labels:['КРМ','ТХП','КМ','Чаты'],
+        datasets:[{data:[krmR,thpR,t2R,t1R],backgroundColor:['rgba(200,122,122,.8)','rgba(200,168,122,.8)','rgba(154,172,138,.8)','rgba(122,172,203,.8)'],borderWidth:0}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+        plugins:{legend:{position:'right',labels:{color:'rgba(255,255,255,.55)',font:{size:10},boxWidth:10}},
+        tooltip:{callbacks:{label:(c)=>c.label+': '+c.parsed+(total>0?' ('+Math.round(c.parsed/total*100)+'%)':'')}}}
+      }
+    });
+
+    const barCtx=document.getElementById('ops_mini_bar'); if(!barCtx) return;
+    if(barCtx._chart) barCtx._chart.destroy();
+    // Сравниваем с предыдущей неделей если есть
+    const prev=w>1?w-1:null;
+    const datasets=[{label:'Неделя '+w,data:[krmR,thpR,t2R,t1R],backgroundColor:['rgba(200,122,122,.8)','rgba(200,168,122,.8)','rgba(154,172,138,.8)','rgba(122,172,203,.8)'],borderRadius:3}];
+    if(prev){
+      const pkrm=parseFloat(opsStore[prev]?.['krm-req']||0)||0;
+      const pthp=parseFloat(opsStore[prev]?.['thp-done']||0)||0;
+      const pt2=parseFloat(opsStore[prev]?.['t2-tickets']||0)||0;
+      const pt1=parseFloat(opsStore[prev]?.['t1-chats']||0)||0;
+      if(pkrm+pthp+pt2+pt1>0)
+        datasets.unshift({label:'Неделя '+prev,data:[pkrm,pthp,pt2,pt1],backgroundColor:['rgba(200,122,122,.3)','rgba(200,168,122,.3)','rgba(154,172,138,.3)','rgba(122,172,203,.3)'],borderRadius:3});
+    }
+    barCtx._chart=new Chart(barCtx,{
+      type:'bar',
+      data:{labels:['КРМ','ТХП','КМ','Чаты'],datasets},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'rgba(255,255,255,.55)',font:{size:10},boxWidth:10}}},
+        scales:{
+          x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'rgba(255,255,255,.45)',font:{size:10}}},
+          y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'rgba(255,255,255,.45)',font:{size:10}}}
+        }
+      }
+    });
+  },50);
+}
+
 function opsUpdateChart() {
   if(!opsChart)return;
   const t2=[],thp=[],krm=[];
@@ -1998,8 +2329,8 @@ async function opsLoadData() {
       if(r.week>0 && r.week<=4) opsStore[r.week]=r.data||{};
     });
     // Show correct view based on current week selection
-    if(opsCurWeek===0) opsLoadMonth();
-    else opsLoadWeek(opsCurWeek);
+    if(opsCurWeek===0){ opsRenderSummary(); }
+    else { opsLoadWeek(opsCurWeek); opsRenderWeekMiniChart(opsCurWeek); }
     opsUpdateChart();
     opsRecalc();
   } catch(e){ console.log('ops load error',e); }
@@ -2051,6 +2382,25 @@ function opsHTML() {
     <button class="ops-wtab" onclick="opsSetWeek(3,this)">Неделя 3</button>
     <button class="ops-wtab" onclick="opsSetWeek(4,this)">Неделя 4</button>
     <button class="ops-wtab on" onclick="opsSetWeek(0,this)">Итого за месяц</button>
+  </div>
+
+  <div id="ops_summary_block" style="display:none"></div>
+
+  <div id="ops_input_block">
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+    <div class="ops-chart-card" style="padding:14px">
+      <div class="ops-chart-title" style="font-size:11px;margin-bottom:12px">Распределение запросов за неделю</div>
+      <div style="position:relative;width:100%;height:140px">
+        <canvas id="ops_mini_pie"></canvas>
+      </div>
+    </div>
+    <div class="ops-chart-card" style="padding:14px">
+      <div class="ops-chart-title" style="font-size:11px;margin-bottom:12px">Сравнение с предыдущей неделей</div>
+      <div style="position:relative;width:100%;height:140px">
+        <canvas id="ops_mini_bar"></canvas>
+      </div>
+    </div>
   </div>
 
   <div class="sec-lbl">Дашборд — сводка</div>
@@ -2233,6 +2583,8 @@ function opsHTML() {
     <button class="ops-bclear" onclick="opsClearWeek()">Очистить неделю</button>
     <button class="ops-bsave" onclick="opsSaveData()">Сохранить данные</button>
   </div>
+
+  </div>
 `;
 }
 
@@ -2247,6 +2599,12 @@ function opsRender() {
   document.getElementById('opsContent').innerHTML = opsHTML();
   opsInitChart();
   opsLoadData();
+  // Применяем видимость блоков по текущей неделе
+  const inputBlock=document.getElementById('ops_input_block');
+  const summaryBlock=document.getElementById('ops_summary_block');
+  if(inputBlock) inputBlock.style.display=opsCurWeek===0?'none':'block';
+  if(summaryBlock) summaryBlock.style.display=opsCurWeek===0?'block':'none';
+  if(opsCurWeek===0) { setTimeout(()=>opsRenderSummary(),100); }
 }
 </script>
 
