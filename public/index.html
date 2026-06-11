@@ -891,7 +891,7 @@ function showTab(name,btn){
   if(name==='ops') opsRender();
   if(name==='headcs') headCsRender();
 }
-function switchMonth(m){curMonth=m;try{localStorage.setItem('cis_last_month',m);}catch(e){}renderAll();loadTasks();loadReviews();kmFilter='cur';renderKM();opsStore={1:{},2:{},3:{},4:{}};opsCurWeek=0;opsPeriod='';}
+function switchMonth(m){curMonth=m;try{localStorage.setItem('cis_last_month',m);}catch(e){}renderAll();loadTasks();loadReviews();kmFilter='cur';renderKM();opsStore={1:{},2:{},3:{},4:{}};opsCurWeek=0;opsPeriod='';HC_TASKS=[];}
 function parseKD(s){const m=s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
 function renderKM(){const q=(document.getElementById('kmQ')?.value||'').toLowerCase().trim();const rows=DB.meetings.filter(r=>{if(q&&!(r.name||'').toLowerCase().includes(q))return false;if(kmFilter==='cur')return r.month===curMonth;if(kmFilter==='all')return true;const dt=parseKD(r.date||'');if(!dt)return false;if(kmFilter==='2025')return dt.getFullYear()===2025;if(kmFilter==='2026')return dt.getFullYear()===2026;return true;});document.getElementById('kmBody').innerHTML=rows.map(r=>{const dc=r.dyn==='Улучшение'?'du':r.dyn==='Спад'?'dd':r.dyn?'df':'';return`<tr><td style="font-weight:600;white-space:nowrap">${r.name||'—'}</td><td style="white-space:nowrap">${r.date||'—'}</td><td>${r.topic||'—'}</td><td>${r.tasks||'—'}</td><td style="white-space:nowrap">${r.next||'—'}</td><td class="${dc}">${r.dyn||'—'}</td><td style="white-space:nowrap">${r.tl||'—'}</td><td style="white-space:nowrap"><button class="kbt e" onclick="openEditKM('${r.id}')">✎</button><button class="kbt d" onclick="delKM('${r.id}')">✕</button></td></tr>`;}).join('');}
 function kp(p,btn){kmFilter=p;btn.closest('.km-ctrl').querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderKM();}
@@ -3008,10 +3008,12 @@ const HC_CATS = ['Стратегия','Команда','Процессы','Пр�
 let HC_TASKS = [];
 let _hcFilter = 'all';
 let _hcEditId = null;
-let _hcLoaded = false;
 
 async function hcLoad() {
-  try { HC_TASKS = await api('GET', '/api/head-tasks'); if(!Array.isArray(HC_TASKS)) HC_TASKS=[]; }
+  try {
+    HC_TASKS = await api('GET', '/api/head-tasks?month='+encodeURIComponent(curMonth));
+    if(!Array.isArray(HC_TASKS)) HC_TASKS=[];
+  }
   catch(e) { HC_TASKS=[]; }
 }
 
@@ -3057,6 +3059,7 @@ async function hcSaveTask() {
   const title=document.getElementById('hc_t_title').value.trim();
   if(!title){alert('Введи название задачи');return;}
   const obj={id:_hcEditId||uid(),title,
+    month:curMonth,
     priority:document.getElementById('hc_t_priority').value,
     deadline:document.getElementById('hc_t_deadline').value.trim(),
     category:document.getElementById('hc_t_category').value,
@@ -3191,7 +3194,7 @@ function hcRenderCols() {
 function hcRenderAll(){hcRenderSummary();hcRenderCols();}
 
 async function headCsRender() {
-  if(!_hcLoaded){await hcLoad();_hcLoaded=true;}
+  await hcLoad();
   document.getElementById('headCsContent').innerHTML=`
     <div id="hcSummary"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
