@@ -109,10 +109,13 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
 .fg input,.fg select,.fg textarea{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px 11px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none;transition:border-color .15s}
 .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--accent)}
 .csx-wrap{position:relative;display:flex;gap:4px;align-items:center}
-.csx-wrap input{flex:1;min-width:0}
+.csx-wrap input{flex:1;min-width:0;cursor:pointer}
+.csx-wrap input:not([readonly]){cursor:text}
 .combo-add{flex-shrink:0;width:28px;height:30px;background:transparent;border:1px solid var(--border);color:var(--accent);font-size:17px;line-height:1;cursor:pointer;border-radius:2px;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;font-family:monospace}
 .combo-add:hover{background:rgba(200,184,154,.15);border-color:var(--accent)}
-.csx-drop{position:absolute;top:calc(100% + 3px);left:0;right:36px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;z-index:9999;max-height:200px;overflow-y:auto;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.csx-chevron{flex-shrink:0;width:26px;height:30px;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:11px;cursor:pointer;border-radius:2px;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0}
+.csx-chevron:hover{border-color:var(--accent);color:var(--accent)}
+.csx-drop{position:absolute;top:calc(100% + 3px);left:0;right:60px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;z-index:9999;max-height:200px;overflow-y:auto;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .csx-drop.open{display:block}
 .csx-opt{padding:8px 11px;font-size:12px;color:var(--text);cursor:pointer;transition:background .1s}
 .csx-opt:hover,.csx-opt.hi{background:rgba(200,184,154,.12);color:var(--accent)}
@@ -362,7 +365,7 @@ body.viewer-mode .pr-save-btn
 </div>
 
 <!-- MODALS -->
-<div class="ov" id="empOv"><div class="modal"><button class="mclose" onclick="cm('empOv')">✕</button><h2 id="empTitle">Сотрудник</h2><div class="fgrid"><div class="fg full"><label>ФИО</label><input id="f_name" placeholder="Фамилия Имя Отчество"></div><div class="fg"><label>Должность</label><div class="csx-wrap" id="csx_role_wrap"><input id="f_role" placeholder="Client manager" autocomplete="off" oninput="csxFilter('role')" onfocus="csxOpen('role')" onblur="csxBlur('role')"><button class="combo-add" type="button" title="Добавить новую роль" onmousedown="event.preventDefault()" onclick="promptAddRole()">+</button><div class="csx-drop" id="csx_role_drop"></div></div></div><div class="fg"><label>Подгруппа</label><div class="csx-wrap" id="csx_sub_wrap"><input id="f_sub" placeholder="Team 1 / КРМ / ТХП" autocomplete="off" oninput="csxFilter('sub')" onfocus="csxOpen('sub')" onblur="csxBlur('sub')"><button class="combo-add" type="button" title="Добавить новую подгруппу" onmousedown="event.preventDefault()" onclick="promptAddSub()">+</button><div class="csx-drop" id="csx_sub_drop"></div></div></div><div class="fg"><label>Дата входа</label><input id="f_entry" placeholder="дд.мм.гггг"></div><div class="fg"><label>График</label><input id="f_schedule" placeholder="09:00–18:00"></div><div class="fg"><label>План смен</label><input id="f_plan" placeholder="22"></div><div class="fg"><label>Факт смен</label><input id="f_fact"></div><div class="fg"><label>Отпуск</label><input id="f_vacation" placeholder="01.05–14.05"></div><div class="fg"><label>Статус</label><select id="f_status"><option value="">— не указан —</option><option>Стабилен</option><option>Требует наблюдения</option><option>Зона риска</option><option>Потенциал роста</option><option>Увольнение</option></select></div><div class="fg"><label>Дата увольнения</label><input id="f_dismiss"></div><div class="fg full"><label>Функции / KPI</label><textarea id="f_functions"></textarea></div><div class="fg full"><label>Доп. функции</label><textarea id="f_extra"></textarea></div><div class="fg full"><label>Комментарий</label><textarea id="f_comment"></textarea></div><div class="fg"><label>Город</label><input id="f_city"></div><div class="fg"><label>ЧП от МСК</label><input id="f_tz" placeholder="+2 ч"></div><div class="fg"><label>Телефон</label><input id="f_phone"></div><div class="fg"><label>Телеграм</label><input id="f_tg" placeholder="@username"></div><div class="fg"><label>Дата рождения</label><input id="f_birthdate" placeholder="дд.мм.гггг"></div><div class="fg"><label>Оклад (₽)</label><input id="f_salary_base" type="number" placeholder="20000"></div><div class="fg"><label>Налоговая зона</label>
+<div class="ov" id="empOv"><div class="modal"><button class="mclose" onclick="cm('empOv')">✕</button><h2 id="empTitle">Сотрудник</h2><div class="fgrid"><div class="fg full"><label>ФИО</label><input id="f_name" placeholder="Фамилия Имя Отчество"></div><div class="fg"><label>Должность</label><div class="csx-wrap" id="csx_role_wrap"><input id="f_role" placeholder="Выбери или введи..." autocomplete="off" readonly onclick="csxToggle('role')" oninput="csxFilter('role')"><button class="csx-chevron" type="button" onmousedown="event.preventDefault()" onclick="csxToggle('role')">▾</button><button class="combo-add" type="button" title="Добавить новую должность" onmousedown="event.preventDefault()" onclick="openAddRoleModal()">+</button><div class="csx-drop" id="csx_role_drop"></div></div></div><div class="fg"><label>Подгруппа</label><div class="csx-wrap" id="csx_sub_wrap"><input id="f_sub" placeholder="Выбери подгруппу..." autocomplete="off" readonly onclick="csxToggle('sub')" oninput="csxFilter('sub')"><button class="csx-chevron" type="button" onmousedown="event.preventDefault()" onclick="csxToggle('sub')">▾</button><button class="combo-add" type="button" title="Добавить новую подгруппу" onmousedown="event.preventDefault()" onclick="openAddSubModal()">+</button><div class="csx-drop" id="csx_sub_drop"></div></div></div><div class="fg"><label>Дата входа</label><input id="f_entry" placeholder="дд.мм.гггг"></div><div class="fg"><label>График</label><input id="f_schedule" placeholder="09:00–18:00"></div><div class="fg"><label>План смен</label><input id="f_plan" placeholder="22"></div><div class="fg"><label>Факт смен</label><input id="f_fact"></div><div class="fg"><label>Отпуск</label><input id="f_vacation" placeholder="01.05–14.05"></div><div class="fg"><label>Статус</label><select id="f_status"><option value="">— не указан —</option><option>Стабилен</option><option>Требует наблюдения</option><option>Зона риска</option><option>Потенциал роста</option><option>Увольнение</option></select></div><div class="fg"><label>Дата увольнения</label><input id="f_dismiss"></div><div class="fg full"><label>Функции / KPI</label><textarea id="f_functions"></textarea></div><div class="fg full"><label>Доп. функции</label><textarea id="f_extra"></textarea></div><div class="fg full"><label>Комментарий</label><textarea id="f_comment"></textarea></div><div class="fg"><label>Город</label><input id="f_city"></div><div class="fg"><label>ЧП от МСК</label><input id="f_tz" placeholder="+2 ч"></div><div class="fg"><label>Телефон</label><input id="f_phone"></div><div class="fg"><label>Телеграм</label><input id="f_tg" placeholder="@username"></div><div class="fg"><label>Дата рождения</label><input id="f_birthdate" placeholder="дд.мм.гггг"></div><div class="fg"><label>Оклад (₽)</label><input id="f_salary_base" type="number" placeholder="20000"></div><div class="fg"><label>Налоговая зона</label>
   <select id="f_tax_zone">
     <option value="">— не указано —</option>
     <option value="РФ">РФ</option>
@@ -848,30 +851,61 @@ function renderKM(){const q=(document.getElementById('kmQ')?.value||'').toLowerC
 function kp(p,btn){kmFilter=p;btn.closest('.km-ctrl').querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderKM();}
 const EF=['name','role','sub','entry','schedule','plan','fact','vacation','status','dismiss','functions','extra','comment','city','tz','phone','tg','birthdate','salary_base','tax_zone'];
 // ── РОЛИ И ПОДГРУППЫ — кастомный дропдаун ───────────────────────────────────
+
+// Маппинг должность → подгруппа (автоподстановка)
+const ROLE_SUB_MAP = {
+  'OPS manager':       'OPS',
+  'Operations':        'OPS',
+  'КМ':                'КМ',
+  'Client manager':    'КМ',
+  'Кризис-менеджер':   'КРМ',
+  'Crisis manager':    'КРМ',
+  'Чат-менеджер':      'МЧ',
+  'Chat manager':      'МЧ',
+  'ВР менеджер':       'ВР',
+  'ВР manager':        'ВР',
+  'TechSup manager':   'ТХП',
+  'Tech support':      'ТХП',
+};
+
+// Базовый набор (дополняется через localStorage)
 const DEFAULT_ROLES = [
-  'Client manager','Crisis manager','Tech support','Chat manager',
-  'КМ','КРМ','ТХП','МЧ','Operations','Team Lead','Head · Client Service',
-  'ВР manager','KM Team 1','KM Team 2'
+  'OPS manager','КМ','Кризис-менеджер','Чат-менеджер','ВР менеджер','TechSup manager',
+  'Team Lead','Head · Client Service'
 ];
-const DEFAULT_SUBS = ['КМ','КРМ','ТХП','ВР','МЧ','Team 1','Team 2','OPS'];
+const DEFAULT_SUBS = ['КМ','КРМ','ТХП','ВР','МЧ','OPS'];
 
 function getRoles() {
-  try { return JSON.parse(localStorage.getItem('cis_roles') || 'null') || [...DEFAULT_ROLES]; }
-  catch(e) { return [...DEFAULT_ROLES]; }
+  try {
+    const stored = JSON.parse(localStorage.getItem('cis_roles') || 'null');
+    if (!stored) return [...DEFAULT_ROLES];
+    // Merge: always include defaults
+    return [...new Set([...DEFAULT_ROLES, ...stored])];
+  } catch(e) { return [...DEFAULT_ROLES]; }
 }
 function getSubs() {
-  try { return JSON.parse(localStorage.getItem('cis_subs') || 'null') || [...DEFAULT_SUBS]; }
-  catch(e) { return [...DEFAULT_SUBS]; }
+  try {
+    const stored = JSON.parse(localStorage.getItem('cis_subs') || 'null');
+    if (!stored) return [...DEFAULT_SUBS];
+    return [...new Set([...DEFAULT_SUBS, ...stored])];
+  } catch(e) { return [...DEFAULT_SUBS]; }
 }
 function saveRoles(arr) { try { localStorage.setItem('cis_roles', JSON.stringify(arr)); } catch(e){} }
 function saveSubs(arr) { try { localStorage.setItem('cis_subs', JSON.stringify(arr)); } catch(e){} }
 
+// Инпут-поля для каждого ключа дропдауна
+const CSX_INPUT = { role: 'f_role', sub: 'f_sub', arsub: 'ar_sub' };
+
 function csxGetList(key) {
-  const fromDB = key === 'role'
-    ? [...new Set(DB.employees.map(e => e.role).filter(Boolean))]
-    : [...new Set(DB.employees.map(e => e.sub).filter(Boolean))];
-  const stored = key === 'role' ? getRoles() : getSubs();
-  return [...new Set([...stored, ...fromDB])].sort((a,b) => a.localeCompare(b, 'ru'));
+  if (key === 'role') {
+    const fromDB = [...new Set(DB.employees.map(e => e.role).filter(Boolean))];
+    return [...new Set([...getRoles(), ...fromDB])].sort((a,b) => a.localeCompare(b, 'ru'));
+  }
+  if (key === 'sub' || key === 'arsub') {
+    const fromDB = [...new Set(DB.employees.map(e => e.sub).filter(Boolean))];
+    return [...new Set([...getSubs(), ...fromDB])].sort((a,b) => a.localeCompare(b, 'ru'));
+  }
+  return [];
 }
 
 function csxRender(key, filter) {
@@ -881,62 +915,137 @@ function csxRender(key, filter) {
   const q = (filter || '').toLowerCase().trim();
   const items = q ? all.filter(v => v.toLowerCase().includes(q)) : all;
   if (!items.length) {
-    drop.innerHTML = '<div class="csx-empty">Ничего не найдено — нажми + чтобы добавить</div>';
+    drop.innerHTML = '<div class="csx-empty">Ничего не найдено</div>';
   } else {
     drop.innerHTML = items.map(v =>
-      `<div class="csx-opt" onmousedown="event.preventDefault()" onclick="csxPick('${key}','${v.replace(/'/g,"\'")}')">${v}</div>`
+      `<div class="csx-opt" onmousedown="event.preventDefault()" onclick="csxPick('${key}','${v.replace(/\/g,'\\').replace(/'/g,"\'")}')">` +
+      (q ? v.replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\]/g,'\$&')+')','gi'), '<b>$1</b>') : v) +
+      '</div>'
     ).join('');
   }
 }
 
-function csxOpen(key) {
-  const val = document.getElementById('f_' + key)?.value || '';
-  csxRender(key, val);
-  document.getElementById('csx_' + key + '_drop')?.classList.add('open');
+let _csxOpen = null; // currently open dropdown key
+
+function csxToggle(key) {
+  const isOpen = _csxOpen === key;
+  csxCloseAll();
+  if (!isOpen) {
+    const inputId = CSX_INPUT[key] || ('f_' + key);
+    const val = document.getElementById(inputId)?.value || '';
+    csxRender(key, val);
+    document.getElementById('csx_' + key + '_drop')?.classList.add('open');
+    _csxOpen = key;
+    // Make input editable temporarily for typing
+    const inp = document.getElementById(inputId);
+    if (inp) { inp.removeAttribute('readonly'); inp.focus(); }
+  }
 }
 
 function csxFilter(key) {
-  const val = document.getElementById('f_' + key)?.value || '';
+  const inputId = CSX_INPUT[key] || ('f_' + key);
+  const val = document.getElementById(inputId)?.value || '';
   csxRender(key, val);
-  document.getElementById('csx_' + key + '_drop')?.classList.add('open');
+  if (!document.getElementById('csx_' + key + '_drop')?.classList.contains('open')) {
+    document.getElementById('csx_' + key + '_drop')?.classList.add('open');
+    _csxOpen = key;
+  }
 }
 
-function csxBlur(key) {
-  // Small delay so onclick on option fires first
-  setTimeout(() => {
-    document.getElementById('csx_' + key + '_drop')?.classList.remove('open');
-  }, 150);
+function csxCloseAll() {
+  document.querySelectorAll('.csx-drop').forEach(d => d.classList.remove('open'));
+  // Re-add readonly to inputs
+  ['role','sub','arsub'].forEach(k => {
+    const id = CSX_INPUT[k] || ('f_' + k);
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('readonly', '');
+  });
+  _csxOpen = null;
 }
 
 function csxPick(key, val) {
-  const inp = document.getElementById('f_' + key);
-  if (inp) inp.value = val;
+  const inputId = CSX_INPUT[key] || ('f_' + key);
+  const inp = document.getElementById(inputId);
+  if (inp) { inp.value = val; inp.setAttribute('readonly', ''); }
   document.getElementById('csx_' + key + '_drop')?.classList.remove('open');
+  _csxOpen = null;
+  // Auto-fill sub when role is picked
+  if (key === 'role') {
+    const autoSub = ROLE_SUB_MAP[val];
+    if (autoSub) {
+      const subInp = document.getElementById('f_sub');
+      if (subInp) subInp.value = autoSub;
+    }
+  }
 }
 
-function populateRoleList() { /* legacy stub — now handled by csxOpen */ }
-function populateSubList()  { /* legacy stub — now handled by csxOpen */ }
+// Close on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.csx-wrap')) csxCloseAll();
+});
 
-function promptAddRole() {
-  const cur = document.getElementById('f_role')?.value?.trim() || '';
-  const val = prompt('Новая роль:', cur);
-  if (!val || !val.trim()) return;
-  const roles = getRoles();
-  const trimmed = val.trim();
-  if (!roles.includes(trimmed)) { roles.push(trimmed); saveRoles(roles); }
-  document.getElementById('f_role').value = trimmed;
-  toast('Роль добавлена ✓');
+function populateRoleList() { /* legacy stub */ }
+function populateSubList()  { /* legacy stub */ }
+
+// ── МОДАЛ ДОБАВЛЕНИЯ ДОЛЖНОСТИ ─────────────────────────────────────────────
+let _arTarget = 'role'; // 'role' or 'sub'
+
+function openAddRoleModal() {
+  _arTarget = 'role';
+  document.getElementById('addRoleTitle').textContent = 'Новая должность';
+  document.getElementById('ar_name').value = '';
+  document.getElementById('ar_sub').value = '';
+  csxRender('arsub', '');
+  om('addRoleOv');
 }
 
-function promptAddSub() {
-  const cur = document.getElementById('f_sub')?.value?.trim() || '';
-  const val = prompt('Новая подгруппа:', cur);
-  if (!val || !val.trim()) return;
-  const subs = getSubs();
-  const trimmed = val.trim();
-  if (!subs.includes(trimmed)) { subs.push(trimmed); saveSubs(subs); }
-  document.getElementById('f_sub').value = trimmed;
-  toast('Подгруппа добавлена ✓');
+function openAddSubModal() {
+  _arTarget = 'sub';
+  document.getElementById('addRoleTitle').textContent = 'Новая подгруппа';
+  document.getElementById('ar_name').value = '';
+  document.getElementById('ar_sub').value = '';
+  // In sub mode we only need the name field
+  document.getElementById('ar_sub').parentElement.parentElement.style.display = 'none';
+  om('addRoleOv');
+}
+
+function arAutoSub() {
+  if (_arTarget !== 'role') return;
+  const name = document.getElementById('ar_name').value.trim();
+  const auto = ROLE_SUB_MAP[name];
+  if (auto) document.getElementById('ar_sub').value = auto;
+}
+
+function confirmAddRole() {
+  const name = document.getElementById('ar_name').value.trim();
+  if (!name) { alert('Введи название'); return; }
+
+  if (_arTarget === 'role') {
+    const sub = document.getElementById('ar_sub').value.trim();
+    const roles = getRoles();
+    if (!roles.includes(name)) { roles.push(name); saveRoles(roles); }
+    // Also save to ROLE_SUB_MAP in memory
+    if (sub) ROLE_SUB_MAP[name] = sub;
+    // Apply to open employee form
+    const roleInp = document.getElementById('f_role');
+    if (roleInp) roleInp.value = name;
+    if (sub) {
+      const subInp = document.getElementById('f_sub');
+      if (subInp) subInp.value = sub;
+    }
+    toast('Должность добавлена ✓');
+  } else {
+    const subs = getSubs();
+    if (!subs.includes(name)) { subs.push(name); saveSubs(subs); }
+    const subInp = document.getElementById('f_sub');
+    if (subInp) subInp.value = name;
+    toast('Подгруппа добавлена ✓');
+  }
+
+  // Restore sub field visibility
+  const subFg = document.getElementById('ar_sub')?.parentElement?.parentElement;
+  if (subFg) subFg.style.display = '';
+  cm('addRoleOv');
 }
 
 function openAddEmp(block){_eId=null;_eBlock=block;document.getElementById('empTitle').textContent='Добавить сотрудника';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value='';});populateRoleList();populateSubList();om('empOv');}
@@ -3187,6 +3296,29 @@ async function deleteCustomRole(name) {
     <div id="trashList"></div>
   </div>
 </div>
+
+<!-- ── МОДАЛ: добавить должность / подгруппу ─────────────────── -->
+<div class="ov" id="addRoleOv">
+  <div class="modal" style="max-width:380px">
+    <button class="mclose" onclick="cm('addRoleOv')">✕</button>
+    <h2 id="addRoleTitle">Новая должность</h2>
+    <div class="fgrid" style="grid-template-columns:1fr;gap:10px">
+      <div class="fg full"><label>Название</label><input id="ar_name" placeholder="Например: Senior KM" oninput="arAutoSub()"></div>
+      <div class="fg full"><label>Подгруппа</label>
+        <div class="csx-wrap" id="csx_arsub_wrap">
+          <input id="ar_sub" placeholder="КМ / КРМ / ТХП / ВР / МЧ / OPS" autocomplete="off" readonly onclick="csxToggle('arsub')" oninput="csxFilter('arsub')">
+          <button class="csx-chevron" type="button" onmousedown="event.preventDefault()" onclick="csxToggle('arsub')">▾</button>
+          <div class="csx-drop" id="csx_arsub_drop"></div>
+        </div>
+      </div>
+    </div>
+    <div class="mbtns">
+      <button class="bcancel" onclick="cm('addRoleOv')">Отмена</button>
+      <button class="bsave" onclick="confirmAddRole()">Добавить</button>
+    </div>
+  </div>
+</div>
+
 
 </body>
 </html>
