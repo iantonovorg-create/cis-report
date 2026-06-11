@@ -3013,6 +3013,14 @@ async function hcLoad() {
   try {
     HC_TASKS = await api('GET', '/api/head-tasks?month='+encodeURIComponent(curMonth));
     if(!Array.isArray(HC_TASKS)) HC_TASKS=[];
+    // Авто-миграция: задачи без месяца привязываем к текущему
+    const legacy = HC_TASKS.filter(t => !t.month || t.month === '');
+    if(legacy.length > 0 && curMonth) {
+      for(const t of legacy) {
+        t.month = curMonth;
+        api('POST', '/api/head-task', t).catch(()=>{});
+      }
+    }
   }
   catch(e) { HC_TASKS=[]; }
 }
