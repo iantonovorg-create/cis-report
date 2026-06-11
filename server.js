@@ -582,8 +582,12 @@ app.get('/api/head-tasks', requireAuth, async (req, res) => {
   if (r !== 'admin') return res.status(403).json({ error: 'Forbidden' });
   try {
     const month = req.query.month || '';
+    // Возвращаем задачи текущего месяца + задачи без месяца (старые данные, миграция)
     const { rows } = month
-      ? await pool.query('SELECT * FROM head_tasks WHERE month=$1 ORDER BY created_at ASC', [month])
+      ? await pool.query(
+          'SELECT * FROM head_tasks WHERE month=$1 OR month='' OR month IS NULL ORDER BY created_at ASC',
+          [month]
+        )
       : await pool.query('SELECT * FROM head_tasks ORDER BY created_at ASC');
     res.json(rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
