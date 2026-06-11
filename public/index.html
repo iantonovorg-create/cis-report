@@ -197,6 +197,44 @@ table.kt tr:nth-child(even) td{background:rgba(0,0,0,.13)}table.kt tr:hover td{b
 .ops-save-bar{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
 .ops-bsave{padding:9px 20px;background:var(--accent);border:none;color:#111;font-family:'Golos Text',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border-radius:2px}.ops-bsave:hover{opacity:.85}
 .ops-bclear{padding:9px 16px;background:transparent;border:1px solid var(--border2);color:var(--dim);font-family:'Golos Text',sans-serif;font-size:12px;cursor:pointer;border-radius:2px}.ops-bclear:hover{border-color:var(--text);color:var(--text)}
+.ops-tl-block{border:1px solid rgba(154,172,138,.2);border-radius:6px;margin-bottom:16px;background:rgba(154,172,138,.02);overflow:hidden}
+.ops-tl-block.purple{border-color:rgba(168,122,200,.2);background:rgba(168,122,200,.02)}
+.ops-tl-block.blue{border-color:rgba(122,172,203,.2);background:rgba(122,172,203,.02)}
+.ops-tl-block.green{border-color:rgba(154,172,138,.2);background:rgba(154,172,138,.02)}
+.ops-tl-hdr{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(54,54,54,.8)}
+.ops-tl-body{padding:14px;display:flex;flex-direction:column;gap:12px}
+.ops-tl-chart-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px}
+.ops-tl-cards-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.ops-tl-cards-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ops-tl-card{background:var(--bg2);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+.ops-tl-card-hdr{background:var(--bg3);padding:8px 12px;font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;border-bottom:1px solid var(--border)}
+.ops-mini-chart{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:12px 14px}
+.ops-mini-chart-title{font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+.ops-person-block{border-radius:4px;overflow:hidden;border:1px solid var(--border)}
+.ops-person-hdr{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.ops-person-fields{padding:0}
+.ops-person-sub{padding:6px 12px;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);background:var(--bg3);border-bottom:1px solid var(--border)}
+.ops-sum-tl{border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden}
+.ops-sum-tl-hdr{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.ops-sum-tl-body{padding:14px}
+.ops-sum-inner{display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start}
+.ops-sum-inner>div:last-child{min-width:0}
+.ops-sum-chart-col{display:flex;flex-direction:column;gap:8px}
+.ops-sum-metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;min-width:0}
+.ops-sum-metric .ml{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;word-break:break-word}
+.ops-sum-metric .mv{font-size:15px;font-weight:700;color:var(--accent);display:block}
+.ops-sum-metric .mv.good{color:var(--green)}
+.ops-sum-metric .mv.bad{color:var(--red)}
+.ops-sum-metric .mv.blue{color:var(--blue)}
+.ops-sum-metric .mv.warn{color:var(--warn)}
+.ops-sum-tasks{margin-top:8px;grid-column:1/-1}
+.ops-sum-tasks-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.ops-sum-tasks-val{background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:8px 10px;font-size:10px;color:var(--dim);line-height:1.6;min-height:36px;white-space:pre-wrap}
+.ops-mini-bar-wrap{display:flex;align-items:flex-end;gap:4px;height:72px}
+.ops-mini-bar-group{display:flex;gap:2px;align-items:flex-end;flex:1;flex-direction:column;align-items:center}
+.ops-mini-legend{display:flex;flex-direction:column;gap:3px;margin-top:8px}
+.ops-mini-leg-item{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--dim)}
+.ops-mini-leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 
 .hc-cf-btn{font-size:10px;padding:4px 12px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif;transition:all .15s}
 .hc-cf-btn:hover,.hc-cf-btn.on{border-color:var(--accent);color:var(--accent);background:rgba(200,184,154,.07)}
@@ -1889,13 +1927,7 @@ function showExtraForm(type) {
   }
 }
 
-function updateKrmBonusPreview() {
-  const pct = parseFloat(document.getElementById('pr_krm_pct')?.value) || 0;
-  const saved = parseFloat(document.getElementById('pr_krm_saved')?.value) || 0;
-  const bonus = Math.round(saved * (pct / 100));
-  const el = document.getElementById('krm_bonus_preview');
-  if (el) el.textContent = bonus > 0 ? fmt(bonus) + ' ₽' : '—';
-}
+
 
 async function savePayroll() {
   const bonusType = document.getElementById('pr_bonus_type').value;
@@ -2282,213 +2314,337 @@ function opsGetSummaryVal(id) {
 }
 
 function opsRenderSummary() {
-  const el=document.getElementById('ops_summary_block'); if(!el) return;
-  // Считаем итоги
-  const G=(id)=>{ const v=opsGetSummaryVal(id); return parseFloat(v)||0; };
-  const Gs=(id)=>opsGetSummaryVal(id);
+  var el=document.getElementById('ops_summary_block'); if(!el) return;
+  var G=function(id){ var v=opsGetSummaryVal(id); return parseFloat(v)||0; };
+  var Gs=function(id){ return opsGetSummaryVal(id); };
+  var fmtR=function(n){ return n>=1000?new Intl.NumberFormat('ru-RU').format(Math.round(n))+' ₽':Math.round(n)+' ₽'; };
+  var fmt=function(n){ return new Intl.NumberFormat('ru-RU').format(Math.round(n||0)); };
 
-  const krmReq=G('krm-req'), krmDone=G('krm-done'), krmRetSum=G('krm-ret-sum');
-  const krmSavedCnt=G('krm-saved-cnt'), krmSavedSum=G('krm-saved-sum');
-  const krmSla=Gs('krm-sla'), krmBacklog=G('krm-backlog'), krmTech=G('krm-tech');
-  const thpDone=G('thp-done'), thpKs=G('thp-ks'), thpUch=G('thp-uch'), thpSpeed=G('thp-speed');
-  const t1Chats=G('t1-chats'), t1Docs=G('t1-docs');
-  const t2Tickets=G('t2-tickets'), t2Clients=G('t2-clients'), t2Lb=G('t2-lb');
-  const disband=parseFloat(Gs('ops-disband'))||0;
-  const disbandWip=parseFloat(Gs('ops-disband-wip'))||0;
-  const mkcapReq=G('ops-mkcap-req'), mkcapPay=G('ops-mkcap-pay');
-  const vrReq=G('ops-vr-req'), agreeSent=G('ops-agree-sent'), agreeDone=G('ops-agree-done');
-  const imkErr=G('ops-imk-err');
+  var krmReq=G('krm-req'), krmDone=G('krm-done'), krmRetSum=G('krm-ret-sum');
+  var krmSavedCnt=G('krm-saved-cnt'), krmSavedSum=G('krm-saved-sum');
+  var krmSla=Gs('krm-sla'), krmBacklog=G('krm-backlog'), krmTech=G('krm-tech');
+  var thpDone=G('thp-done'), thpKs=G('thp-ks'), thpUch=G('thp-uch'), thpSpeed=G('thp-speed');
+  var t1Chats=G('t1-chats'), t1Docs=G('t1-docs');
+  var t2Tickets=G('t2-tickets'), t2Clients=G('t2-clients'), t2Lb=G('t2-lb');
+  var t2Saved=G('t2-saved'), t2Pause=G('t2-pause'), t2Krm=G('t2-krm');
+  var disband=parseFloat(Gs('ops-disband'))||0, disbandWip=parseFloat(Gs('ops-disband-wip'))||0;
+  var mkcapReq=G('ops-mkcap-req'), mkcapPay=G('ops-mkcap-pay');
+  var vrReq=G('ops-vr-req'), agreeSent=G('ops-agree-sent'), agreeDone=G('ops-agree-done');
+  var imkErr=G('ops-imk-err');
+  var weeks=[1,2,3,4];
+  var wKrm=weeks.map(function(w){return parseFloat(opsStore[w]?.['krm-req']||0)||0;});
+  var wThp=weeks.map(function(w){return parseFloat(opsStore[w]?.['thp-done']||0)||0;});
+  var wT2=weeks.map(function(w){return parseFloat(opsStore[w]?.['t2-tickets']||0)||0;});
+  var wSav=weeks.map(function(w){return parseFloat(opsStore[w]?.['krm-saved-sum']||0)||0;});
+  var wT1=weeks.map(function(w){return parseFloat(opsStore[w]?.['t1-chats']||0)||0;});
+  var wT2sav=weeks.map(function(w){return parseFloat(opsStore[w]?.['t2-saved']||0)||0;});
+  var wMkcap=weeks.map(function(w){return parseFloat(opsStore[w]?.['ops-mkcap-req']||0)||0;});
+  var wVr=weeks.map(function(w){return parseFloat(opsStore[w]?.['ops-vr-req']||0)||0;});
+  var wDisb=weeks.map(function(w){return parseFloat(opsStore[w]?.['ops-disband']||0)||0;});
 
-  // Данные по неделям для диаграммы динамики
-  const weeks=[1,2,3,4];
-  const wKrm=weeks.map(w=>parseFloat(opsStore[w]?.['krm-req']||0)||0);
-  const wThp=weeks.map(w=>parseFloat(opsStore[w]?.['thp-done']||0)||0);
-  const wT2=weeks.map(w=>parseFloat(opsStore[w]?.['t2-tickets']||0)||0);
-  const wSav=weeks.map(w=>parseFloat(opsStore[w]?.['krm-saved-sum']||0)||0);
-  const hasData=wKrm.some(v=>v>0)||wThp.some(v=>v>0)||wT2.some(v=>v>0);
-
-  const fmtR=(n)=>n>=1000?new Intl.NumberFormat('ru-RU').format(Math.round(n))+' ₽':Math.round(n)+' ₽';
-  const fmt=(n)=>new Intl.NumberFormat('ru-RU').format(Math.round(n||0));
-
-  // Тексты задач по неделям
-  const renderWeekTasks=(id)=>{
-    let rows=[]; for(let w=1;w<=4;w++){const v=(opsStore[w]?.[id]||'').trim();if(v)rows.push('<div style="margin-bottom:10px"><div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Неделя '+w+'</div><div style="font-size:11px;color:var(--dim);line-height:1.6;white-space:pre-line">'+v+'</div></div>');}
+  var renderWeekTasks=function(id){
+    var rows=[]; for(var w=1;w<=4;w++){var v=(opsStore[w]?.[id]||'').trim();if(v)rows.push('<div style="margin-bottom:8px"><div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Неделя '+w+'</div><div style="font-size:11px;color:var(--dim);line-height:1.6;white-space:pre-line">'+v+'</div></div>');}
     return rows.join('')||'<span style="color:var(--muted);font-size:11px">—</span>';
   };
 
-  el.innerHTML = `
-  <div style="margin-bottom:28px">
-    <div class="sec-lbl" style="margin-bottom:16px">Итоговые показатели за месяц</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:24px">
-      <div class="ops-dchip"><span class="n">${fmt(krmReq)}</span><span class="l">КРМ запросов (тотал)</span><div class="s">Совершено: ${fmt(krmDone)} · Беклог: ${fmt(krmBacklog)}</div></div>
-      <div class="ops-dchip good"><span class="n">${fmtR(krmSavedSum)}</span><span class="l">Сумма сохранений</span><div class="s">Клиентов: ${fmt(krmSavedCnt)}</div></div>
-      <div class="ops-dchip"><span class="n">${fmtR(krmRetSum)}</span><span class="l">Сумма возвратов</span><div class="s">Технич.: ${fmt(krmTech)}</div></div>
-      <div class="ops-dchip"><span class="n">${krmSla} ч</span><span class="l">SLA КРМ (среднее)</span><div class="s">Среднее по заполненным неделям</div></div>
-      <div class="ops-dchip blue"><span class="n">${fmt(disband)}</span><span class="l">Расформировано (тотал)</span><div class="s">В работе: ${fmt(disbandWip)}</div></div>
-      <div class="ops-dchip blue"><span class="n">${fmt(mkcapReq)}</span><span class="l">Мат. капитал (накопит.)</span><div class="s">Оплат: ${fmt(mkcapPay)}</div></div>
-      <div class="ops-dchip blue"><span class="n">${fmt(vrReq)}</span><span class="l">Соглашения ВР (накопит.)</span><div class="s">Направлено: ${fmt(agreeSent)} · Подписано: ${fmt(agreeDone)}</div></div>
-      <div class="ops-dchip warn"><span class="n">${fmt(imkErr)}</span><span class="l">Ошибки ИМК (накопит.)</span><div class="s">Сумма по всем неделям</div></div>
-      <div class="ops-dchip"><span class="n">${fmt(thpDone)}</span><span class="l">ТХП — тикеты (тотал)</span><div class="s">КС: ${fmt(thpKs)} · УЧ: ${fmt(thpUch)} · Скорость: ${thpSpeed}ч</div></div>
-      <div class="ops-dchip"><span class="n">${fmt(t2Tickets)}</span><span class="l">КМ — тикеты (тотал)</span><div class="s">Уникальных клиентов: ${fmt(t2Clients)} · ЛБ: ${fmt(t2Lb)}</div></div>
-      <div class="ops-dchip"><span class="n">${fmt(t1Chats)}</span><span class="l">Чаты (тотал)</span><div class="s">Дочерки: ${fmt(t1Docs)}</div></div>
-    </div>
+  var barChart=function(labels,datasets){
+    return '<div style="position:relative;width:100%;height:120px"><canvas id="'+labels.join('_').replace(/ /g,'')+'_sc" data-labels="'+encodeURIComponent(JSON.stringify(labels))+'" data-datasets="'+encodeURIComponent(JSON.stringify(datasets))+'"></canvas></div>';
+  };
 
-    ${hasData ? `
-    <div class="ops-chart-card" style="margin-bottom:24px">
-      <div class="ops-chart-title">Динамика по неделям — сравнение</div>
-      <div class="ops-legend">
-        <span class="ops-legend-item"><span class="ops-legend-dot" style="background:#c87a7a"></span>КРМ запросы</span>
-        <span class="ops-legend-item"><span class="ops-legend-dot" style="background:#c8a87a"></span>ТХП тикеты</span>
-        <span class="ops-legend-item"><span class="ops-legend-dot" style="background:#9aac8a"></span>КМ тикеты</span>
-        <span class="ops-legend-item"><span class="ops-legend-dot" style="background:#7aaccb"></span>Сохранения (тыс. ₽)</span>
-      </div>
-      <div style="position:relative;width:100%;height:220px">
-        <canvas id="ops_summaryChart"></canvas>
-      </div>
-    </div>` : ''}
+  el.innerHTML =
+  '<div class="ops-dash-row" id="ops_d_row">'+
+    '<div class="ops-dchip"><span class="n" id="ops_d-krm-req">'+fmt(krmReq)+'</span><span class="l">КРМ запросов (тотал)</span><div class="s">Беклог: '+fmt(krmBacklog)+'</div></div>'+
+    '<div class="ops-dchip good"><span class="n" id="ops_d-savings">'+fmtR(krmSavedSum)+'</span><span class="l">Сумма сохранений</span><div class="s">Клиентов: '+fmt(krmSavedCnt)+'</div></div>'+
+    '<div class="ops-dchip"><span class="n" id="ops_d-returns">'+fmtR(krmRetSum)+'</span><span class="l">Сумма возвратов</span><div class="s">Послед. значение</div></div>'+
+    '<div class="ops-dchip"><span class="n" id="ops_d-sla">'+krmSla+' ч</span><span class="l">SLA КРМ (среднее)</span></div>'+
+    '<div class="ops-dchip blue"><span class="n" id="ops_d-disband">'+fmt(disband)+'</span><span class="l">Расформировано (тотал)</span><div class="s">В работе: '+fmt(disbandWip)+'</div></div>'+
+    '<div class="ops-dchip blue"><span class="n" id="ops_d-mkcap">'+fmt(mkcapReq)+'</span><span class="l">Мат. капитал (накопит.)</span><div class="s">Оплат: '+fmt(mkcapPay)+'</div></div>'+
+    '<div class="ops-dchip blue"><span class="n" id="ops_d-vr">'+fmt(vrReq)+'</span><span class="l">Соглашения ВР (накопит.)</span><div class="s">Подписано: '+fmt(agreeDone)+'</div></div>'+
+    '<div class="ops-dchip warn"><span class="n" id="ops_d-imk">'+fmt(imkErr)+'</span><span class="l">Ошибки ИМК (накопит.)</span></div>'+
+  '</div>'+
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="ops-team-block">
-        <div class="ops-team-hdr">
-          <div class="ops-team-ava">ТБ</div>
-          <div><div class="ops-team-name">Бушманова Татьяна — итог</div><div class="ops-team-role">КРМ · ТХП · ВР · Чаты</div></div>
-        </div>
-        <div style="padding:14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">КРМ запросы</div><div style="font-weight:700;color:var(--accent)">${fmt(krmReq)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Сохранения</div><div style="font-weight:700;color:var(--green)">${fmtR(krmSavedSum)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Возвраты</div><div style="font-weight:700;color:var(--red)">${fmtR(krmRetSum)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">SLA КРМ</div><div style="font-weight:700;color:var(--text)">${krmSla} ч</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">ТХП тикеты</div><div style="font-weight:700;color:var(--text)">${fmt(thpDone)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Чаты</div><div style="font-weight:700;color:var(--text)">${fmt(t1Chats)}</div></div>
-          <div style="grid-column:1/-1"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Задачи (по неделям)</div>${renderWeekTasks('t1-done')}</div>
-        </div>
-      </div>
-      <div class="ops-team-block purple">
-        <div class="ops-team-hdr">
-          <div class="ops-team-ava" style="background:linear-gradient(135deg,var(--purple),#6a3aa0)">НЕ</div>
-          <div><div class="ops-team-name">Евстигнеева Наталья — итог</div><div class="ops-team-role">КМ (Team 2)</div></div>
-        </div>
-        <div style="padding:14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Тикеты (без дочерок)</div><div style="font-weight:700;color:var(--accent)">${fmt(t2Tickets)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Уникальных клиентов</div><div style="font-weight:700;color:var(--text)">${fmt(t2Clients)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">ЛБ проведено</div><div style="font-weight:700;color:var(--green)">${G('t2-lb')}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">В зоне риска</div><div style="font-weight:700;color:var(--red)">${G('t2-risk')}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Сохранено клиентов</div><div style="font-weight:700;color:var(--green)">${G('t2-saved')}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Передано в КРМ</div><div style="font-weight:700;color:var(--text)">${G('t2-krm')}</div></div>
-          <div style="grid-column:1/-1"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Задачи (по неделям)</div>${renderWeekTasks('t2-done')}</div>
-        </div>
-      </div>
-    </div>
+  // Общая диаграмма динамики
+  '<div class="ops-chart-card">'+
+    '<div class="ops-chart-title">Динамика по неделям</div>'+
+    '<div class="ops-legend">'+
+      '<span class="ops-legend-item"><span class="ops-legend-dot" style="background:#c87a7a"></span>КРМ</span>'+
+      '<span class="ops-legend-item"><span class="ops-legend-dot" style="background:#c8a87a"></span>ТХП</span>'+
+      '<span class="ops-legend-item"><span class="ops-legend-dot" style="background:#9aac8a"></span>КМ тикеты</span>'+
+      '<span class="ops-legend-item"><span class="ops-legend-dot" style="background:#7aaccb"></span>Сохранения (тыс.₽)</span>'+
+    '</div>'+
+    '<div style="position:relative;width:100%;height:200px"><canvas id="ops_summaryChart"></canvas></div>'+
+  '</div>'+
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
-      <div class="ops-team-block" style="border-color:rgba(122,172,203,.2)">
-        <div class="ops-team-hdr">
-          <div class="ops-team-ava" style="background:linear-gradient(135deg,var(--blue),#3a6a8a)">НВ</div>
-          <div><div class="ops-team-name">Наташа Володина — итог</div><div class="ops-team-role">OPS</div></div>
-        </div>
-        <div style="padding:14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Мат. капитал</div><div style="font-weight:700;color:var(--accent)">${fmt(mkcapReq)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Оплат по мат. кап.</div><div style="font-weight:700;color:var(--green)">${fmt(mkcapPay)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Соглашения ВР</div><div style="font-weight:700;color:var(--text)">${fmt(vrReq)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Подписано</div><div style="font-weight:700;color:var(--green)">${fmt(agreeDone)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Ошибки ИМК</div><div style="font-weight:700;color:var(--red)">${fmt(imkErr)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Нал. вычет (запросы)</div><div style="font-weight:700;color:var(--text)">${G('ops-tax-req')}</div></div>
-        </div>
-      </div>
-      <div class="ops-team-block" style="border-color:rgba(154,172,138,.2)">
-        <div class="ops-team-hdr">
-          <div class="ops-team-ava" style="background:linear-gradient(135deg,var(--sage),#6a8a5a)">АГ</div>
-          <div><div class="ops-team-name">Аня Гороховская — итог</div><div class="ops-team-role">OPS</div></div>
-        </div>
-        <div style="padding:14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Расформировано (тотал)</div><div style="font-weight:700;color:var(--accent)">${fmt(disband)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">В работе</div><div style="font-weight:700;color:var(--text)">${fmt(disbandWip)}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Проверено по ЧЛ КРМ</div><div style="font-weight:700;color:var(--text)">${G('ops-krm-check')}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Средний балл КРМ</div><div style="font-weight:700;color:var(--green)">${G('ops-krm-score')}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Нулевые уроки</div><div style="font-weight:700;color:var(--text)">${G('ops-0u-total')}</div></div>
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Группы недобор/перебор</div><div style="font-weight:700;color:var(--warn)">${G('ops-under')}↓ / ${G('ops-over')}↑</div></div>
-        </div>
-      </div>
-    </div>
-  </div>`;
+  // Бушманова итог
+  '<div class="sec-lbl" style="color:var(--sage)">Бушманова — итог</div>'+
+  '<div class="ops-sum-tl">'+
+    '<div class="ops-sum-tl-hdr">'+
+      '<div class="ops-team-ava">ТБ</div>'+
+      '<div><div class="ops-team-name">Бушманова Татьяна Михайловна</div><div class="ops-team-role">КРМ · ТХП · ВР · Чаты</div></div>'+
+    '</div>'+
+    '<div class="ops-sum-tl-body">'+
+      '<div class="ops-sum-inner">'+
+        '<div class="ops-sum-chart-col">'+
+          '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">По неделям</div>'+
+          '<div style="position:relative;width:100%;height:120px"><canvas id="ops_sum_bush_chart"></canvas></div>'+
+          '<div class="ops-mini-legend" style="margin-top:6px">'+
+            '<div class="ops-mini-leg-item"><span class="ops-mini-leg-dot" style="background:rgba(200,122,122,.8)"></span>КРМ</div>'+
+            '<div class="ops-mini-leg-item"><span class="ops-mini-leg-dot" style="background:rgba(200,168,122,.8)"></span>ТХП</div>'+
+            '<div class="ops-mini-leg-item"><span class="ops-mini-leg-dot" style="background:rgba(122,172,203,.8)"></span>Чаты</div>'+
+          '</div>'+
+        '</div>'+
+        '<div>'+
+          '<div class="ops-sum-metrics">'+
+            '<div class="ops-sum-metric"><span class="ml">КРМ запросы</span><span class="mv">'+fmt(krmReq)+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">Сохранения (₽)</span><span class="mv good">'+fmtR(krmSavedSum)+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">Возвраты (₽)</span><span class="mv bad">'+fmtR(krmRetSum)+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">SLA КРМ (ч)</span><span class="mv">'+krmSla+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">ТХП тикеты</span><span class="mv">'+fmt(thpDone)+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">Чаты</span><span class="mv">'+fmt(t1Chats)+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">Беклог запросов</span><span class="mv">'+fmt(krmBacklog)+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">Технич. возвраты</span><span class="mv">'+fmt(krmTech)+'</span></div>'+
+            '<div class="ops-sum-tasks">'+
+              '<div class="ops-sum-tasks-lbl">Задачи по неделям</div>'+
+              '<div class="ops-sum-tasks-val">'+renderWeekTasks('t1-done')+'</div>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>'+
 
-  // Инициализируем диаграмму динамики
-  if(hasData) {
-    setTimeout(()=>{
-      const ctx=document.getElementById('ops_summaryChart'); if(!ctx) return;
-      if(ctx._chart) ctx._chart.destroy();
-      ctx._chart=new Chart(ctx,{
-        type:'bar',
-        data:{
-          labels:['Неделя 1','Неделя 2','Неделя 3','Неделя 4'],
-          datasets:[
-            {label:'КРМ запросы',data:wKrm,backgroundColor:'rgba(200,122,122,.7)',borderRadius:3},
-            {label:'ТХП тикеты',data:wThp,backgroundColor:'rgba(200,168,122,.7)',borderRadius:3},
-            {label:'КМ тикеты',data:wT2,backgroundColor:'rgba(154,172,138,.7)',borderRadius:3},
-            {label:'Сохранения (тыс. ₽)',data:wSav.map(v=>Math.round(v/1000)),backgroundColor:'rgba(122,172,203,.7)',borderRadius:3}
-          ]
-        },
-        options:{
-          responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+c.parsed.y+(c.dataset.label.includes('₽')?'K':'')}}},
-          scales:{
-            x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'rgba(255,255,255,.45)',font:{size:10}}},
-            y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'rgba(255,255,255,.45)',font:{size:10}}}
-          }
-        }
-      });
-    },50);
-  }
+  // Евстигнеева итог
+  '<div class="sec-lbl" style="color:var(--purple)">Евстигнеева — итог</div>'+
+  '<div class="ops-sum-tl">'+
+    '<div class="ops-sum-tl-hdr">'+
+      '<div class="ops-team-ava" style="background:linear-gradient(135deg,var(--purple),#6a3aa0)">НЕ</div>'+
+      '<div><div class="ops-team-name" style="color:var(--purple)">Евстигнеева Наталья Валерьевна</div><div class="ops-team-role" style="color:var(--purple)">КМ (Team 2)</div></div>'+
+    '</div>'+
+    '<div class="ops-sum-tl-body">'+
+      '<div class="ops-sum-inner">'+
+        '<div class="ops-sum-chart-col">'+
+          '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">По неделям</div>'+
+          '<div style="position:relative;width:100%;height:120px"><canvas id="ops_sum_evs_chart"></canvas></div>'+
+          '<div class="ops-mini-legend" style="margin-top:6px">'+
+            '<div class="ops-mini-leg-item"><span class="ops-mini-leg-dot" style="background:rgba(168,122,200,.8)"></span>Тикеты</div>'+
+            '<div class="ops-mini-leg-item"><span class="ops-mini-leg-dot" style="background:rgba(154,172,138,.8)"></span>Сохранено</div>'+
+            '<div class="ops-mini-leg-item"><span class="ops-mini-leg-dot" style="background:rgba(200,168,122,.8)"></span>Паузы</div>'+
+          '</div>'+
+        '</div>'+
+        '<div>'+
+          '<div class="ops-sum-metrics">'+
+            '<div class="ops-sum-metric"><span class="ml">Тикеты (без дочерок)</span><span class="mv">'+fmt(t2Tickets)+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">Уникальных клиентов</span><span class="mv">'+fmt(t2Clients)+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">ЛБ проведено</span><span class="mv good">'+G('t2-lb')+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">В зоне риска</span><span class="mv bad">'+G('t2-risk')+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">Сохранено клиентов</span><span class="mv good">'+fmt(t2Saved)+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">Передано в КРМ</span><span class="mv">'+fmt(t2Krm)+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">Запросов на паузу</span><span class="mv">'+fmt(t2Pause)+'</span></div>'+
+            '<div class="ops-sum-metric"><span class="ml">Выведены с паузы</span><span class="mv">'+G('t2-unfrozen')+'</span></div>'+
+            '<div class="ops-sum-tasks">'+
+              '<div class="ops-sum-tasks-lbl">Задачи по неделям</div>'+
+              '<div class="ops-sum-tasks-val">'+renderWeekTasks('t2-done')+'</div>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>'+
+
+  // OPS итог
+  '<div class="sec-lbl">OPS — итог</div>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
+    '<div class="ops-sum-tl">'+
+      '<div class="ops-sum-tl-hdr">'+
+        '<div class="ops-team-ava" style="background:linear-gradient(135deg,var(--blue),#3a6a8a);font-size:11px">НВ</div>'+
+        '<div><div class="ops-team-name" style="color:var(--blue)">Наташа Володина</div><div class="ops-team-role" style="color:var(--blue)">OPS</div></div>'+
+      '</div>'+
+      '<div class="ops-sum-tl-body">'+
+        '<div class="ops-sum-inner">'+
+          '<div class="ops-sum-chart-col">'+
+            '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">По неделям</div>'+
+            '<div style="position:relative;width:100%;height:100px"><canvas id="ops_sum_nv_chart"></canvas></div>'+
+            '<div class="ops-mini-legend" style="margin-top:6px">'+
+              '<div class="ops-mini-leg-item"><span class="ops-mini-leg-dot" style="background:rgba(122,172,203,.8)"></span>Мат. кап.</div>'+
+              '<div class="ops-mini-leg-item"><span class="ops-mini-leg-dot" style="background:rgba(154,172,138,.8)"></span>Согл. ВР</div>'+
+            '</div>'+
+          '</div>'+
+          '<div>'+
+            '<div class="ops-sum-metrics">'+
+              '<div class="ops-sum-metric"><span class="ml">Мат. капитал</span><span class="mv blue">'+fmt(mkcapReq)+'</span></div>'+
+              '<div class="ops-sum-metric"><span class="ml">Оплат</span><span class="mv good">'+fmt(mkcapPay)+'</span></div>'+
+              '<div class="ops-sum-metric"><span class="ml">Соглашения ВР</span><span class="mv blue">'+fmt(vrReq)+'</span></div>'+
+              '<div class="ops-sum-metric"><span class="ml">Подписано</span><span class="mv good">'+fmt(agreeDone)+'</span></div>'+
+              '<div class="ops-sum-metric"><span class="ml">Ошибки ИМК</span><span class="mv bad">'+fmt(imkErr)+'</span></div>'+
+              '<div class="ops-sum-metric"><span class="ml">Нулевых уроков</span><span class="mv">'+G('ops-0u-total')+'</span></div>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="ops-sum-tl">'+
+      '<div class="ops-sum-tl-hdr">'+
+        '<div class="ops-team-ava" style="background:linear-gradient(135deg,var(--sage),#5a7a4a);font-size:11px">АГ</div>'+
+        '<div><div class="ops-team-name" style="color:var(--sage)">Аня Гороховская</div><div class="ops-team-role" style="color:var(--sage)">OPS</div></div>'+
+      '</div>'+
+      '<div class="ops-sum-tl-body">'+
+        '<div class="ops-sum-inner">'+
+          '<div class="ops-sum-chart-col">'+
+            '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">По неделям</div>'+
+            '<div style="position:relative;width:100%;height:100px"><canvas id="ops_sum_ag_chart"></canvas></div>'+
+            '<div class="ops-mini-legend" style="margin-top:6px">'+
+              '<div class="ops-mini-leg-item"><span class="ops-mini-leg-dot" style="background:rgba(154,172,138,.8)"></span>Расформ.</div>'+
+            '</div>'+
+          '</div>'+
+          '<div>'+
+            '<div class="ops-sum-metrics">'+
+              '<div class="ops-sum-metric"><span class="ml">Расформировано</span><span class="mv blue">'+fmt(disband)+'</span></div>'+
+              '<div class="ops-sum-metric"><span class="ml">В работе</span><span class="mv">'+fmt(disbandWip)+'</span></div>'+
+              '<div class="ops-sum-metric"><span class="ml">Проверено ЧЛ КРМ</span><span class="mv">'+G('ops-krm-check')+'</span></div>'+
+              '<div class="ops-sum-metric"><span class="ml">Средний балл</span><span class="mv good">'+G('ops-krm-score')+'</span></div>'+
+              '<div class="ops-sum-metric"><span class="ml">Недоборы/переборы</span><span class="mv warn">'+G('ops-under')+'/'+G('ops-over')+'</span></div>'+
+              '<div class="ops-sum-metric"><span class="ml">Пропуски 2-3</span><span class="mv">'+G('ops-absent')+'</span></div>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+
+  // Рендерим все диаграммы итого
+  setTimeout(function(){
+    var chartOpts=function(color){return {responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'rgba(255,255,255,.4)',font:{size:9}}},
+              y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'rgba(255,255,255,.4)',font:{size:9}}}}};};
+
+    // Общая диаграмма
+    var sc=document.getElementById('ops_summaryChart');
+    if(sc){if(sc._chart)sc._chart.destroy();
+      sc._chart=new Chart(sc,{type:'bar',data:{
+        labels:['Неделя 1','Неделя 2','Неделя 3','Неделя 4'],
+        datasets:[
+          {label:'КРМ',data:wKrm,backgroundColor:'rgba(200,122,122,.7)',borderRadius:3},
+          {label:'ТХП',data:wThp,backgroundColor:'rgba(200,168,122,.7)',borderRadius:3},
+          {label:'КМ тикеты',data:wT2,backgroundColor:'rgba(154,172,138,.7)',borderRadius:3},
+          {label:'Сохранения(тыс.₽)',data:wSav.map(function(v){return Math.round(v/1000);}),backgroundColor:'rgba(122,172,203,.7)',borderRadius:3}
+        ]},options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{labels:{color:'rgba(255,255,255,.45)',font:{size:9},boxWidth:8}}},
+          scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'rgba(255,255,255,.4)',font:{size:9}}},
+                  y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'rgba(255,255,255,.4)',font:{size:9}}}}}});}
+
+    // Бушманова
+    var bc=document.getElementById('ops_sum_bush_chart');
+    if(bc){if(bc._chart)bc._chart.destroy();
+      bc._chart=new Chart(bc,{type:'bar',data:{labels:['Н1','Н2','Н3','Н4'],datasets:[
+        {label:'КРМ',data:wKrm,backgroundColor:'rgba(200,122,122,.8)',borderRadius:2},
+        {label:'ТХП',data:wThp,backgroundColor:'rgba(200,168,122,.8)',borderRadius:2},
+        {label:'Чаты',data:wT1,backgroundColor:'rgba(122,172,203,.8)',borderRadius:2}
+      ]},options:chartOpts()});}
+
+    // Евстигнеева
+    var ec=document.getElementById('ops_sum_evs_chart');
+    if(ec){if(ec._chart)ec._chart.destroy();
+      ec._chart=new Chart(ec,{type:'bar',data:{labels:['Н1','Н2','Н3','Н4'],datasets:[
+        {label:'Тикеты',data:wT2,backgroundColor:'rgba(168,122,200,.8)',borderRadius:2},
+        {label:'Сохранено',data:wT2sav,backgroundColor:'rgba(154,172,138,.8)',borderRadius:2}
+      ]},options:chartOpts()});}
+
+    // Наташа
+    var nc=document.getElementById('ops_sum_nv_chart');
+    if(nc){if(nc._chart)nc._chart.destroy();
+      nc._chart=new Chart(nc,{type:'bar',data:{labels:['Н1','Н2','Н3','Н4'],datasets:[
+        {label:'Мат.кап.',data:wMkcap,backgroundColor:'rgba(122,172,203,.8)',borderRadius:2},
+        {label:'Согл.ВР',data:wVr,backgroundColor:'rgba(154,172,138,.8)',borderRadius:2}
+      ]},options:chartOpts()});}
+
+    // Аня
+    var ac=document.getElementById('ops_sum_ag_chart');
+    if(ac){if(ac._chart)ac._chart.destroy();
+      ac._chart=new Chart(ac,{type:'bar',data:{labels:['Н1','Н2','Н3','Н4'],datasets:[
+        {label:'Расформ.',data:wDisb,backgroundColor:'rgba(154,172,138,.8)',borderRadius:2}
+      ]},options:chartOpts()});}
+  },50);
 }
 
 function opsRenderWeekMiniChart(w) {
-  // Рендерит мини-диаграмму для конкретной недели (круговая + столбцы)
   setTimeout(()=>{
-    const pieCtx=document.getElementById('ops_mini_pie'); if(!pieCtx) return;
-    if(pieCtx._chart) pieCtx._chart.destroy();
-    const krmR=parseFloat(opsStore[w]?.['krm-req']||0)||parseFloat(document.getElementById('ops_krm-req')?.value||0)||0;
-    const thpR=parseFloat(opsStore[w]?.['thp-done']||0)||parseFloat(document.getElementById('ops_thp-done')?.value||0)||0;
-    const t2R=parseFloat(opsStore[w]?.['t2-tickets']||0)||parseFloat(document.getElementById('ops_t2-tickets')?.value||0)||0;
-    const t1R=parseFloat(opsStore[w]?.['t1-chats']||0)||parseFloat(document.getElementById('ops_t1-chats')?.value||0)||0;
-    const total=krmR+thpR+t2R+t1R;
-    if(total===0){pieCtx.parentElement.style.display='none';return;}
-    pieCtx.parentElement.style.display='';
-    pieCtx._chart=new Chart(pieCtx,{
-      type:'doughnut',
-      data:{
-        labels:['КРМ','ТХП','КМ','Чаты'],
-        datasets:[{data:[krmR,thpR,t2R,t1R],backgroundColor:['rgba(200,122,122,.8)','rgba(200,168,122,.8)','rgba(154,172,138,.8)','rgba(122,172,203,.8)'],borderWidth:0}]
-      },
-      options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
-        plugins:{legend:{position:'right',labels:{color:'rgba(255,255,255,.55)',font:{size:10},boxWidth:10}},
-        tooltip:{callbacks:{label:(c)=>c.label+': '+c.parsed+(total>0?' ('+Math.round(c.parsed/total*100)+'%)':'')}}}
+    // ── Бушманова: круговая + столбчатая
+    const pieCtx=document.getElementById('ops_mini_pie');
+    if(pieCtx){
+      if(pieCtx._chart) pieCtx._chart.destroy();
+      const krmR=parseFloat(opsStore[w]?.['krm-req']||0)||parseFloat(document.getElementById('ops_krm-req')?.value||0)||0;
+      const thpR=parseFloat(opsStore[w]?.['thp-done']||0)||parseFloat(document.getElementById('ops_thp-done')?.value||0)||0;
+      const t1R=parseFloat(opsStore[w]?.['t1-chats']||0)||parseFloat(document.getElementById('ops_t1-chats')?.value||0)||0;
+      const savR=parseFloat(opsStore[w]?.['krm-saved-cnt']||0)||parseFloat(document.getElementById('ops_krm-saved-cnt')?.value||0)||0;
+      const total=krmR+thpR+t1R+savR;
+      if(total>0){
+        pieCtx._chart=new Chart(pieCtx,{type:'doughnut',
+          data:{labels:['КРМ/ВР','ТХП','Чаты','Сохранения'],
+            datasets:[{data:[krmR,thpR,t1R,savR],
+              backgroundColor:['rgba(200,122,122,.8)','rgba(200,168,122,.8)','rgba(122,172,203,.8)','rgba(154,172,138,.8)'],borderWidth:0}]},
+          options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+            plugins:{legend:{position:'right',labels:{color:'rgba(255,255,255,.55)',font:{size:9},boxWidth:8}}}}});
       }
-    });
-
-    const barCtx=document.getElementById('ops_mini_bar'); if(!barCtx) return;
-    if(barCtx._chart) barCtx._chart.destroy();
-    // Сравниваем с предыдущей неделей если есть
-    const prev=w>1?w-1:null;
-    const datasets=[{label:'Неделя '+w,data:[krmR,thpR,t2R,t1R],backgroundColor:['rgba(200,122,122,.8)','rgba(200,168,122,.8)','rgba(154,172,138,.8)','rgba(122,172,203,.8)'],borderRadius:3}];
-    if(prev){
-      const pkrm=parseFloat(opsStore[prev]?.['krm-req']||0)||0;
-      const pthp=parseFloat(opsStore[prev]?.['thp-done']||0)||0;
-      const pt2=parseFloat(opsStore[prev]?.['t2-tickets']||0)||0;
-      const pt1=parseFloat(opsStore[prev]?.['t1-chats']||0)||0;
-      if(pkrm+pthp+pt2+pt1>0)
-        datasets.unshift({label:'Неделя '+prev,data:[pkrm,pthp,pt2,pt1],backgroundColor:['rgba(200,122,122,.3)','rgba(200,168,122,.3)','rgba(154,172,138,.3)','rgba(122,172,203,.3)'],borderRadius:3});
     }
-    barCtx._chart=new Chart(barCtx,{
-      type:'bar',
-      data:{labels:['КРМ','ТХП','КМ','Чаты'],datasets},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{labels:{color:'rgba(255,255,255,.55)',font:{size:10},boxWidth:10}}},
-        scales:{
-          x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'rgba(255,255,255,.45)',font:{size:10}}},
-          y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'rgba(255,255,255,.45)',font:{size:10}}}
-        }
+    const barCtx=document.getElementById('ops_mini_bar');
+    if(barCtx){
+      if(barCtx._chart) barCtx._chart.destroy();
+      const prev=w>1?w-1:null;
+      const cur=[
+        parseFloat(opsStore[w]?.['krm-req']||0)||0,
+        parseFloat(opsStore[w]?.['thp-done']||0)||0,
+        parseFloat(opsStore[w]?.['t1-chats']||0)||0,
+        parseFloat(opsStore[w]?.['krm-saved-cnt']||0)||0
+      ];
+      const ds=[{label:'Нед.'+w,data:cur,backgroundColor:['rgba(200,122,122,.8)','rgba(200,168,122,.8)','rgba(122,172,203,.8)','rgba(154,172,138,.8)'],borderRadius:2}];
+      if(prev){
+        const p=[parseFloat(opsStore[prev]?.['krm-req']||0)||0,parseFloat(opsStore[prev]?.['thp-done']||0)||0,parseFloat(opsStore[prev]?.['t1-chats']||0)||0,parseFloat(opsStore[prev]?.['krm-saved-cnt']||0)||0];
+        if(p.some(v=>v>0)) ds.unshift({label:'Нед.'+prev,data:p,backgroundColor:['rgba(200,122,122,.3)','rgba(200,168,122,.3)','rgba(122,172,203,.3)','rgba(154,172,138,.3)'],borderRadius:2});
       }
-    });
+      barCtx._chart=new Chart(barCtx,{type:'bar',
+        data:{labels:['КРМ','ТХП','Чаты','Сохр.'],datasets:ds},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{labels:{color:'rgba(255,255,255,.45)',font:{size:9},boxWidth:8}}},
+          scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'rgba(255,255,255,.4)',font:{size:9}}},
+                  y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'rgba(255,255,255,.4)',font:{size:9}}}}}});
+    }
+
+    // ── Евстигнеева: круговая + столбчатая
+    const pieEvs=document.getElementById('ops_mini_pie_evs');
+    if(pieEvs){
+      if(pieEvs._chart) pieEvs._chart.destroy();
+      const t2tick=parseFloat(opsStore[w]?.['t2-tickets']||0)||0;
+      const t2sav=parseFloat(opsStore[w]?.['t2-saved']||0)||0;
+      const t2pau=parseFloat(opsStore[w]?.['t2-pause']||0)||0;
+      const t2krm=parseFloat(opsStore[w]?.['t2-krm']||0)||0;
+      const total2=t2tick+t2sav+t2pau+t2krm;
+      if(total2>0){
+        pieEvs._chart=new Chart(pieEvs,{type:'doughnut',
+          data:{labels:['Тикеты','Сохранено','Паузы','В КРМ'],
+            datasets:[{data:[t2tick,t2sav,t2pau,t2krm],
+              backgroundColor:['rgba(168,122,200,.8)','rgba(154,172,138,.8)','rgba(200,168,122,.8)','rgba(200,122,122,.8)'],borderWidth:0}]},
+          options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+            plugins:{legend:{position:'right',labels:{color:'rgba(255,255,255,.55)',font:{size:9},boxWidth:8}}}}});
+      }
+    }
+    const barEvs=document.getElementById('ops_mini_bar_evs');
+    if(barEvs){
+      if(barEvs._chart) barEvs._chart.destroy();
+      const prev=w>1?w-1:null;
+      const cur=[parseFloat(opsStore[w]?.['t2-tickets']||0)||0,parseFloat(opsStore[w]?.['t2-saved']||0)||0,parseFloat(opsStore[w]?.['t2-pause']||0)||0,parseFloat(opsStore[w]?.['t2-krm']||0)||0];
+      const ds=[{label:'Нед.'+w,data:cur,backgroundColor:['rgba(168,122,200,.8)','rgba(154,172,138,.8)','rgba(200,168,122,.8)','rgba(200,122,122,.8)'],borderRadius:2}];
+      if(prev){
+        const p=[parseFloat(opsStore[prev]?.['t2-tickets']||0)||0,parseFloat(opsStore[prev]?.['t2-saved']||0)||0,parseFloat(opsStore[prev]?.['t2-pause']||0)||0,parseFloat(opsStore[prev]?.['t2-krm']||0)||0];
+        if(p.some(v=>v>0)) ds.unshift({label:'Нед.'+prev,data:p,backgroundColor:['rgba(168,122,200,.3)','rgba(154,172,138,.3)','rgba(200,168,122,.3)','rgba(200,122,122,.3)'],borderRadius:2});
+      }
+      barEvs._chart=new Chart(barEvs,{type:'bar',
+        data:{labels:['Тикеты','Сохр.','Паузы','КРМ'],datasets:ds},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{labels:{color:'rgba(255,255,255,.45)',font:{size:9},boxWidth:8}}},
+          scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'rgba(255,255,255,.4)',font:{size:9}}},
+                  y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'rgba(255,255,255,.4)',font:{size:9}}}}}});
+    }
   },50);
 }
 
@@ -2594,163 +2750,160 @@ function opsHTML() {
 
   <div id="ops_input_block">
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-    <div class="ops-chart-card" style="padding:14px">
-      <div class="ops-chart-title" style="font-size:11px;margin-bottom:12px">Распределение запросов за неделю</div>
-      <div style="position:relative;width:100%;height:140px">
-        <canvas id="ops_mini_pie"></canvas>
-      </div>
-    </div>
-    <div class="ops-chart-card" style="padding:14px">
-      <div class="ops-chart-title" style="font-size:11px;margin-bottom:12px">Сравнение с предыдущей неделей</div>
-      <div style="position:relative;width:100%;height:140px">
-        <canvas id="ops_mini_bar"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <div class="sec-lbl">Дашборд — сводка</div>
-  <div class="ops-dash-row">
-    <div class="ops-dchip"><span class="n" id="ops_d-krm-req">—</span><span class="l">КРМ запросов / ТХП</span><div class="s">ТХП факт: <span id="ops_d-thp">—</span></div></div>
-    <div class="ops-dchip good"><span class="n" id="ops_d-savings">—</span><span class="l">Сумма сохранений КРМ</span><div class="s">Клиентов: <span id="ops_d-saved-cnt">—</span></div></div>
-    <div class="ops-dchip"><span class="n" id="ops_d-returns">—</span><span class="l">Сумма возвратов</span><div class="s">Совершено: <span id="ops_d-ret-cnt">—</span></div></div>
-    <div class="ops-dchip"><span class="n" id="ops_d-sla">—</span><span class="l">SLA КРМ (часы)</span><div class="s">Среднее время</div></div>
-    <div class="ops-dchip blue"><span class="n" id="ops_d-disband">—</span><span class="l">Расформировано (тотал)</span><div class="s">В работе: <span id="ops_d-disband-wip">—</span></div></div>
-    <div class="ops-dchip blue"><span class="n" id="ops_d-mkcap">—</span><span class="l">Мат. капитал (запросы)</span><div class="s">Подготовлено: <span id="ops_d-mkcap-doc">—</span> · Оплат: <span id="ops_d-mkcap-pay">—</span></div></div>
-    <div class="ops-dchip blue"><span class="n" id="ops_d-vr">—</span><span class="l">Соглашения ВР</span><div class="s">Направлено: <span id="ops_d-vr-sent">—</span> · Подписано: <span id="ops_d-vr-done">—</span></div></div>
-    <div class="ops-dchip warn"><span class="n" id="ops_d-imk">—</span><span class="l">Ошибки ИМК (накопит.)</span><div class="s" id="ops_d-imk-lbl">Сумма по всем неделям</div></div>
-  </div>
-
-  <div class="ops-chart-card">
-    <div class="ops-chart-title">Данные по неделям</div>
-    <div class="ops-legend">
-      <span class="ops-legend-item"><span class="ops-legend-dot" style="background:#9aac8a"></span>КМ Team 2</span>
-      <span class="ops-legend-item"><span class="ops-legend-dot" style="background:#c8a87a"></span>ТХП</span>
-      <span class="ops-legend-item"><span class="ops-legend-dot" style="background:#c87a7a"></span>КРМ запросов</span>
-    </div>
-    <div style="position:relative;width:100%;height:200px">
-      <canvas id="ops_weekChart" role="img" aria-label="Данные по неделям"></canvas>
-    </div>
-  </div>
-
-  <div class="sec-lbl" style="color:var(--sage)">Татьяна Бушманова — КРМ · ТХП · ВР · Чаты</div>
-  <div class="ops-team-block">
-    <div class="ops-team-hdr">
+  <!-- ══ БУШМАНОВА ══════════════════════════════════════════════════ -->
+  <div class="ops-tl-block">
+    <div class="ops-tl-hdr">
       <div class="ops-team-ava">ТБ</div>
-      <div><div class="ops-team-name">Бушманова Татьяна Михайловна</div><div class="ops-team-role">Team Lead · КРМ · ТХП · ВР · Чаты</div></div>
-      <div class="ops-week-badge" id="ops_wb-bush">Итого за месяц</div>
-    </div>
-    <div class="ops-sub-lbl">КРМ</div>
-    <div class="ops-grid">
-      <div class="ops-card">
-        <div class="ops-card-hdr"><div class="ops-card-hdr-title">Основные метрики ВР / КРМ</div></div>
-        <div class="ops-body">
-          <div class="ops-row"><span class="ops-name">Поступило запросов на возврат</span><input class="ops-inp" type="number" id="ops_krm-req" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Совершено возвратов</span><input class="ops-inp" type="number" id="ops_krm-done" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Суммы возвратов (₽)<small>Тотал за месяц, сохраняется по неделям</small></span><input class="ops-inp" type="number" id="ops_krm-ret-sum" value="0" oninput="opsRecalc()"><span class="ops-delta neu" id="ops_krm-ret-delta">—</span></div>
-          <div class="ops-row"><span class="ops-name">Количество сохранений (клиенты)</span><input class="ops-inp" type="number" id="ops_krm-saved-cnt" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Суммы сохранений (₽)</span><input class="ops-inp" type="number" id="ops_krm-saved-sum" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Беклог запросов</span><input class="ops-inp" type="number" id="ops_krm-backlog" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Беклог суммы возвратов (₽)</span><input class="ops-inp" type="number" id="ops_krm-backlog-sum" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">SLA КРМ (часов)</span><input class="ops-inp" type="number" id="ops_krm-sla" value="0" step="0.1" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Технические возвраты</span><input class="ops-inp" type="number" id="ops_krm-tech" value="0" oninput="opsRecalc()"></div>
-        </div>
-        <div class="ops-total"><span class="ops-total-label">Эффективность (сохранения / возвраты)</span><span class="ops-total-val" id="ops_krm-ratio">—</span></div>
+      <div>
+        <div class="ops-team-name">Бушманова Татьяна Михайловна</div>
+        <div class="ops-team-role">Team Lead · КРМ · ТХП · ВР · Чаты</div>
       </div>
-      <div class="ops-card">
-        <div class="ops-card-hdr"><div class="ops-card-hdr-title">Чаты</div></div>
-        <div class="ops-body">
-          <div class="ops-row"><span class="ops-name">Закрыто чатов</span><input class="ops-inp" type="number" id="ops_t1-chats" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Закрыто дочерок</span><input class="ops-inp" type="number" id="ops_t1-docs" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Беклог чатов</span><input class="ops-inp" type="number" id="ops_t1-chat-back" value="0" oninput="opsRecalc()"></div>
+      <div class="ops-week-badge" id="ops_wb-bush">Неделя</div>
+    </div>
+    <div class="ops-tl-body">
+
+      <!-- мини-диаграммы Бушмановой -->
+      <div class="ops-tl-chart-row">
+        <div class="ops-mini-chart">
+          <div class="ops-mini-chart-title">Распределение запросов</div>
+          <div style="position:relative;width:100%;height:120px"><canvas id="ops_mini_pie"></canvas></div>
+        </div>
+        <div class="ops-mini-chart">
+          <div class="ops-mini-chart-title">Сравнение с предыдущей неделей</div>
+          <div style="position:relative;width:100%;height:120px"><canvas id="ops_mini_bar"></canvas></div>
         </div>
       </div>
-    </div>
-    <div class="ops-sub-lbl">ТХП</div>
-    <div class="ops-grid">
-      <div class="ops-card">
-        <div class="ops-card-hdr"><div class="ops-card-hdr-title">Метрики ТХП</div></div>
-        <div class="ops-body">
-          <div class="ops-row"><span class="ops-name">Беклог тикетов на неделю</span><input class="ops-inp" type="number" id="ops_thp-backlog" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Тикетов от КС</span><input class="ops-inp" type="number" id="ops_thp-ks" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Тикетов от УЧ</span><input class="ops-inp" type="number" id="ops_thp-uch" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Тикетов от МПВ / ИМК</span><input class="ops-inp" type="number" id="ops_thp-mpv" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Факт закрыто тикетов</span><input class="ops-inp" type="number" id="ops_thp-done" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Скорость закрытия (ч)</span><input class="ops-inp" type="number" id="ops_thp-speed" value="0" step="0.1" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">ТХП в зоне риска</span><input class="ops-inp" type="number" id="ops_thp-risk" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Среднее тикетов в день</span><input class="ops-inp" type="number" id="ops_thp-avg" value="0" step="0.1" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Лучший менеджер</span><input class="ops-inp wide txt" type="text" id="ops_thp-best" value=""></div>
+
+      <!-- карточки КРМ / ТХП / Чаты + Задачи -->
+      <div class="ops-tl-cards-3">
+        <div class="ops-tl-card">
+          <div class="ops-tl-card-hdr">КРМ / ВР</div>
+          <div class="ops-body">
+            <div class="ops-row"><span class="ops-name">Поступило запросов на возврат</span><input class="ops-inp" type="number" id="ops_krm-req" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Совершено возвратов</span><input class="ops-inp" type="number" id="ops_krm-done" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Суммы возвратов (₽)<small>Последнее значение</small></span><input class="ops-inp" type="number" id="ops_krm-ret-sum" value="0" oninput="opsRecalc()"><span class="ops-delta neu" id="ops_krm-ret-delta">—</span></div>
+            <div class="ops-row"><span class="ops-name">Количество сохранений (клиенты)</span><input class="ops-inp" type="number" id="ops_krm-saved-cnt" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Суммы сохранений (₽)<small>Последнее значение</small></span><input class="ops-inp" type="number" id="ops_krm-saved-sum" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Беклог запросов</span><input class="ops-inp" type="number" id="ops_krm-backlog" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Беклог суммы возвратов (₽)</span><input class="ops-inp" type="number" id="ops_krm-backlog-sum" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">SLA КРМ (часов)<small>Среднее</small></span><input class="ops-inp" type="number" id="ops_krm-sla" value="0" step="0.1" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Технические возвраты</span><input class="ops-inp" type="number" id="ops_krm-tech" value="0" oninput="opsRecalc()"></div>
+          </div>
+          <div class="ops-total"><span class="ops-total-label">Эффективность (сохранения / возвраты)</span><span class="ops-total-val" id="ops_krm-ratio">—</span></div>
         </div>
-      </div>
-    </div>
-    <div class="ops-task-wrap">
-      <div class="ops-task-hdr">Задачи — Бушманова</div>
-      <div class="ops-task-inner">
-        <div class="ops-task-col"><div class="ops-task-lbl">Закрытые задачи (прошлая неделя)</div><textarea class="ops-textarea" id="ops_t1-done" placeholder="Введите список закрытых задач..."></textarea></div>
-        <div class="ops-task-col"><div class="ops-task-lbl">Задачи на текущую неделю</div><textarea class="ops-textarea" id="ops_t1-plan" placeholder="Введите задачи на неделю..."></textarea></div>
+
+        <div class="ops-tl-card">
+          <div class="ops-tl-card-hdr">ТХП</div>
+          <div class="ops-body">
+            <div class="ops-row"><span class="ops-name">Беклог тикетов на неделю</span><input class="ops-inp" type="number" id="ops_thp-backlog" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Тикетов от КС</span><input class="ops-inp" type="number" id="ops_thp-ks" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Тикетов от УЧ</span><input class="ops-inp" type="number" id="ops_thp-uch" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Тикетов от МПВ / ИМК</span><input class="ops-inp" type="number" id="ops_thp-mpv" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Факт закрыто тикетов</span><input class="ops-inp" type="number" id="ops_thp-done" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Скорость закрытия (ч)</span><input class="ops-inp" type="number" id="ops_thp-speed" value="0" step="0.1" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">ТХП в зоне риска</span><input class="ops-inp" type="number" id="ops_thp-risk" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Среднее тикетов в день</span><input class="ops-inp" type="number" id="ops_thp-avg" value="0" step="0.1" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Лучший менеджер</span><input class="ops-inp wide txt" type="text" id="ops_thp-best" value=""></div>
+          </div>
+        </div>
+
+        <div class="ops-tl-card">
+          <div class="ops-tl-card-hdr">Чаты</div>
+          <div class="ops-body">
+            <div class="ops-row"><span class="ops-name">Закрыто чатов</span><input class="ops-inp" type="number" id="ops_t1-chats" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Закрыто дочерок</span><input class="ops-inp" type="number" id="ops_t1-docs" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Беклог чатов</span><input class="ops-inp" type="number" id="ops_t1-chat-back" value="0" oninput="opsRecalc()"></div>
+          </div>
+          <div class="ops-tl-card-hdr">Задачи</div>
+          <div class="ops-task-inner" style="grid-template-columns:1fr">
+            <div class="ops-task-col"><div class="ops-task-lbl">Закрытые задачи (прошлая неделя)</div><textarea class="ops-textarea" id="ops_t1-done" placeholder="Введите список..."></textarea></div>
+            <div class="ops-task-col"><div class="ops-task-lbl">Задачи на текущую неделю</div><textarea class="ops-textarea" id="ops_t1-plan" placeholder="Введите задачи..."></textarea></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="sec-lbl" style="color:var(--purple)">Наталья Евстигнеева — КМ (Team 2)</div>
-  <div class="ops-team-block purple">
-    <div class="ops-team-hdr">
+  <!-- ══ ЕВСТИГНЕЕВА ═════════════════════════════════════════════════ -->
+  <div class="ops-tl-block purple">
+    <div class="ops-tl-hdr" style="border-color:rgba(168,122,200,.2)">
       <div class="ops-team-ava" style="background:linear-gradient(135deg,var(--purple),#6a3aa0)">НЕ</div>
-      <div><div class="ops-team-name">Евстигнеева Наталья Валерьевна</div><div class="ops-team-role">Team Lead · КМ (Team 2)</div></div>
-      <div class="ops-week-badge" id="ops_wb-evs">Итого за месяц</div>
+      <div>
+        <div class="ops-team-name" style="color:var(--purple)">Евстигнеева Наталья Валерьевна</div>
+        <div class="ops-team-role" style="color:var(--purple)">Team Lead · КМ (Team 2)</div>
+      </div>
+      <div class="ops-week-badge" id="ops_wb-evs">Неделя</div>
     </div>
-    <div class="ops-grid">
-      <div class="ops-card">
-        <div class="ops-card-hdr"><div class="ops-card-hdr-title">Основные метрики</div></div>
-        <div class="ops-body">
-          <div class="ops-row"><span class="ops-name">Закрыто тикетов (без дочерок)</span><input class="ops-inp" type="number" id="ops_t2-tickets" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Уникальных клиентов</span><input class="ops-inp" type="number" id="ops_t2-clients" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Беклог по тикетам</span><input class="ops-inp" type="number" id="ops_t2-backlog" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Беклог по уникальным клиентам</span><input class="ops-inp" type="number" id="ops_t2-backlog-cl" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Проведено ЛБ</span><input class="ops-inp" type="number" id="ops_t2-lb" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Отрицательная динамика у КМ</span><input class="ops-inp" type="number" id="ops_t2-neg" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">КМ в зоне риска</span><input class="ops-inp" type="number" id="ops_t2-risk" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">КМ в кейсах возвратов</span><input class="ops-inp" type="number" id="ops_t2-ret" value="0" oninput="opsRecalc()"></div>
+    <div class="ops-tl-body">
+
+      <!-- мини-диаграммы Евстигнеевой — свои canvas (данные подтягиваются отдельно) -->
+      <div class="ops-tl-chart-row">
+        <div class="ops-mini-chart">
+          <div class="ops-mini-chart-title">Распределение КМ</div>
+          <div style="position:relative;width:100%;height:120px"><canvas id="ops_mini_pie_evs"></canvas></div>
+        </div>
+        <div class="ops-mini-chart">
+          <div class="ops-mini-chart-title">Сравнение с предыдущей неделей</div>
+          <div style="position:relative;width:100%;height:120px"><canvas id="ops_mini_bar_evs"></canvas></div>
         </div>
       </div>
-      <div class="ops-card">
-        <div class="ops-card-hdr"><div class="ops-card-hdr-title">Паузы и возвраты</div></div>
-        <div class="ops-body">
-          <div class="ops-row"><span class="ops-name">Запросов на паузу</span><input class="ops-inp" type="number" id="ops_t2-pause" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Сохранено клиентов</span><input class="ops-inp" type="number" id="ops_t2-saved" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Поставлено на паузу</span><input class="ops-inp" type="number" id="ops_t2-paused" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Передано в работу КРМ</span><input class="ops-inp" type="number" id="ops_t2-krm" value="0" oninput="opsRecalc()"></div>
-          <div class="ops-row"><span class="ops-name">Выведены с паузы</span><input class="ops-inp" type="number" id="ops_t2-unfrozen" value="0" oninput="opsRecalc()"></div>
+
+      <div class="ops-tl-cards-2">
+        <div class="ops-tl-card">
+          <div class="ops-tl-card-hdr" style="color:var(--purple)">Основные метрики</div>
+          <div class="ops-body">
+            <div class="ops-row"><span class="ops-name">Закрыто тикетов (без дочерок)</span><input class="ops-inp" type="number" id="ops_t2-tickets" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Уникальных клиентов</span><input class="ops-inp" type="number" id="ops_t2-clients" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Беклог по тикетам</span><input class="ops-inp" type="number" id="ops_t2-backlog" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Беклог по уникальным клиентам</span><input class="ops-inp" type="number" id="ops_t2-backlog-cl" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Проведено ЛБ</span><input class="ops-inp" type="number" id="ops_t2-lb" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Отрицательная динамика у КМ</span><input class="ops-inp" type="number" id="ops_t2-neg" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">КМ в зоне риска</span><input class="ops-inp" type="number" id="ops_t2-risk" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">КМ в кейсах возвратов</span><input class="ops-inp" type="number" id="ops_t2-ret" value="0" oninput="opsRecalc()"></div>
+          </div>
         </div>
-      </div>
-    </div>
-    <div class="ops-task-wrap" style="border-color:rgba(168,122,200,.2)">
-      <div class="ops-task-hdr" style="color:var(--purple)">Задачи — Team 2</div>
-      <div class="ops-task-inner">
-        <div class="ops-task-col"><div class="ops-task-lbl">Закрытые задачи (прошлая неделя)</div><textarea class="ops-textarea" id="ops_t2-done" placeholder="Введите список закрытых задач..."></textarea></div>
-        <div class="ops-task-col"><div class="ops-task-lbl">Задачи на текущую неделю</div><textarea class="ops-textarea" id="ops_t2-plan" placeholder="Введите задачи на неделю..."></textarea></div>
+        <div class="ops-tl-card">
+          <div class="ops-tl-card-hdr" style="color:var(--purple)">Паузы и возвраты</div>
+          <div class="ops-body">
+            <div class="ops-row"><span class="ops-name">Запросов на паузу</span><input class="ops-inp" type="number" id="ops_t2-pause" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Сохранено клиентов</span><input class="ops-inp" type="number" id="ops_t2-saved" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Поставлено на паузу</span><input class="ops-inp" type="number" id="ops_t2-paused" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Передано в работу КРМ</span><input class="ops-inp" type="number" id="ops_t2-krm" value="0" oninput="opsRecalc()"></div>
+            <div class="ops-row"><span class="ops-name">Выведены с паузы</span><input class="ops-inp" type="number" id="ops_t2-unfrozen" value="0" oninput="opsRecalc()"></div>
+          </div>
+          <div class="ops-tl-card-hdr" style="color:var(--purple)">Задачи</div>
+          <div class="ops-task-inner" style="grid-template-columns:1fr">
+            <div class="ops-task-col"><div class="ops-task-lbl">Закрытые задачи (прошлая неделя)</div><textarea class="ops-textarea" id="ops_t2-done" placeholder="Введите список..."></textarea></div>
+            <div class="ops-task-col"><div class="ops-task-lbl">Задачи на текущую неделю</div><textarea class="ops-textarea" id="ops_t2-plan" placeholder="Введите задачи..."></textarea></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- ══ OPS ══════════════════════════════════════════════════════════ -->
   <div class="sec-lbl">OPS</div>
-  <div class="ops-grid">
-    <div class="ops-card">
-      <div class="ops-card-hdr"><div class="ops-card-hdr-title">Наташа Володина</div><span class="ops-card-hdr-badge">OPS</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+    <!-- Наташа Володина -->
+    <div class="ops-person-block">
+      <div class="ops-person-hdr">
+        <div class="ops-team-ava" style="background:linear-gradient(135deg,var(--blue),#3a6a8a);font-size:11px">НВ</div>
+        <div><div class="ops-team-name" style="color:var(--blue)">Наташа Володина</div><div class="ops-team-role" style="color:var(--blue)">OPS</div></div>
+      </div>
+      <div class="ops-person-sub">Мат. капитал и соглашения</div>
       <div class="ops-body">
-        <div class="ops-row"><span class="ops-name">Запросы на мат. капитал</span><input class="ops-inp" type="number" id="ops_ops-mkcap-req" value="0" oninput="opsRecalc()"></div>
+        <div class="ops-row"><span class="ops-name">Запросы на мат. капитал<small>Накопительно</small></span><input class="ops-inp" type="number" id="ops_ops-mkcap-req" value="0" oninput="opsRecalc()"></div>
         <div class="ops-row"><span class="ops-name">Подготовлено документов на мат. кап</span><input class="ops-inp" type="number" id="ops_ops-mkcap-doc" value="0" oninput="opsRecalc()"></div>
         <div class="ops-row"><span class="ops-name">Поступило оплат по мат. капиталу</span><input class="ops-inp" type="number" id="ops_ops-mkcap-pay" value="0" oninput="opsRecalc()"></div>
         <div class="ops-row"><span class="ops-name">Запросы на налоговый вычет</span><input class="ops-inp" type="number" id="ops_ops-tax-req" value="0" oninput="opsRecalc()"></div>
         <div class="ops-row"><span class="ops-name">Подготовлено документов на вычет</span><input class="ops-inp" type="number" id="ops_ops-tax-doc" value="0" oninput="opsRecalc()"></div>
-        <div class="ops-row"><span class="ops-name">Запросы соглашений ВР</span><input class="ops-inp" type="number" id="ops_ops-vr-req" value="0" oninput="opsRecalc()"></div>
+        <div class="ops-row"><span class="ops-name">Запросы соглашений ВР<small>Накопительно</small></span><input class="ops-inp" type="number" id="ops_ops-vr-req" value="0" oninput="opsRecalc()"></div>
         <div class="ops-row"><span class="ops-name">Направлено соглашений</span><input class="ops-inp" type="number" id="ops_ops-agree-sent" value="0" oninput="opsRecalc()"></div>
         <div class="ops-row"><span class="ops-name">Подписано и заархивировано соглашений</span><input class="ops-inp" type="number" id="ops_ops-agree-done" value="0" oninput="opsRecalc()"></div>
-        <div class="ops-row"><span class="ops-name">Ошибки на стороне ИМК</span><input class="ops-inp" type="number" id="ops_ops-imk-err" value="0" oninput="opsRecalc()"></div>
+        <div class="ops-row"><span class="ops-name">Ошибки на стороне ИМК<small>Накопительно</small></span><input class="ops-inp" type="number" id="ops_ops-imk-err" value="0" oninput="opsRecalc()"></div>
       </div>
-    </div>
-    <div class="ops-card">
-      <div class="ops-card-hdr"><div class="ops-card-hdr-title">Нулевые уроки</div><span class="ops-card-hdr-badge">OPS</span></div>
+      <div class="ops-person-sub">Нулевые уроки</div>
       <div class="ops-body">
         <div class="ops-row"><span class="ops-name">Всего 0У за неделю</span><input class="ops-inp" type="number" id="ops_ops-0u-total" value="0" oninput="opsRecalc()"></div>
         <div class="ops-row"><span class="ops-name">Отправили рассылок</span><input class="ops-inp" type="number" id="ops_ops-mail-sent" value="0" oninput="opsRecalc()"></div>
@@ -2764,8 +2917,14 @@ function opsHTML() {
         </div>
       </div>
     </div>
-    <div class="ops-card">
-      <div class="ops-card-hdr"><div class="ops-card-hdr-title">Аня Гороховская</div><span class="ops-card-hdr-badge">OPS</span></div>
+
+    <!-- Аня Гороховская -->
+    <div class="ops-person-block">
+      <div class="ops-person-hdr">
+        <div class="ops-team-ava" style="background:linear-gradient(135deg,var(--sage),#5a7a4a);font-size:11px">АГ</div>
+        <div><div class="ops-team-name" style="color:var(--sage)">Аня Гороховская</div><div class="ops-team-role" style="color:var(--sage)">OPS</div></div>
+      </div>
+      <div class="ops-person-sub">Расформирования</div>
       <div class="ops-body">
         <div class="ops-row"><span class="ops-name">Расформировано (тотал за месяц)<small>Последнее внесённое значение</small></span><input class="ops-inp" type="number" id="ops_ops-disband" value="0" oninput="opsRecalc()"><span class="ops-delta neu" id="ops_ops-disband-delta">—</span></div>
         <div class="ops-row"><span class="ops-name">В работе (расформирований)</span><input class="ops-inp" type="number" id="ops_ops-disband-wip" value="0" oninput="opsRecalc()"></div>
@@ -2776,20 +2935,26 @@ function opsHTML() {
             <input class="ops-inp wide txt" type="text" id="ops_ops-disband-no-comment" placeholder="Причина...">
           </div>
         </div>
+      </div>
+      <div class="ops-person-sub">ОКК КРМ</div>
+      <div class="ops-body">
         <div class="ops-row"><span class="ops-name">Проверено по ЧЛ КРМ</span><input class="ops-inp" type="number" id="ops_ops-krm-check" value="0" oninput="opsRecalc()"></div>
         <div class="ops-row"><span class="ops-name">Средний балл по КРМ</span><input class="ops-inp" type="number" id="ops_ops-krm-score" value="0" oninput="opsRecalc()"></div>
+      </div>
+      <div class="ops-person-sub">Группы</div>
+      <div class="ops-body">
         <div class="ops-row"><span class="ops-name">Групп с недоборами</span><input class="ops-inp" type="number" id="ops_ops-under" value="0" oninput="opsRecalc()"></div>
         <div class="ops-row"><span class="ops-name">Групп с переборами</span><input class="ops-inp" type="number" id="ops_ops-over" value="0" oninput="opsRecalc()"></div>
         <div class="ops-row"><span class="ops-name">Выгружено пропусков 2-3</span><input class="ops-inp" type="number" id="ops_ops-absent" value="0" oninput="opsRecalc()"></div>
       </div>
     </div>
+
   </div>
 
   <div class="ops-save-bar">
     <button class="ops-bclear" onclick="opsClearWeek()">Очистить неделю</button>
     <button class="ops-bsave" onclick="opsSaveData()">Сохранить данные</button>
   </div>
-
   </div>
 `;
 }
