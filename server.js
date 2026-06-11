@@ -135,8 +135,11 @@ async function initDB() {
     category TEXT,
     progress TEXT DEFAULT '0',
     description TEXT,
+    month TEXT DEFAULT '',
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`);
+  // Миграция: добавляем month если ещё нет (безопасно для существующих данных)
+  await pool.query(`ALTER TABLE head_tasks ADD COLUMN IF NOT EXISTS month TEXT DEFAULT ''`);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS ops_report (
     id TEXT PRIMARY KEY,
@@ -540,6 +543,7 @@ app.delete('/api/month/:month', requireAuth, requireAdmin, async (req, res) => {
     await pool.query('DELETE FROM tasks WHERE month=$1', [month]).catch(()=>{});
     await pool.query('DELETE FROM reviews WHERE month=$1', [month]).catch(()=>{});
     await pool.query('DELETE FROM ops_report WHERE period=$1', [month]).catch(()=>{});
+    await pool.query('DELETE FROM head_tasks WHERE month=$1', [month]).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -577,7 +581,10 @@ app.get('/api/head-tasks', requireAuth, async (req, res) => {
   const r = req.session?.user?.role;
   if (r !== 'admin') return res.status(403).json({ error: 'Forbidden' });
   try {
-    const { rows } = await pool.query('SELECT * FROM head_tasks ORDER BY created_at ASC');
+    const month = req.query.month || '';
+    const { rows } = month
+      ? await pool.query('SELECT * FROM head_tasks WHERE month=$1 ORDER BY created_at ASC', [month])
+      : await pool.query('SELECT * FROM head_tasks ORDER BY created_at ASC');
     res.json(rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -586,12 +593,12 @@ app.post('/api/head-task', requireAuth, async (req, res) => {
   const r = req.session?.user?.role;
   if (r !== 'admin') return res.status(403).json({ error: 'Forbidden' });
   try {
-    const { id, title, priority, deadline, category, progress, description } = req.body;
+    const { id, title, priority, deadline, category, progress, description, month } = req.body;
     await pool.query(
-      `INSERT INTO head_tasks (id, title, priority, deadline, category, progress, description)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
-       ON CONFLICT (id) DO UPDATE SET title=$2, priority=$3, deadline=$4, category=$5, progress=$6, description=$7`,
-      [id||uid(), title, priority, deadline||'', category, progress||'0', description||'']
+      `INSERT INTO head_tasks (id, title, priority, deadline, category, progress, description, month)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (id) DO UPDATE SET title=$2, priority=$3, deadline=$4, category=$5, progress=$6, description=$7, month=$8`,
+      [id||uid(), title, priority, deadline||'', category, progress||'0', description||'', month||'']
     );
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
