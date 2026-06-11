@@ -2194,6 +2194,7 @@ function opsNv(id){ return parseFloat(opsGv(id))||0; }
 function opsSetWeek(w, btn) {
   // Сохраняем текущую неделю в store перед переключением
   if(opsCurWeek>0) opsSaveWeek(opsCurWeek);
+
   opsCurWeek=w;
   document.querySelectorAll('.ops-wtab').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
@@ -2207,7 +2208,13 @@ function opsSetWeek(w, btn) {
   if(inputBlock) inputBlock.style.display=w===0?'none':'block';
   if(summaryBlock) summaryBlock.style.display=w===0?'block':'none';
 
-  if(w===0){ opsRenderSummary(); } else { opsLoadWeek(w); opsRenderWeekMiniChart(w); }
+  if(w===0){
+    // Рендерим итого из текущего store (уже сохранён выше)
+    opsRenderSummary();
+  } else {
+    opsLoadWeek(w);
+    opsRenderWeekMiniChart(w);
+  }
   opsUpdateChart();
   opsRecalc();
 }
@@ -2258,13 +2265,20 @@ function opsSumUpTo(id, upTo) {
 }
 
 function opsRecalc() {
-  const sav=opsNv('krm-saved-sum'), ret=opsNv('krm-ret-sum');
   const setT=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  // В режиме итого (w=0) данные берём из store, в режиме недели — из DOM
+  if(opsCurWeek===0){
+    // Все чипсы уже выставлены в opsRenderSummary — opsRecalc в этом режиме не перезаписывает
+    return;
+  }
+  const sav=opsNv('krm-saved-sum'), ret=opsNv('krm-ret-sum');
   setT('ops_d-savings', opsFmtR(sav));
   setT('ops_d-saved-cnt', opsNv('krm-saved-cnt'));
   setT('ops_d-returns', opsFmtR(ret));
   setT('ops_d-ret-cnt', opsNv('krm-done'));
-  setT('ops_d-sla', opsNv('krm-sla')+' ч');
+  // SLA: в режиме итого — среднее из store; в режиме недели — текущий инпут
+  const slaVal = opsCurWeek===0 ? opsGetSummaryVal('krm-sla') : opsNv('krm-sla').toFixed(1);
+  setT('ops_d-sla', slaVal+' ч');
   setT('ops_d-krm-req', opsFmt(opsNv('krm-req')));
   setT('ops_d-thp', opsFmt(opsNv('thp-done')));
   setT('ops_krm-ratio', ret>0?(sav/ret).toFixed(2)+'x':'—');
@@ -2969,13 +2983,13 @@ function opsRender() {
   opsPeriod = newPeriod;
   document.getElementById('opsContent').innerHTML = opsHTML();
   opsInitChart();
-  opsLoadData();
-  // Применяем видимость блоков по текущей неделе
+  // Применяем видимость блоков до загрузки данных
   const inputBlock=document.getElementById('ops_input_block');
   const summaryBlock=document.getElementById('ops_summary_block');
   if(inputBlock) inputBlock.style.display=opsCurWeek===0?'none':'block';
   if(summaryBlock) summaryBlock.style.display=opsCurWeek===0?'block':'none';
-  if(opsCurWeek===0) { setTimeout(()=>opsRenderSummary(),100); }
+  // opsLoadData сам вызывает opsRenderSummary или opsLoadWeek после загрузки
+  opsLoadData();
 }
 </script>
 
