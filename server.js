@@ -26,7 +26,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'cis-2026-secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }
+  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' }
 }));
 
 // ── MIDDLEWARE ───────────────────────────────────────────────────────────────
@@ -141,6 +141,8 @@ async function initDB() {
   )`);
   await pool.query(`ALTER TABLE head_tasks ADD COLUMN IF NOT EXISTS month TEXT DEFAULT ''`);
   await pool.query(`ALTER TABLE head_tasks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL`);
+  // Миграция: orphan задачи без месяца → тег 'legacy' (безопасно, не удаляет данные)
+  await pool.query(`UPDATE head_tasks SET month='legacy' WHERE (month='' OR month IS NULL) AND deleted_at IS NULL`).catch(()=>{});
 
   await pool.query(`CREATE TABLE IF NOT EXISTS ops_report (
     id TEXT PRIMARY KEY,
@@ -589,11 +591,14 @@ app.get('/api/head-tasks', requireAuth, async (req, res) => {
       rows_result = await pool.query(
         'SELECT * FROM head_tasks WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC'
       );
-    } else if (month) {
-      // Возвращаем задачи месяца + задачи без месяца (legacy — мигрируются на фронте)
+    } else if (month === 'legacy') {
       rows_result = await pool.query(
-        'SELECT * FROM head_tasks WHERE (month=$1 OR month=$2 OR month IS NULL) AND deleted_at IS NULL ORDER BY created_at ASC',
-        [month, '']
+        "SELECT * FROM head_tasks WHERE month='legacy' AND deleted_at IS NULL ORDER BY created_at ASC"
+      );
+    } else if (month) {
+      rows_result = await pool.query(
+        'SELECT * FROM head_tasks WHERE month=$1 AND deleted_at IS NULL ORDER BY created_at ASC',
+        [month]
       );
     } else {
       rows_result = await pool.query('SELECT * FROM head_tasks WHERE deleted_at IS NULL ORDER BY created_at ASC');
