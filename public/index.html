@@ -668,6 +668,13 @@ async function loadData(){
       curMonth = (saved && months.includes(saved)) ? saved : (months[months.length-1] || '');
     }
     renderAll();
+    // Перезагружаем все зависимые вкладки
+    await Promise.all([loadTasks(), loadReviews(), loadPayroll()]);
+    renderKM();
+    if(typeof opsLoadData==='function' && opsPeriod) opsLoadData();
+    if(typeof hcLoad==='function' && document.getElementById('headCsContent')?.children.length){
+      await hcLoad(); if(typeof hcRenderAll==='function') hcRenderAll();
+    }
     toast('Данные обновлены ✓');
   }catch(e){
     toast('Ошибка загрузки');
@@ -3013,16 +3020,7 @@ async function hcLoad() {
   try {
     HC_TASKS = await api('GET', '/api/head-tasks?month='+encodeURIComponent(curMonth));
     if(!Array.isArray(HC_TASKS)) HC_TASKS=[];
-    // Авто-миграция: задачи без месяца привязываем к текущему
-    const legacy = HC_TASKS.filter(t => !t.month || t.month === '');
-    if(legacy.length > 0 && curMonth) {
-      for(const t of legacy) {
-        t.month = curMonth;
-        api('POST', '/api/head-task', t).catch(()=>{});
-      }
-    }
-  }
-  catch(e) { HC_TASKS=[]; }
+  } catch(e) { HC_TASKS=[]; }
 }
 
 async function hcSave(task) {
@@ -3244,9 +3242,22 @@ function hcRenderCols() {
 
 function hcRenderAll(){hcRenderSummary();hcRenderCols();}
 
+async function hcReassignLegacy(tasks) {
+  if(!curMonth||curMonth==='legacy'){toast('Выбери нужный месяц');return;}
+  if(!confirm('Привязать '+tasks.length+' задач к "'+curMonth+'"?'))return;
+  try{
+    for(const t of tasks){t.month=curMonth;await api('POST','/api/head-task',t);}
+    toast('Задачи привязаны к '+curMonth+' ✓');
+    await headCsRender();
+  }catch(e){toast('Ошибка');}
+}
+
 async function headCsRender() {
   await hcLoad();
-  document.getElementById('headCsContent').innerHTML=`
+  let legacyTasks=[];
+  try{const lg=await api('GET','/api/head-tasks?month=legacy');legacyTasks=Array.isArray(lg)?lg:[];}catch(e){}
+  const legacyBanner=legacyTasks.length>0?`<div style="background:rgba(200,168,122,.1);border:1px solid rgba(200,168,122,.3);border-radius:4px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px"><div><div style="font-size:12px;font-weight:600;color:var(--warn)">⚠ ${legacyTasks.length} задач без месяца</div><div style="font-size:10px;color:var(--dim);margin-top:2px">Созданы до разделения по месяцам</div></div><button onclick="hcReassignLegacy(${JSON.stringify(legacyTasks).replace(/"/g,'&quot;')})" style="font-size:10px;padding:5px 14px;border:1px solid var(--warn);background:transparent;color:var(--warn);cursor:pointer;border-radius:2px;white-space:nowrap">Привязать к текущему месяцу</button></div>`:'';
+  document.getElementById('headCsContent').innerHTML= legacyBanner + `
     <div id="hcSummary"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
       <button class="hc-cf-btn on" onclick="hcFilter('all',this)">Все</button>
