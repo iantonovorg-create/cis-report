@@ -22,6 +22,7 @@ const INITIAL_USERS = [
 ];
 
 app.use(express.json());
+app.set('trust proxy', 1); // Render/Heroku — за reverse proxy
 app.use(session({
   secret: process.env.SESSION_SECRET || 'cis-2026-secret',
   resave: false,
