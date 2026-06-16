@@ -4261,8 +4261,7 @@ function okkRecalcScore() {
     var isP = sel.dataset.penalty === '1';
     var m = parseFloat(sel.dataset.max) || 0;
     var key = sel.dataset.key || '';
-    var parts = key.split('_');
-    var blkId = parts.slice(0, -1).join('_');
+    var blkId = key.split('_').slice(0, -1).join('_');
     if (isP) {
       penalty += v;
       if (!blkScores[blkId]) blkScores[blkId] = {score:0, max:0, penalty:true};
@@ -4275,24 +4274,23 @@ function okkRecalcScore() {
     }
   });
 
-  // Update per-block score displays
+  // Update per-block score displays — при RF всё по нулям
   Object.keys(blkScores).forEach(function(blkId) {
     var bs = blkScores[blkId];
     if (bs.penalty) {
       var pEl = document.getElementById('okk_ps_' + blkId.replace('penalty_',''));
-      if (pEl) pEl.textContent = bs.score;
+      if (pEl) pEl.textContent = rfOn ? '0' : bs.score;
     } else {
       var bEl = document.getElementById('okk_bs_' + blkId);
       var bProg = document.getElementById('okk_bp_' + blkId);
-      if (bEl) bEl.textContent = bs.score + ' / ' + bs.max;
-      if (bProg && bs.max > 0)
-        bProg.style.width = Math.min(100, Math.round(Math.max(0, bs.score) / bs.max * 100)) + '%';
+      if (bEl) bEl.textContent = rfOn ? '0 / ' + bs.max : bs.score + ' / ' + bs.max;
+      if (bProg) bProg.style.width = rfOn ? '0%' : Math.min(100, Math.round(Math.max(0, bs.score) / bs.max * 100)) + '%';
     }
   });
 
-  // RF: показывает 0% и 0 баллов
+  // Итог: при RF всё = 0
   var displayScore = rfOn ? 0 : Math.max(0, total + penalty);
-  var displayPct = rfOn ? 0 : (max > 0 ? Math.max(0, Math.round((total + penalty) / max * 100)) : 0);
+  var displayPct   = rfOn ? 0 : (max > 0 ? Math.max(0, Math.round((total + penalty) / max * 100)) : 0);
   var color = rfOn ? 'var(--red)' : displayPct >= 85 ? 'var(--green)' : displayPct >= 70 ? 'var(--warn)' : 'var(--red)';
 
   var e;
@@ -4301,7 +4299,7 @@ function okkRecalcScore() {
   e = document.getElementById('okk_total_score');
   if (e) { e.textContent = displayScore + '/' + max; e.style.color = color; }
   e = document.getElementById('okk_total_pen');
-  if (e) e.textContent = penalty + (rfOn ? ' + 🚩RF' : '');
+  if (e) e.textContent = rfOn ? '🚩 RF' : (penalty ? penalty : '0');
   e = document.getElementById('okk_result');
   if (e) {
     e.textContent = rfOn ? '🚩 АННУЛИРОВАН' : displayPct >= 85 ? '✓ ПРОЙДЕНО' : displayPct >= 70 ? '⚠ НА ГРАНИ' : '✗ НЕ ПРОЙДЕНО';
