@@ -631,7 +631,7 @@ function applyRoleRestrictions(role){
     return;
   }
   if(role==='ops_editor'){
-    document.querySelectorAll('.tab').forEach(t=>{if(!t.textContent.includes('Опер'))t.style.display='none';});
+    document.querySelectorAll('.tab').forEach(t=>{if(!t.textContent.includes('Опер')&&t.id!=='okkTab')t.style.display='none';});
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
     document.getElementById('p-ops')?.classList.add('on');
     document.getElementById('hdrStats')?.style&&(document.getElementById('hdrStats').style.display='none');
@@ -4180,7 +4180,7 @@ function okkBuildForm(type) {
     +'<div><div class="okk-rf-title">\uD83D\uDEA9 Красный флаг</div>'
     +'<div class="okk-rf-desc">'+cl.rf+'</div></div>'
     +'<div class="okk-rf-tog"><span class="okk-rf-pen">−100 б., кейс аннулируется</span>'
-    +'<input type="checkbox" id="okk_rf"'+(existing&&existing.red_flag?' checked':'')+'>'
+    +'<input type="checkbox" id="okk_rf" onchange="okkRecalcScore()"'+(existing&&existing.red_flag?' checked':'')+'>'
     +'<label for="okk_rf">Зафиксирован</label></div></div>';
 
   // Итог
@@ -4250,34 +4250,64 @@ function okkItemChange(sel) {
 }
 
 function okkRecalcScore() {
-  var total = 0, max = 0, penalty = 0, rfOn = false;
+  var total = 0, max = 0, penalty = 0;
   var rfEl = document.getElementById('okk_rf');
-  if (rfEl) rfOn = rfEl.checked;
+  var rfOn = rfEl ? rfEl.checked : false;
+  var blkScores = {};
 
   document.querySelectorAll('.okk-sel').forEach(function(sel) {
     if (sel.disabled) return;
-    var v = parseFloat(sel.value)||0;
-    var isP = sel.dataset.penalty==='1';
-    var m = parseFloat(sel.dataset.max)||0;
-    if (isP) { penalty += v; }
-    else { max += m; total += v; }
+    var v = parseFloat(sel.value) || 0;
+    var isP = sel.dataset.penalty === '1';
+    var m = parseFloat(sel.dataset.max) || 0;
+    var key = sel.dataset.key || '';
+    var parts = key.split('_');
+    var blkId = parts.slice(0, -1).join('_');
+    if (isP) {
+      penalty += v;
+      if (!blkScores[blkId]) blkScores[blkId] = {score:0, max:0, penalty:true};
+      blkScores[blkId].score += v;
+    } else {
+      max += m; total += v;
+      if (!blkScores[blkId]) blkScores[blkId] = {score:0, max:0, penalty:false};
+      blkScores[blkId].score += v;
+      blkScores[blkId].max += m;
+    }
   });
 
-  var finalScore = total + penalty + (rfOn ? -100 : 0);
-  var pct = max>0 ? Math.max(0, Math.round(finalScore/max*100)) : 0;
-  var color = rfOn?'var(--red)':pct>=85?'var(--green)':pct>=70?'var(--warn)':'var(--red)';
+  // Update per-block score displays
+  Object.keys(blkScores).forEach(function(blkId) {
+    var bs = blkScores[blkId];
+    if (bs.penalty) {
+      var pEl = document.getElementById('okk_ps_' + blkId.replace('penalty_',''));
+      if (pEl) pEl.textContent = bs.score;
+    } else {
+      var bEl = document.getElementById('okk_bs_' + blkId);
+      var bProg = document.getElementById('okk_bp_' + blkId);
+      if (bEl) bEl.textContent = bs.score + ' / ' + bs.max;
+      if (bProg && bs.max > 0)
+        bProg.style.width = Math.min(100, Math.round(Math.max(0, bs.score) / bs.max * 100)) + '%';
+    }
+  });
+
+  // RF: показывает 0% и 0 баллов
+  var displayScore = rfOn ? 0 : Math.max(0, total + penalty);
+  var displayPct = rfOn ? 0 : (max > 0 ? Math.max(0, Math.round((total + penalty) / max * 100)) : 0);
+  var color = rfOn ? 'var(--red)' : displayPct >= 85 ? 'var(--green)' : displayPct >= 70 ? 'var(--warn)' : 'var(--red)';
 
   var e;
-  e=document.getElementById('okk_total_pct'); if(e){e.textContent=pct+'%';e.style.color=color;}
-  e=document.getElementById('okk_total_score'); if(e){e.textContent=Math.max(0,total)+'/'+max;e.style.color=color;}
-  e=document.getElementById('okk_total_pen'); if(e) e.textContent=penalty+(rfOn?' + RF':'');
-  e=document.getElementById('okk_result');
-  if(e){
-    e.textContent = rfOn?'\uD83D\uDEA9 АННУЛИРОВАН':pct>=85?'\u2713 ПРОЙДЕНО':pct>=70?'\u26A0 НА ГРАНИ':'\u2717 НЕ ПРОЙДЕНО';
+  e = document.getElementById('okk_total_pct');
+  if (e) { e.textContent = displayPct + '%'; e.style.color = color; }
+  e = document.getElementById('okk_total_score');
+  if (e) { e.textContent = displayScore + '/' + max; e.style.color = color; }
+  e = document.getElementById('okk_total_pen');
+  if (e) e.textContent = penalty + (rfOn ? ' + 🚩RF' : '');
+  e = document.getElementById('okk_result');
+  if (e) {
+    e.textContent = rfOn ? '🚩 АННУЛИРОВАН' : displayPct >= 85 ? '✓ ПРОЙДЕНО' : displayPct >= 70 ? '⚠ НА ГРАНИ' : '✗ НЕ ПРОЙДЕНО';
     e.style.color = color;
   }
 }
-
 function okkRestoreFormState() {
   document.querySelectorAll('.okk-sel').forEach(function(sel) {
     var key = sel.dataset.key;
