@@ -844,6 +844,14 @@ app.patch('/api/okk-appeal/:id', requireAuth, requireOkkOrAdmin, async (req, res
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
+// DELETE appeal — только admin
+app.delete('/api/okk-appeal/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM okk_appeals WHERE id=$1', [req.params.id]);
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 // ── Google Sheets sync (OKK) ─────────────────────────────────────────────────
 async function syncOkkToSheets(check) {
   if (!process.env.GOOGLE_SHEET_ID || !process.env.GOOGLE_CREDENTIALS) return;
