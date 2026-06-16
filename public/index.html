@@ -4018,7 +4018,7 @@ function okkRenderSummary() {
   var thp = done.filter(function(c){return c.type==='thp';});
   function avg(arr) {
     if (!arr.length) return 0;
-    return Math.round(arr.reduce(function(s,c){return s+(c.max_score>0?c.score/c.max_score*100:0);},0)/arr.length);
+    return Math.round(arr.reduce(function(s,c){return s+(c.red_flag?0:c.max_score>0?c.score/c.max_score*100:0);},0)/arr.length);
   }
   var rf = done.filter(function(c){return c.red_flag;}).length;
   var pend = OKK_APPEALS.filter(function(a){return a.status==='pending';}).length;
@@ -4033,7 +4033,7 @@ function okkRenderSummary() {
   }
 
   var rows = done.slice(0,10).map(function(c) {
-    var pct = c.max_score>0?Math.round(c.score/c.max_score*100):0;
+    var pct = c.red_flag ? 0 : (c.max_score>0?Math.round(c.score/c.max_score*100):0);
     var sc = pct>=80?'hi':pct>=60?'mid':'lo';
     var st = {draft:'draft',appeal:'appl',appeal_approved:'ok',done:'ok',completed:'ok'}[c.status]||'ok';
     var stL = {draft:'Черновик',appeal:'Апелляция',appeal_approved:'Апел. одобрена',done:'Завершена',completed:'Завершена'}[c.status]||'Завершена';
@@ -4086,7 +4086,7 @@ function okkRenderCheckList(type, canEdit, container) {
   }
 
   var rows = checks.map(function(c) {
-    var pct = c.max_score>0?Math.round(c.score/c.max_score*100):0;
+    var pct = c.red_flag ? 0 : (c.max_score>0?Math.round(c.score/c.max_score*100):0);
     var sc = pct>=80?'hi':pct>=60?'mid':'lo';
     var openBtn = document.createElement('button');
     openBtn.className='abt'; openBtn.style.cssText='padding:2px 8px;font-size:9px;margin-right:3px';
@@ -4461,7 +4461,7 @@ function okkRenderCase(canAppeal) {
     +'<div class="sec-lbl">'+c.employee+' · <span class="okk-tag '+c.type+'" style="font-size:11px">'+c.type.toUpperCase()+'</span></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">'
     +'<div class="okk-chip"><span class="n" style="font-size:18px">'+pct+'%</span><span class="l">Балл</span></div>'
-    +'<div class="okk-chip purple"><span class="n" style="font-size:18px">'+c.score+'/'+c.max_score+'</span><span class="l">Набрано / макс</span></div>'
+    +'<div class="okk-chip purple"><span class="n" style="font-size:18px">'+(c.red_flag?'0':c.score)+'/'+c.max_score+'</span><span class="l">Набрано / макс</span></div>'
     +'<div class="okk-chip '+(c.red_flag?'bad':'')+'"><span class="n" style="font-size:18px;color:'+(c.red_flag?'var(--red)':'var(--green)')+'">'+
     (c.red_flag?'\uD83D\uDEA9 Да':'Нет')+'</span><span class="l">Красный флаг</span></div></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
