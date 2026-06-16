@@ -3774,12 +3774,13 @@ var _okkEditId = null;
 var _okkType = 'krm';
 var _okkCheckedItems = {};
 var _okkCaseId = null;
+var _okkShowForm = false;
 
 // ── Чек-листы (из реальных файлов) ──────────────────────────────
 var OKK_CL = {
   krm: {
     label: 'КРМ (Кризис-менеджеры)',
-    max: 55,
+    max: 100,
     blocks: [
       { id:'b1', title:'Эмпатия', penalty:false, items:[
         {id:'i1',label:'Вежливость и доброжелательность',hint:'Позитивный бесконфликтный тон, уважение, вежливые слова',w:5,opts:[5,0]},
@@ -4111,14 +4112,14 @@ function okkRenderCheckList(type, canEdit, container) {
       +'<td style="white-space:nowrap">'+openBtn.outerHTML+editBtn+delBtn+'</td></tr>';
   }).join('');
 
-  var formHtml = (_okkEditId || (canEdit && !checks.length)) ? okkBuildForm(type) : '';
+  var formHtml = (_okkEditId || _okkShowForm) ? okkBuildForm(type) : '';
 
   container.innerHTML = addBtn + formHtml
     + (checks.length
       ? '<table class="okk-tbl"><thead><tr><th>Сотрудник</th><th>Дата</th><th>Тикет</th><th>Балл</th><th>\uD83D\uDEA9</th><th>Статус</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
       : (canEdit?'':'<div style="padding:24px;text-align:center;color:var(--muted);font-size:11px">Проверок за этот месяц нет</div>'));
 
-  if (_okkEditId || (canEdit && !checks.length)) okkRestoreFormState();
+  if (_okkEditId || _okkShowForm) { okkRestoreFormState(); setTimeout(okkRecalcScore, 0); }
 }
 
 // ── Форма проверки ───────────────────────────────────────────────
@@ -4130,7 +4131,7 @@ function okkBuildForm(type) {
   var hdrForm = '<div class="okk-hdr-form">'
     +'<div class="okk-hf"><label>Сотрудник</label><input id="okk_employee" value="'+(existing?existing.employee:'')+'" placeholder="ФИО сотрудника"></div>'
     +'<div class="okk-hf"><label>Дата проверки</label><input id="okk_date" type="date" value="'+(existing?existing.check_date:new Date().toISOString().slice(0,10))+'"></div>'
-    +'<div class="okk-hf"><label>Номер тикета</label><input id="okk_ticket" value="'+(existing?existing.ticket||'':'')+'" placeholder="#12345"></div>'
+    +'<div class="okk-hf"><label>Ссылка на тикет</label><input id="okk_ticket" value="'+(existing?existing.ticket||'':'')+'" placeholder="https://kodland.omnidesk.ru/..."></div>'
     +'<input type="hidden" id="okk_type" value="'+type+'"></div>';
 
   var blocksHtml = '';
@@ -4288,19 +4289,19 @@ function okkRestoreFormState() {
 }
 
 function okkNewCheck(type) {
-  _okkEditId=null; _okkType=type; _okkCheckedItems={};
+  _okkEditId=null; _okkType=type; _okkCheckedItems={}; _okkShowForm=true;
   _okkTab=type; okkRender();
 }
 
 function okkEditCheck(id) {
-  _okkEditId=id; _okkCheckedItems={};
+  _okkEditId=id; _okkCheckedItems={}; _okkShowForm=true;
   var c = OKK_CHECKS.find(function(x){return x.id===id;});
   if(c){ _okkType=c.type; _okkTab=c.type; }
   if(c&&c.blocks){ c.blocks.forEach(function(blk){ if(blk.items) blk.items.forEach(function(item){_okkCheckedItems[blk.id+'_'+item.id]=item.score||0;}); }); }
   okkRender();
 }
 
-function okkCancelForm() { _okkEditId=null; _okkCheckedItems={}; okkRender(); }
+function okkCancelForm() { _okkEditId=null; _okkCheckedItems={}; _okkShowForm=false; okkRender(); }
 
 async function okkSaveCheck(status) {
   var employee=(document.getElementById('okk_employee')?.value||'').trim();
@@ -4315,28 +4316,38 @@ async function okkSaveCheck(status) {
   var rfEl=document.getElementById('okk_rf');
   if(rfEl) hasRF=rfEl.checked;
 
-  // Collect block scores
-  var allBlocks = (cl.subs||cl.blocks||[]).concat(cl.penaltyBlocks||[]);
+  // Collect block scores using DOM selects
+  var penaltyIds = (cl.penaltyBlocks||[]).map(function(p){return p.id;});
+  var allMainBlocks = cl.subs || cl.blocks || [];
+  var allBlocks = allMainBlocks.concat(cl.penaltyBlocks||[]);
+
   var blocksData = allBlocks.map(function(blk){
-    var allItems = blk.items ? blk.items : (blk.subs||[]).reduce(function(a,s){return a.concat(s.items);});
+    var isBlkPenalty = penaltyIds.indexOf(blk.id) !== -1;
+    var allItems = blk.items
+      ? blk.items
+      : (blk.subs||[]).reduce(function(a,s){return a.concat(s.items);}, []);
     var bScore=0, bMax=0;
     allItems.forEach(function(item){
-      var selId='okk_item_'+(blk.id+'_'+item.id).replace(/[^a-z0-9]/gi,'_');
-      var sel=document.getElementById(selId);
-      var v=sel&&!sel.disabled?parseFloat(sel.value)||0:item.opts[0];
-      if(!blk.penalty&&!blk.penaltyBlocks){bMax+=item.opts[0];}
-      bScore+=v;
+      var rawKey = (isBlkPenalty?'penalty_':'')+blk.id+'_'+item.id;
+      var selId = 'okk_item_'+rawKey.replace(/[^a-z0-9]/gi,'_');
+      var sel = document.getElementById(selId);
+      var v = sel&&!sel.disabled ? parseFloat(sel.value)||0 : item.opts[0];
+      if (!isBlkPenalty) bMax += item.opts[0];
+      bScore += v;
     });
-    if(!blk.penalty&&!blk.penaltyBlocks){totalScore+=bScore;maxScore+=bMax;}
-    else{penaltyScore+=bScore;}
-    return {id:blk.id,title:blk.title||'',score:bScore,max:bMax,items:allItems.map(function(item){
-      var selId='okk_item_'+(blk.id+'_'+item.id).replace(/[^a-z0-9]/gi,'_');
-      var sel=document.getElementById(selId);
-      return Object.assign({},item,{score:sel&&!sel.disabled?parseFloat(sel.value)||0:item.opts[0]});
-    })};
+    if (!isBlkPenalty) { totalScore+=bScore; maxScore+=bMax; }
+    else { penaltyScore += bScore; }
+    return {id:blk.id, title:blk.title||'', score:bScore, max:bMax,
+      items:allItems.map(function(item){
+        var rawKey = (isBlkPenalty?'penalty_':'')+blk.id+'_'+item.id;
+        var selId = 'okk_item_'+rawKey.replace(/[^a-z0-9]/gi,'_');
+        var sel = document.getElementById(selId);
+        return Object.assign({},item,{score:sel&&!sel.disabled?parseFloat(sel.value)||0:item.opts[0]});
+      })
+    };
   });
 
-  // Re-calculate maxScore from CL definition
+  // Use cl.max as authoritative maximum
   maxScore = cl.max || maxScore;
 
   try {
@@ -4346,7 +4357,7 @@ async function okkSaveCheck(status) {
       score:totalScore+penaltyScore, max_score:maxScore,
       red_flag:hasRF, comment:comment, status:status
     });
-    _okkEditId=null; _okkCheckedItems={};
+    _okkEditId=null; _okkCheckedItems={}; _okkShowForm=false;
     await okkLoad();
     toast(status==='draft'?'Черновик сохранён \u2713':'Проверка завершена \u2713');
   } catch(e){toast('Ошибка сохранения');}
