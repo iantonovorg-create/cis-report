@@ -281,6 +281,8 @@ body.viewer-mode .pr-save-btn
   <button class="tab" onclick="showTab('ops',this)">Опер. показатели</button>
   <button class="tab" onclick="showTab('reviews',this)">Отзывы</button>
   <button class="tab" onclick="showTab('payroll',this)">ЗП Ведомость</button>
+  
+  <button class="tab" id="okkTab" onclick="showTab('okk',this)" style="display:none">ОКК</button>
   <button class="tab" id="headCsTab" onclick="showTab('headcs',this)" style="display:none;margin-left:auto;color:var(--gold);border-bottom-color:transparent;letter-spacing:3px">✦ Head CS</button>
 </div>
 <div class="main">
@@ -599,7 +601,7 @@ async function api(method,url,body){const opts={method,headers:{'Content-Type':'
 function applyRoleRestrictions(role){
   const TAB_MAP = {
     'team':'Команда','km':'Работа с КМ','tasks':'Задачи',
-    'ops':'Опер','reviews':'Отзывы','payroll':'ЗП Ведомость'
+    'ops':'Опер','reviews':'Отзывы','payroll':'ЗП Ведомость','okk':'ОКК'
   };
   if(role==='admin'){
     const hTab=document.getElementById('headCsTab');
@@ -608,6 +610,17 @@ function applyRoleRestrictions(role){
     if(uBtn) uBtn.style.display='';
     const dBtn=document.getElementById('delMonthBtn');
     if(dBtn) dBtn.style.display='';
+    const okkT=document.getElementById('okkTab');
+    if(okkT) okkT.style.display='';
+    return;
+  }
+  if(role==='okk_editor'){
+    document.querySelectorAll('.tab').forEach(t=>{if(t.id!=='okkTab')t.style.display='none';});
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+    document.getElementById('p-okk')?.classList.add('on');
+    const okkT=document.getElementById('okkTab'); if(okkT) okkT.style.display='';
+    document.getElementById('hdrStats')?.style&&(document.getElementById('hdrStats').style.display='none');
+    setTimeout(function(){if(typeof okkLoad==='function')okkLoad();},100);
     return;
   }
   if(role==='reviews_editor'){
@@ -641,6 +654,10 @@ function applyRoleRestrictions(role){
     if(allowed.includes('ops'))setTimeout(opsRender,100);
     return;
   }
+  // editor (ТЛ, OPS) — видит ОКК вкладку, может подавать апелляции
+  if(role==='editor'){
+    const okkT2=document.getElementById('okkTab'); if(okkT2) okkT2.style.display='';
+  }
   // viewer — sees all, no edit buttons
   if(role==='viewer'){
     document.querySelectorAll('.abt.ed,.abt.dl,.btn-add').forEach(el=>el.style.display='none');
@@ -672,6 +689,7 @@ async function loadData(){
     await Promise.all([loadTasks(), loadReviews(), loadPayroll()]);
     renderKM();
     if(typeof opsLoadData==='function' && opsPeriod) opsLoadData();
+    if(typeof okkLoad==='function') okkLoad();
     if(typeof hcLoad==='function' && document.getElementById('headCsContent')?.children.length){
       await hcLoad(); if(typeof hcRenderAll==='function') hcRenderAll();
     }
@@ -898,7 +916,7 @@ function showTab(name,btn){
   if(name==='ops') opsRender();
   if(name==='headcs') headCsRender();
 }
-function switchMonth(m){curMonth=m;try{localStorage.setItem('cis_last_month',m);}catch(e){}renderAll();loadTasks();loadReviews();kmFilter='cur';renderKM();opsStore={1:{},2:{},3:{},4:{}};opsCurWeek=0;opsPeriod='';HC_TASKS=[];}
+function switchMonth(m){curMonth=m;try{localStorage.setItem('cis_last_month',m);}catch(e){}renderAll();loadTasks();loadReviews();kmFilter='cur';renderKM();opsStore={1:{},2:{},3:{},4:{}};opsCurWeek=0;opsPeriod='';HC_TASKS=[];OKK_CHECKS=[];OKK_APPEALS=[];if(typeof okkLoad==='function'&&document.getElementById('p-okk')?.classList.contains('on'))okkLoad();}
 function parseKD(s){const m=s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
 function renderKM(){const q=(document.getElementById('kmQ')?.value||'').toLowerCase().trim();const rows=DB.meetings.filter(r=>{if(q&&!(r.name||'').toLowerCase().includes(q))return false;if(kmFilter==='cur')return r.month===curMonth;if(kmFilter==='all')return true;const dt=parseKD(r.date||'');if(!dt)return false;if(kmFilter==='2025')return dt.getFullYear()===2025;if(kmFilter==='2026')return dt.getFullYear()===2026;return true;});document.getElementById('kmBody').innerHTML=rows.map(r=>{const dc=r.dyn==='Улучшение'?'du':r.dyn==='Спад'?'dd':r.dyn?'df':'';return`<tr><td style="font-weight:600;white-space:nowrap">${r.name||'—'}</td><td style="white-space:nowrap">${r.date||'—'}</td><td>${r.topic||'—'}</td><td>${r.tasks||'—'}</td><td style="white-space:nowrap">${r.next||'—'}</td><td class="${dc}">${r.dyn||'—'}</td><td style="white-space:nowrap">${r.tl||'—'}</td><td style="white-space:nowrap"><button class="kbt e" onclick="openEditKM('${r.id}')">✎</button><button class="kbt d" onclick="delKM('${r.id}')">✕</button></td></tr>`;}).join('');}
 function kp(p,btn){kmFilter=p;btn.closest('.km-ctrl').querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderKM();}
@@ -3638,6 +3656,890 @@ async function deleteCustomRole(name) {
   </div>
 </div>
 
+
+
+<style>
+/* ── ОКК ──────────────────────────────────────────────────────── */
+.okk-ntabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:18px;overflow-x:auto}
+.okk-nt{font-size:9px;letter-spacing:2px;text-transform:uppercase;padding:9px 16px;cursor:pointer;color:var(--muted);border:none;background:transparent;border-bottom:2px solid transparent;position:relative;top:1px;transition:all .15s;white-space:nowrap;font-family:'Golos Text',sans-serif}
+.okk-nt:hover{color:var(--text)}.okk-nt.on{color:var(--purple);border-bottom-color:var(--purple)}
+.okk-sub{display:none}.okk-sub.on{display:block}
+.okk-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:18px}
+.okk-chip{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:11px 14px}
+.okk-chip .n{font-size:20px;font-weight:700;color:var(--accent);display:block;font-family:monospace}
+.okk-chip .l{font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.okk-chip .s{font-size:10px;color:var(--dim);margin-top:3px}
+.okk-chip.good .n{color:var(--green)}.okk-chip.bad .n{color:var(--red)}
+.okk-chip.blue .n{color:var(--blue)}.okk-chip.warn .n{color:var(--warn)}.okk-chip.purple .n{color:var(--purple)}
+.okk-bar-grid{display:grid;grid-template-columns:70px 1fr 50px;gap:3px 10px;align-items:center}
+.okk-bar-lbl{font-size:11px;color:var(--dim);text-align:right}
+.okk-bar-track{background:var(--bg4);border-radius:2px;height:20px;overflow:hidden}
+.okk-bar-fill{height:100%;display:flex;align-items:center;padding:0 8px;font-size:10px;font-weight:600;color:#fff;border-radius:2px;transition:width .4s}
+.okk-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.okk-tbl th{font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-weight:400}
+.okk-tbl td{padding:8px 10px;border-bottom:1px solid rgba(42,42,42,.6);color:var(--dim);vertical-align:middle}
+.okk-tbl tr:hover td{background:rgba(200,184,154,.03)}.okk-tbl td:first-child{color:var(--text);font-weight:500}
+.okk-sc{display:inline-flex;align-items:center;justify-content:center;min-width:42px;padding:2px 7px;border-radius:2px;font-size:11px;font-weight:700;font-family:monospace}
+.okk-sc.hi{background:rgba(122,200,144,.15);color:var(--green);border:1px solid rgba(122,200,144,.3)}
+.okk-sc.mid{background:rgba(200,168,122,.15);color:var(--warn);border:1px solid rgba(200,168,122,.3)}
+.okk-sc.lo{background:rgba(200,122,122,.15);color:var(--red);border:1px solid rgba(200,122,122,.3)}
+.okk-bdg{display:inline-flex;align-items:center;padding:2px 7px;border-radius:2px;font-size:9px;letter-spacing:.5px}
+.okk-bdg.ok{background:rgba(122,200,144,.12);color:var(--green);border:1px solid rgba(122,200,144,.25)}
+.okk-bdg.fail{background:rgba(200,122,122,.12);color:var(--red);border:1px solid rgba(200,122,122,.25)}
+.okk-bdg.pend{background:rgba(200,168,122,.12);color:var(--warn);border:1px solid rgba(200,168,122,.25)}
+.okk-bdg.draft{background:rgba(106,96,88,.2);color:var(--muted);border:1px solid var(--border)}
+.okk-bdg.appl{background:rgba(168,122,200,.12);color:var(--purple);border:1px solid rgba(168,122,200,.25)}
+.okk-tag{display:inline-flex;padding:1px 7px;border-radius:2px;font-size:9px;letter-spacing:.5px;text-transform:uppercase}
+.okk-tag.krm{background:rgba(200,122,122,.12);color:var(--red);border:1px solid rgba(200,122,122,.2)}
+.okk-tag.km{background:rgba(168,122,200,.12);color:var(--purple);border:1px solid rgba(168,122,200,.2)}
+.okk-tag.thp{background:rgba(200,168,122,.12);color:var(--warn);border:1px solid rgba(200,168,122,.2)}
+.okk-blk{border:1px solid var(--border);border-radius:3px;margin-bottom:8px;overflow:hidden}
+.okk-blk-hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--bg3);cursor:pointer;user-select:none}
+.okk-blk-left{display:flex;align-items:center;gap:8px}
+.okk-blk-num{font-size:9px;font-weight:700;color:var(--purple);background:rgba(168,122,200,.1);border:1px solid rgba(168,122,200,.2);border-radius:2px;padding:2px 7px}
+.okk-blk-title{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text);font-weight:600}
+.okk-blk-score{font-size:12px;font-weight:700;color:var(--purple);font-family:monospace}
+.okk-prog{height:3px;background:var(--bg4)}.okk-prog-fill{height:100%;background:var(--purple);transition:width .3s}
+.okk-sub-hdr{display:flex;align-items:center;justify-content:space-between;padding:7px 12px 7px 24px;background:rgba(168,122,200,.03);border-bottom:1px solid rgba(42,42,42,.4)}
+.okk-sub-title{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--purple);opacity:.8}
+.okk-sub-title::before{content:'▸ '}
+.okk-sub-sc{font-size:10px;font-weight:700;color:var(--purple);font-family:monospace}
+.okk-item{display:grid;grid-template-columns:1fr 56px 72px;gap:8px;align-items:start;padding:8px 12px 8px 36px;border-bottom:1px solid rgba(42,42,42,.35)}
+.okk-item:last-child{border-bottom:none}
+.okk-item-lbl{font-size:12px;color:var(--dim);line-height:1.4}
+.okk-item-hint{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4}
+.okk-item-max{font-size:10px;color:var(--muted);text-align:right;padding-top:2px;white-space:nowrap}
+.okk-sel{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:4px 6px;font-family:monospace;font-size:12px;border-radius:2px;outline:none;width:68px;text-align:right}
+.okk-sel:focus{border-color:var(--purple)}
+.okk-np{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--muted);margin-top:4px;cursor:pointer}
+.okk-np input{accent-color:var(--muted)}
+.okk-rf-blk{background:rgba(200,122,122,.07);border:1px solid rgba(200,122,122,.2);border-radius:3px;padding:11px 13px;margin:12px 0 0;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.okk-rf-title{font-size:9px;color:var(--red);letter-spacing:1.5px;text-transform:uppercase;font-weight:600}
+.okk-rf-desc{font-size:11px;color:var(--red);margin-top:3px;opacity:.8}
+.okk-rf-pen{font-size:10px;color:var(--red);border:1px solid rgba(200,122,122,.3);padding:3px 10px;border-radius:2px;white-space:nowrap}
+.okk-rf-tog{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.okk-rf-tog label{font-size:11px;color:var(--red);cursor:pointer}
+.okk-rf-tog input{accent-color:var(--red);width:16px;height:16px}
+.okk-total{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:13px;margin-top:12px}
+.okk-total-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.okk-total-val{font-size:22px;font-weight:700;font-family:monospace}
+.okk-total-lbl{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.okk-ta{background:var(--bg4);border:1px solid var(--border2);color:var(--text);padding:7px 10px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none;width:100%;resize:vertical;min-height:52px;line-height:1.5}
+.okk-ta:focus{border-color:var(--purple)}
+.okk-act{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.okk-btn{font-size:10px;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:'Golos Text',sans-serif;transition:all .15s}
+.okk-btn-p{background:rgba(168,122,200,.12);color:var(--purple);border:1px solid rgba(168,122,200,.3)}
+.okk-btn-p:hover{background:rgba(168,122,200,.22)}
+.okk-btn-g{background:rgba(122,200,144,.12);color:var(--green);border:1px solid rgba(122,200,144,.25)}
+.okk-btn-g:hover{background:rgba(122,200,144,.2)}
+.okk-btn-r{background:rgba(200,122,122,.12);color:var(--red);border:1px solid rgba(200,122,122,.25)}
+.okk-btn-r:hover{background:rgba(200,122,122,.2)}
+.okk-btn-m{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.okk-btn-m:hover{border-color:var(--text);color:var(--text)}
+.okk-hdr-form{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:12px;margin-bottom:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.okk-hf{display:flex;flex-direction:column;gap:3px}
+.okk-hf label{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.okk-hf input,.okk-hf select{background:var(--bg4);border:1px solid var(--border2);color:var(--text);padding:6px 9px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none}
+.okk-hf input:focus,.okk-hf select:focus{border-color:var(--purple)}
+.okk-appeal-card{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:12px;margin-bottom:8px}
+.okk-appeal-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px;gap:10px}
+.okk-appeal-name{font-size:13px;font-weight:600;color:var(--text)}
+.okk-appeal-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.okk-appeal-body{font-size:12px;color:var(--dim);line-height:1.6;margin-bottom:8px}
+.okk-case-grid{display:grid;grid-template-columns:240px 1fr;gap:14px}
+.okk-case-item{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:9px 11px;cursor:pointer;margin-bottom:4px;transition:all .15s}
+.okk-case-item:hover{border-color:var(--purple)}
+.okk-case-item.on{border-color:var(--purple);background:rgba(168,122,200,.06)}
+.okk-cf{margin-bottom:9px}
+.okk-cf label{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px}
+.okk-cf-val{background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:6px 9px;font-size:12px;color:var(--dim);line-height:1.4}
+.okk-penalty .okk-blk-num{color:var(--red);background:rgba(200,122,122,.1);border-color:rgba(200,122,122,.2)}
+.okk-penalty .okk-blk-title{color:var(--red)}
+.okk-penalty .okk-blk-score{color:var(--red)}
+.okk-trash-warn{background:rgba(200,122,122,.07);border:1px solid rgba(200,122,122,.2);border-radius:3px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:var(--red)}
+</style>
+
+
+<div class="panel" id="p-okk"><div id="okkContent"></div></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// ОКК — Контроль Качества
+// ════════════════════════════════════════════════════════════════
+var OKK_CHECKS = [];
+var OKK_APPEALS = [];
+var _okkTab = 'summary';
+var _okkEditId = null;
+var _okkType = 'krm';
+var _okkCheckedItems = {};
+var _okkCaseId = null;
+
+// ── Чек-листы (из реальных файлов) ──────────────────────────────
+var OKK_CL = {
+  krm: {
+    label: 'КРМ (Кризис-менеджеры)',
+    max: 55,
+    blocks: [
+      { id:'b1', title:'Эмпатия', penalty:false, items:[
+        {id:'i1',label:'Вежливость и доброжелательность',hint:'Позитивный бесконфликтный тон, уважение, вежливые слова',w:5,opts:[5,0]},
+        {id:'i2',label:'Клиентоориентированность',hint:'Обращается по имени, проявляет заботу, изучил историю АМО/БО, хвалит ученика, извиняется при вине компании',w:15,opts:[15,8,0]},
+        {id:'i3',label:'Корректность речи / грамотность',hint:'Нет слов-паразитов, формальный стиль, нет ошибок, без частицы НЕ при предложениях',w:5,opts:[5,0,-5]},
+        {id:'i4',label:'Темп (звонок) / Минимум сообщений (чат)',hint:'Подстройка по параметрам, не перебивает, активное слушание; чат — минимум сообщений',w:5,opts:[5,2,0]},
+        {id:'i5',label:'Ценность обучения донесена до клиента',hint:'Озвучена ценность (навыки, результаты), привязана к конкретному запросу',w:10,opts:[10,5,0]},
+        {id:'i6',label:'Структура',hint:'Приветствие и прощание по стандартам, поблагодарил, рассказал о дальнейшем порядке, согласовал дату повторной коммуникации',w:15,opts:[15,10,0]},
+        {id:'i7',label:'Выявление проблемы / потребности',hint:'Открытые вопросы последовательно, не менее 3, не переходить к следующему инструменту без ответа клиента',w:10,opts:[10,0]},
+        {id:'i8',label:'Решение проблемы / информация / своевременность',hint:'Решение проблемы, полная информация, ответ/первая коммуникация в день назначения ответственным',w:35,opts:[35,15,0]}
+      ]}
+    ],
+    penaltyBlocks: [
+      { id:'p1', title:'Тех. блок (штрафной)', items:[
+        {id:'p1i1',label:'Омнидеск — комментарии и работа в тикете',hint:'Подробный комментарий после каждой коммуникации, верный будильник, тикет на КМ, работа в головном тикете, сумма указана',opts:[0,-5]},
+        {id:'p1i2',label:'АМОсрм / БО — фиксация после звонков',hint:'Зафиксировал инфо в АМО после каждого звонка: проблема, договорённости, причина отвала; при НДЗ — шаблон',opts:[0,-5],np:true},
+        {id:'p1i3',label:'Соблюдение регламентов',hint:'Соблюдён возрастной диапазон при подборе/смене курса, кейс внесён в таблицу Возвраты | CIS',opts:[0,-3]}
+      ]},
+      { id:'p2', title:'Отработка возврата (штрафной)', items:[
+        {id:'p2i1',label:'Аргументация возражений — все выявленные отработаны',hint:'Все выявленные возражения должны быть отработаны в полном объёме',opts:[0,-10]},
+        {id:'p2i2',label:'Отработка в соответствии с регламентом и структурой',hint:'Соответствует утверждённому регламенту и структуре работы с возражениями',opts:[0,-5]},
+        {id:'p2i3',label:'Аргумент соответствовал выявленному возражению',hint:'Применён инструмент удержания, отвечающий проблеме клиента, объяснена полезность и суть',opts:[0,-5]}
+      ]}
+    ],
+    rf: 'Дезинформация клиента: информация не соответствует продукту / манипуляции / разглашение / обсценная лексика'
+  },
+  km: {
+    label: 'КМ (Клиентские менеджеры)',
+    max: 100,
+    blocks: [
+      { id:'b1', title:'Блок 1 · Приветствие и доброжелательность', penalty:false, max:20, subs:[
+        { id:'s1', title:'Корректное приветствие', max:5, items:[
+          {id:'i1',label:'Менеджер поздоровался, представился, обозначил цель звонка',hint:'✅ «Анна, добрый день! Меня зовут Иван, звоню из Kodland» ❌ «Анна, это Иван. Вы писали по смене курса»',w:2.5,opts:[2.5,0]},
+          {id:'i2',label:'Тон вежливый и спокойный',hint:'Говорим ровно, спокойно, не раздражаемся, не торопимся, без слов-паразитов',w:2.5,opts:[2.5,0]}
+        ]},
+        { id:'s2', title:'Доброжелательность и вовлечённость', max:10, items:[
+          {id:'i3',label:'Общение без сухих формулировок',hint:'Без канцеляризмов, простого «да/нет», фраз «понятно». Развёрнутые фразы',w:2.5,opts:[2.5,0]},
+          {id:'i4',label:'Менеджер проявляет участие и показывает что хочет решить вопрос',hint:'✅ «Вы указали, что расписание перестало подходить — расскажите подробнее?»',w:5,opts:[5,0]},
+          {id:'i5',label:'Нет заученных отписок или шаблонных фраз',hint:'Ответы живые, естественные, с опорой на слова клиента',w:2.5,opts:[2.5,0]}
+        ]},
+        { id:'s3', title:'Позиционирование помощи', max:5, items:[
+          {id:'i6',label:'Менеджер озвучивает намерение помочь, а не отмахнуться',hint:'✅ «Я постараюсь как можно скорее помочь решить вашу проблему»',w:5,opts:[5,0]}
+        ]}
+      ]},
+      { id:'b2', title:'Блок 2 · Выявление потребности', penalty:false, max:25, subs:[
+        { id:'s1', title:'Изучение истории клиента до звонка', max:5, items:[
+          {id:'i1',label:'Проверка БО / Амо / Омни',hint:'✅ «Вижу, что ранее проблем с курсом не возникало»',w:2.5,opts:[2.5,0],np:true},
+          {id:'i2',label:'Ознакомление с историей переписок',hint:'✅ «Вижу, что ранее вы общались с моими коллегами по вопросу…»',w:2.5,opts:[2.5,0],np:true}
+        ]},
+        { id:'s2', title:'Задавание уточняющих вопросов', max:10, items:[
+          {id:'i3',label:'Менеджер задаёт вопросы для полного понимания проблемы',hint:'✅ «Правильно ли понимаю, что текущее расписание — единственное препятствие?»',w:5,opts:[5,0]},
+          {id:'i4',label:'Нет предположений — только фактическая проверка',hint:'Без фраз «наверное», «я думаю». Уточняет, нет фраз-предположений',w:5,opts:[5,0]}
+        ]},
+        { id:'s3', title:'Итог и подтверждение', max:10, items:[
+          {id:'i5',label:'Менеджер корректно определил что нужно клиенту',hint:'✅ «Исходя из сказанного, основной вопрос — подобрать другую группу по времени, верно?»',w:5,opts:[5,0]},
+          {id:'i6',label:'Исключены ошибки которые могут привести к повторкам',hint:'На этапе подведения итога получено подтверждение от клиента',w:5,opts:[5,0]}
+        ]}
+      ]},
+      { id:'b3', title:'Блок 3 · Контроль ситуации', penalty:false, max:10, note:'если требуется', subs:[
+        { id:'s1', title:'Постановка контроля', max:5, items:[
+          {id:'i1',label:'Менеджер правильно определил необходимость контроля и указал сроки',hint:'Тикет на ТХП — сроки, переоткрытие, заметка заполнена',w:5,opts:[5,0],np:true}
+        ]},
+        { id:'s2', title:'Своевременное обновление статуса', max:5, items:[
+          {id:'i2',label:'Менеджер возвращается к тикету по срокам',hint:'✅ Связались, проинформировали, заполнили заметку',w:2.5,opts:[2.5,0],np:true},
+          {id:'i3',label:'Клиент получает ответы вовремя',hint:'✅ Соблюдаем договорённости по ОС, держим клиента в инфополе',w:2.5,opts:[2.5,0],np:true}
+        ]}
+      ]},
+      { id:'b4', title:'Блок 4 · Своевременность реакции', penalty:false, max:15, subs:[
+        { id:'s1', title:'Отработка в установленные сроки', max:10, items:[
+          {id:'i1',label:'Ответ клиенту без задержек',hint:'SLA: макс. 1 час первого ответа. Ответ > 1 ч = КРАСНЫЙ ФЛАГ',w:5,opts:[5,0],rf_warn:true},
+          {id:'i2',label:'Если клиент не ответил — есть попытки дозвона и фиксация НД',hint:'✅ Заметка есть, сделано 2+ попытки по 60 сек',w:5,opts:[5,0],np:true}
+        ]},
+        { id:'s2', title:'Корректное сообщение перед звонком', max:5, items:[
+          {id:'i3',label:'«Подскажите, удобно ли принять звонок?» — обязательно при НЕ БАЗОВОМ запросе',hint:'Шаблон в карточке клиента',w:2.5,opts:[2.5,0],np:true},
+          {id:'i4',label:'Если НД 1 раз — комментарий в чат отправлен',hint:'✅ Шаблон отправлен или написали что не смогли дозвониться',w:2.5,opts:[2.5,0],np:true}
+        ]}
+      ]},
+      { id:'b5', title:'Блок 5 · Закрытие вопроса', penalty:false, max:15, subs:[
+        { id:'s1', title:'Решение с первого касания', max:10, items:[
+          {id:'i1',label:'Менеджер делает всё чтобы вопрос был закрыт сразу',hint:'✅ Итог подведён, подтверждение получено, оценка отправлена',w:5,opts:[5,0],np:true},
+          {id:'i2',label:'Нет лишних переписок и пересылок',hint:'✅ Вся инфо в одном тикете, статусы верные',w:5,opts:[5,0]}
+        ]},
+        { id:'s2', title:'Корректное завершение общения', max:5, items:[
+          {id:'i3',label:'Клиент понимает что вопрос решён',hint:'✅ Шаблон оценки отправлен, в заметке зафиксировано',w:2.5,opts:[2.5,0]},
+          {id:'i4',label:'Менеджер уточнил: всё ли понятно',hint:'«Нет ли вопросов» — подтверждение от клиента обязательно',w:2.5,opts:[2.5,0]}
+        ]}
+      ]},
+      { id:'b6', title:'Блок 6 · Фиксация информации в системе', penalty:false, max:15, subs:[
+        { id:'s1', title:'Работа в одном основном тикете', max:5, items:[
+          {id:'i1',label:'Не создавались лишние тикеты',hint:'✅ По клиенту ведётся 1 тикет, дочерки закрыты',w:2.5,opts:[2.5,0]},
+          {id:'i2',label:'Запросы от других отделов перенесены, закрыты дочеркой',hint:'✅ Закрыто дочеркой',w:2.5,opts:[2.5,0],np:true}
+        ]},
+        { id:'s2', title:'Подробные комментарии', max:5, items:[
+          {id:'i3',label:'Вся история зафиксирована без пропусков',hint:'✅ Полное описание ситуации в заметке',w:2.5,opts:[2.5,0]},
+          {id:'i4',label:'Пометки сделаны по шаблону Омни',hint:'✅ Инфо указана по шаблону',w:2.5,opts:[2.5,0]}
+        ]},
+        { id:'s3', title:'Корректная передача', max:5, items:[
+          {id:'i5',label:'Тикет передан только члену своей группы',hint:'Исключение — вопросы по ВР',w:2.5,opts:[2.5,0],np:true},
+          {id:'i6',label:'Информация полная и структурированная при передаче',hint:'✅ Есть заметка, тег сотрудника',w:2.5,opts:[2.5,0],np:true}
+        ]}
+      ]}
+    ],
+    penaltyBlocks: [
+      { id:'p1', title:'Блок 7 · Шаблон итоговой оценки (штраф)', items:[
+        {id:'p1i1',label:'Шаблон итоговой оценки отправлен клиенту',hint:'✅ Отправлен — 0 баллов. ❌ Не отправлен — штраф −10',opts:[0,-10]}
+      ]}
+    ],
+    rf: 'Стоп-слова («возврат», «расторжение», «кризис-менеджер») / Хамство / Обман / Игнорирование негатива / FRT > 60 мин'
+  },
+  thp: {
+    label: 'ТХП (Техподдержка)',
+    max: 100,
+    blocks: [
+      { id:'b1', title:'Блок 1 · Скорость ответа (SLA)', penalty:false, max:25, subs:[
+        { id:'s1', title:'Первичная реакция на тикет', max:15, items:[
+          {id:'i1',label:'Ответ на стандартный тикет в течение 24 часов',hint:'SLA: 24 ч для стандартных тикетов',w:10,opts:[10,5,0],np:true,np_val:5},
+          {id:'i2',label:'Ответ на приоритетный тикет в течение 30 минут',hint:'SLA: 30 мин для высокого приоритета',w:5,opts:[5,0],np:true,np_val:5}
+        ]},
+        { id:'s2', title:'Соблюдение договорённостей при переоткрытии', max:10, items:[
+          {id:'i3',label:'Связь осуществлена в оговорённые сроки при переоткрытии',hint:'✅ Связь в срок, есть заметка',w:5,opts:[5,3,0],np:true},
+          {id:'i4',label:'Клиент уведомлён при любом изменении сроков',hint:'✅ Уведомление отправлено',w:5,opts:[5,0],np:true}
+        ]}
+      ]},
+      { id:'b2', title:'Блок 2 · Взаимодействие с клиентом', penalty:false, max:20, subs:[
+        { id:'s1', title:'Перевод клиента в звонок', max:10, items:[
+          {id:'i1',label:'Сотрудник предложил перейти в звонок',hint:'Активное предложение звонка если вопрос нетривиальный',w:5,opts:[5,3,0]},
+          {id:'i2',label:'Предложены альтернативные способы связи если телефония не работает',hint:'✅ Альтернатива предложена и зафиксирована',w:5,opts:[5,0],np:true}
+        ]},
+        { id:'s2', title:'Качество коммуникации', max:10, items:[
+          {id:'i3',label:'Тон вежливый, без грубости и сухих отписок',hint:'✅ Клиент чувствует что им занимаются ❌ «Принято в работу»',w:5,opts:[5,3,0]},
+          {id:'i4',label:'Нет стоп-слов и некорректных формулировок',hint:'Не используются фразы вводящие клиента в заблуждение',w:5,opts:[5,0]}
+        ]}
+      ]},
+      { id:'b3', title:'Блок 3 · Итог помощи', penalty:false, max:20, subs:[
+        { id:'s1', title:'Результат обращения', max:15, items:[
+          {id:'i1',label:'Вопрос клиента решён',hint:'✅ Проблема закрыта, клиент подтвердил',w:10,opts:[10,5,0]},
+          {id:'i2',label:'Указаны причины если помочь не удалось',hint:'✅ Причина есть в тикете: тех. ограничения, передача в смежный отдел',w:5,opts:[5,0]}
+        ]},
+        { id:'s2', title:'Подтверждение закрытия', max:5, items:[
+          {id:'i3',label:'Клиент подтвердил что вопрос решён / всё понятно',hint:'✅ Получено подтверждение в чате/звонке, зафиксировано',w:5,opts:[5,0]}
+        ]}
+      ]},
+      { id:'b4', title:'Блок 4 · Фиксация и документирование', penalty:false, max:20, subs:[
+        { id:'s1', title:'Подробный комментарий после работы', max:10, items:[
+          {id:'i1',label:'В тикете есть развёрнутая заметка с итогами работы',hint:'Заметка: суть запроса, действия, результат, дата',w:5,opts:[5,3,0]},
+          {id:'i2',label:'Информация соответствует фактическим договорённостям',hint:'✅ Нет расхождений',w:5,opts:[5,0]}
+        ]},
+        { id:'s2', title:'Корректная передача в КС / смежный отдел', max:10, items:[
+          {id:'i3',label:'Создан тикет на КС или смежный отдел если требуется',hint:'✅ Тикет создан, причина указана',w:5,opts:[5,0],np:true},
+          {id:'i4',label:'Основной тикет содержит заметку о передаче',hint:'✅ Заметка: кому, когда, зачем',w:5,opts:[5,0],np:true}
+        ]}
+      ]},
+      { id:'b5', title:'Блок 5 · Переоткрытие и контроль тикета', penalty:false, max:15, subs:[
+        { id:'s1', title:'Контроль переоткрытия', max:15, items:[
+          {id:'i1',label:'Тикет поставлен на переоткрытие корректно (срок + причина)',hint:'✅ Есть дата, причина, заметка',w:5,opts:[5,0],np:true},
+          {id:'i2',label:'Не нарушены договорённости по срокам',hint:'✅ Позвонили/написали в срок',w:5,opts:[5,0],np:true},
+          {id:'i3',label:'При повторном переоткрытии есть обновлённая заметка',hint:'✅ Каждый перенос сопровождается новой заметкой с причиной',w:5,opts:[5,0],np:true}
+        ]}
+      ]}
+    ],
+    penaltyBlocks: [],
+    rf: 'Грубость / Дезинформация / Игнорирование / Намеренное нарушение SLA'
+  }
+};
+
+// ── Загрузка данных ──────────────────────────────────────────────
+async function okkLoad() {
+  var panel = document.getElementById('p-okk');
+  if (!panel || !panel.classList.contains('on')) return;
+  try {
+    var results = await Promise.all([
+      api('GET', '/api/okk-checks?month='+encodeURIComponent(curMonth)),
+      api('GET', '/api/okk-appeals?month='+encodeURIComponent(curMonth)).catch(function(){return [];})
+    ]);
+    OKK_CHECKS = Array.isArray(results[0]) ? results[0] : [];
+    OKK_APPEALS = Array.isArray(results[1]) ? results[1] : [];
+  } catch(e) { OKK_CHECKS=[]; OKK_APPEALS=[]; }
+  okkRender();
+}
+
+// ── Показ вкладки ────────────────────────────────────────────────
+function okkShowTab(tab, btn) {
+  _okkTab = tab;
+  document.querySelectorAll('.okk-nt').forEach(function(b){b.classList.remove('on');});
+  if (btn) btn.classList.add('on');
+  okkRender();
+}
+
+function okkToggleBlk(id) {
+  var b = document.getElementById(id);
+  if (b) b.style.display = b.style.display === 'none' ? '' : 'none';
+}
+
+// ── Главный рендер ───────────────────────────────────────────────
+function okkRender() {
+  var el = document.getElementById('okkContent');
+  if (!el) return;
+  var role = window._userRole || 'viewer';
+  var canEdit = (role === 'admin' || role === 'okk_editor');
+  var canApprove = (role === 'admin' || role === 'okk_editor');
+  var canAppeal = (role === 'admin' || role === 'editor');
+  var isAdmin = role === 'admin';
+  var pendCount = OKK_APPEALS.filter(function(a){return a.status==='pending';}).length;
+
+  var tabs = [
+    ['summary','Сводка'],['krm','КРМ'],['km','КМ'],['thp','ТХП'],
+    ['case','Просмотр кейса'],['appeals','Апелляции'+(pendCount?' ('+pendCount+')':'')]
+  ];
+  if (canEdit || isAdmin) tabs.push(['trash','\uD83D\uDDD1 Корзина']);
+
+  var tabsHtml = '<div class="okk-ntabs">';
+  tabs.forEach(function(t) {
+    var btn = document.createElement('button');
+    btn.className = 'okk-nt' + (_okkTab===t[0]?' on':'');
+    btn.setAttribute('onclick', "okkShowTab('"+t[0]+"',this)");
+    btn.innerHTML = t[1];
+    if (t[0]==='appeals' && pendCount>0) btn.style.color = 'var(--warn)';
+    tabsHtml += btn.outerHTML;
+  });
+  tabsHtml += '</div><div id="okkSubContent"></div>';
+  el.innerHTML = tabsHtml;
+
+  var sub = document.getElementById('okkSubContent');
+  if (!sub) return;
+  if (_okkTab==='summary') sub.innerHTML = okkRenderSummary();
+  else if (_okkTab==='krm'||_okkTab==='km'||_okkTab==='thp') okkRenderCheckList(_okkTab, canEdit, sub);
+  else if (_okkTab==='case') sub.innerHTML = okkRenderCase(canAppeal);
+  else if (_okkTab==='appeals') sub.innerHTML = okkRenderAppeals(canApprove);
+  else if (_okkTab==='trash') { sub.innerHTML = okkRenderTrashShell(isAdmin); setTimeout(okkLoadTrash, 50); }
+}
+
+// ── Сводка ───────────────────────────────────────────────────────
+function okkRenderSummary() {
+  var done = OKK_CHECKS.filter(function(c){return !c.deleted_at;});
+  var krm = done.filter(function(c){return c.type==='krm';});
+  var km  = done.filter(function(c){return c.type==='km';});
+  var thp = done.filter(function(c){return c.type==='thp';});
+  function avg(arr) {
+    if (!arr.length) return 0;
+    return Math.round(arr.reduce(function(s,c){return s+(c.max_score>0?c.score/c.max_score*100:0);},0)/arr.length);
+  }
+  var rf = done.filter(function(c){return c.red_flag;}).length;
+  var pend = OKK_APPEALS.filter(function(a){return a.status==='pending';}).length;
+  var passed = done.filter(function(c){return c.max_score>0&&(c.score/c.max_score*100)>=85;}).length;
+
+  function bar(lbl, arr, color) {
+    if (!arr.length) return '';
+    var p = avg(arr);
+    return '<div class="okk-bar-lbl">'+lbl+'</div>'
+      +'<div class="okk-bar-track"><div class="okk-bar-fill" style="width:'+p+'%;background:'+color+'">'+p+'%</div></div>'
+      +'<div class="okk-bar-val">'+p+'%</div>';
+  }
+
+  var rows = done.slice(0,10).map(function(c) {
+    var pct = c.max_score>0?Math.round(c.score/c.max_score*100):0;
+    var sc = pct>=80?'hi':pct>=60?'mid':'lo';
+    var st = {draft:'draft',appeal:'appl',appeal_approved:'ok',done:'ok',completed:'ok'}[c.status]||'ok';
+    var stL = {draft:'Черновик',appeal:'Апелляция',appeal_approved:'Апел. одобрена',done:'Завершена',completed:'Завершена'}[c.status]||'Завершена';
+    var openBtn = document.createElement('button');
+    openBtn.className='abt'; openBtn.style.cssText='padding:2px 8px;font-size:9px';
+    openBtn.setAttribute('onclick',"okkOpenCase('"+c.id+"')"); openBtn.textContent='Открыть';
+    return '<tr><td>'+c.employee+'</td><td><span class="okk-tag '+c.type+'">'+c.type.toUpperCase()+'</span></td>'
+      +'<td style="white-space:nowrap">'+c.check_date+'</td><td>'+c.reviewer+'</td>'
+      +'<td><span class="okk-sc '+sc+'">'+pct+'%</span></td>'
+      +'<td>'+(c.red_flag?'<span class="okk-bdg fail">\uD83D\uDEA9 Да</span>':'—')+'</td>'
+      +'<td><span class="okk-bdg '+st+'">'+stL+'</span></td>'
+      +'<td>'+openBtn.outerHTML+'</td></tr>';
+  }).join('');
+
+  return '<div class="okk-chips">'
+    +'<div class="okk-chip"><span class="n">'+done.length+'</span><span class="l">Проверок всего</span><span class="s">КРМ: '+krm.length+' · КМ: '+km.length+' · ТХП: '+thp.length+'</span></div>'
+    +'<div class="okk-chip good"><span class="n">'+avg(done)+'%</span><span class="l">Средний балл</span><span class="s">По всем блокам</span></div>'
+    +'<div class="okk-chip bad"><span class="n">'+rf+'</span><span class="l">Красных флагов</span><span class="s">Кейсы аннулированы</span></div>'
+    +'<div class="okk-chip purple"><span class="n">'+krm.length+'</span><span class="l">КРМ проверено</span><span class="s">Ср. балл: '+avg(krm)+'%</span></div>'
+    +'<div class="okk-chip purple"><span class="n">'+km.length+'</span><span class="l">КМ проверено</span><span class="s">Ср. балл: '+avg(km)+'%</span></div>'
+    +'<div class="okk-chip warn"><span class="n">'+thp.length+'</span><span class="l">ТХП проверено</span><span class="s">Ср. балл: '+avg(thp)+'%</span></div>'
+    +'<div class="okk-chip '+(pend>0?'warn':'')+'"><span class="n">'+OKK_APPEALS.length+'</span><span class="l">Апелляций</span><span class="s">'+pend+' ожидают</span></div>'
+    +'<div class="okk-chip good"><span class="n">'+passed+'</span><span class="l">Кейсов пройдено</span><span class="s">\u2265 85%</span></div>'
+    +'</div>'
+    +(done.length?'<div class="sec-lbl">Средний балл по блокам — '+curMonth+'</div>'
+      +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:13px;margin-bottom:16px">'
+      +'<div class="okk-bar-grid">'
+      +bar('КРМ',krm,'rgba(200,122,122,.75)')
+      +bar('КМ',km,'rgba(168,122,200,.75)')
+      +bar('ТХП',thp,'rgba(200,168,122,.75)')
+      +'</div></div>':'')
+    +'<div class="sec-lbl">Последние проверки</div>'
+    +'<table class="okk-tbl"><thead><tr><th>Сотрудник</th><th>Блок</th><th>Дата</th><th>Проверяющий</th><th>Балл</th><th>Кр. флаг</th><th>Статус</th><th></th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table>';
+}
+
+// ── Список проверок по типу ──────────────────────────────────────
+function okkRenderCheckList(type, canEdit, container) {
+  var cl = OKK_CL[type];
+  var checks = OKK_CHECKS.filter(function(c){return c.type===type && !c.deleted_at;});
+
+  var addBtn = '';
+  if (canEdit) {
+    var b = document.createElement('button');
+    b.className='okk-btn okk-btn-p';
+    b.setAttribute('data-type',type);
+    b.setAttribute('onclick',"okkNewCheck(this.dataset.type)");
+    b.textContent='+ Новая проверка '+type.toUpperCase();
+    addBtn = '<div style="display:flex;justify-content:flex-end;margin-bottom:12px">'+b.outerHTML+'</div>';
+  }
+
+  var rows = checks.map(function(c) {
+    var pct = c.max_score>0?Math.round(c.score/c.max_score*100):0;
+    var sc = pct>=80?'hi':pct>=60?'mid':'lo';
+    var openBtn = document.createElement('button');
+    openBtn.className='abt'; openBtn.style.cssText='padding:2px 8px;font-size:9px;margin-right:3px';
+    openBtn.setAttribute('onclick',"okkOpenCase('"+c.id+"')"); openBtn.innerHTML='\uD83D\uDC41';
+    var editBtn = canEdit ? (function(){
+      var b=document.createElement('button');
+      b.className='abt ed'; b.style.cssText='padding:2px 8px;font-size:9px;margin-right:3px';
+      b.setAttribute('onclick',"okkEditCheck('"+c.id+"')"); b.textContent='\u2712';
+      return b.outerHTML;
+    })() : '';
+    var delBtn = canEdit ? (function(){
+      var b=document.createElement('button');
+      b.className='abt dl'; b.style.cssText='padding:2px 8px;font-size:9px';
+      b.setAttribute('onclick',"okkDeleteCheck('"+c.id+"')"); b.textContent='\u2715';
+      return b.outerHTML;
+    })() : '';
+    var st = {draft:'draft',appeal:'appl',appeal_approved:'ok',done:'ok',completed:'ok'}[c.status]||'ok';
+    var stL = {draft:'Черновик',appeal:'Апелляция',appeal_approved:'Апел. одобрена',done:'Завершена',completed:'Завершена'}[c.status]||'Завершена';
+    return '<tr><td>'+c.employee+'</td><td style="white-space:nowrap">'+c.check_date+'</td>'
+      +'<td>'+(c.ticket||'—')+'</td><td><span class="okk-sc '+sc+'">'+pct+'%</span></td>'
+      +'<td>'+(c.red_flag?'<span class="okk-bdg fail">\uD83D\uDEA9</span>':'—')+'</td>'
+      +'<td><span class="okk-bdg '+st+'">'+stL+'</span></td>'
+      +'<td style="white-space:nowrap">'+openBtn.outerHTML+editBtn+delBtn+'</td></tr>';
+  }).join('');
+
+  var formHtml = (_okkEditId || (canEdit && !checks.length)) ? okkBuildForm(type) : '';
+
+  container.innerHTML = addBtn + formHtml
+    + (checks.length
+      ? '<table class="okk-tbl"><thead><tr><th>Сотрудник</th><th>Дата</th><th>Тикет</th><th>Балл</th><th>\uD83D\uDEA9</th><th>Статус</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+      : (canEdit?'':'<div style="padding:24px;text-align:center;color:var(--muted);font-size:11px">Проверок за этот месяц нет</div>'));
+
+  if (_okkEditId || (canEdit && !checks.length)) okkRestoreFormState();
+}
+
+// ── Форма проверки ───────────────────────────────────────────────
+function okkBuildForm(type) {
+  var cl = OKK_CL[type];
+  var existing = _okkEditId ? OKK_CHECKS.find(function(c){return c.id===_okkEditId;}) : null;
+  var exBlocks = existing && existing.blocks ? existing.blocks : [];
+
+  var hdrForm = '<div class="okk-hdr-form">'
+    +'<div class="okk-hf"><label>Сотрудник</label><input id="okk_employee" value="'+(existing?existing.employee:'')+'" placeholder="ФИО сотрудника"></div>'
+    +'<div class="okk-hf"><label>Дата проверки</label><input id="okk_date" type="date" value="'+(existing?existing.check_date:new Date().toISOString().slice(0,10))+'"></div>'
+    +'<div class="okk-hf"><label>Номер тикета</label><input id="okk_ticket" value="'+(existing?existing.ticket||'':'')+'" placeholder="#12345"></div>'
+    +'<input type="hidden" id="okk_type" value="'+type+'"></div>';
+
+  var blocksHtml = '';
+
+  // Основные блоки
+  (cl.subs ? cl.subs : (cl.blocks ? cl.blocks : [])).forEach(function(blk, bi) {
+    var blkId = 'okk_blk_body_'+blk.id;
+    var itemsHtml = '';
+    var subsHtml = '';
+    // блоки с подблоками (КМ и ТХП)
+    if (blk.subs) {
+      blk.subs.forEach(function(sub) {
+        var subItems = sub.items.map(function(item) {
+          return okkBuildItem(item, blk.id, exBlocks);
+        }).join('');
+        subsHtml += '<div class="okk-sub-hdr"><span class="okk-sub-title">'+sub.title+'</span>'
+          +'<span class="okk-sub-sc" id="okk_ss_'+blk.id+'_'+sub.id+'">—</span></div>'+subItems;
+      });
+    } else if (blk.items) {
+      itemsHtml = blk.items.map(function(item){return okkBuildItem(item, blk.id, exBlocks);}).join('');
+    }
+    var isFirstBlock = bi===0;
+    blocksHtml += '<div class="okk-blk" id="okk_blk_'+blk.id+'">'
+      +'<div class="okk-blk-hdr" onclick="okkToggleBlk(\'okk_blk_body_'+blk.id+'\')">'
+      +'<div class="okk-blk-left"><span class="okk-blk-num">'+(bi+1)+'</span>'
+      +'<span class="okk-blk-title">'+(blk.title||'Блок '+(bi+1))+'</span>'
+      +(blk.note?'<span style="font-size:9px;color:var(--muted);margin-left:6px">'+blk.note+'</span>':'')
+      +'</div><span class="okk-blk-score" id="okk_bs_'+blk.id+'">0 / '+(blk.max||'?')+'</span></div>'
+      +'<div class="okk-prog"><div class="okk-prog-fill" id="okk_bp_'+blk.id+'" style="width:0%"></div></div>'
+      +'<div id="'+blkId+'">'+(subsHtml||itemsHtml)+'</div></div>';
+  });
+
+  // Штрафные блоки
+  (cl.penaltyBlocks||[]).forEach(function(pblk) {
+    var items = pblk.items.map(function(item){return okkBuildItem(item,'penalty_'+pblk.id,exBlocks,true);}).join('');
+    blocksHtml += '<div class="okk-blk okk-penalty">'
+      +'<div class="okk-blk-hdr" onclick="okkToggleBlk(\'okk_pblk_'+pblk.id+'\')">'
+      +'<div class="okk-blk-left"><span class="okk-blk-num">Ш</span>'
+      +'<span class="okk-blk-title">'+pblk.title+'</span></div>'
+      +'<span class="okk-blk-score" id="okk_ps_'+pblk.id+'">0</span></div>'
+      +'<div id="okk_pblk_'+pblk.id+'">'+items+'</div></div>';
+  });
+
+  // Красный флаг
+  blocksHtml += '<div class="okk-rf-blk">'
+    +'<div><div class="okk-rf-title">\uD83D\uDEA9 Красный флаг</div>'
+    +'<div class="okk-rf-desc">'+cl.rf+'</div></div>'
+    +'<div class="okk-rf-tog"><span class="okk-rf-pen">−100 б., кейс аннулируется</span>'
+    +'<input type="checkbox" id="okk_rf"'+(existing&&existing.red_flag?' checked':'')+'>'
+    +'<label for="okk_rf">Зафиксирован</label></div></div>';
+
+  // Итог
+  var totalHtml = '<div class="okk-total">'
+    +'<div class="okk-total-grid">'
+    +'<div><div class="okk-total-val" id="okk_total_pct" style="color:var(--purple)">0%</div><div class="okk-total-lbl">Итоговый балл</div></div>'
+    +'<div><div class="okk-total-val" id="okk_total_score" style="color:var(--accent)">0/'+cl.max+'</div><div class="okk-total-lbl">Набрано / макс</div></div>'
+    +'<div><div class="okk-total-val" id="okk_total_pen" style="color:var(--red)">0</div><div class="okk-total-lbl">Штрафные</div></div>'
+    +'<div><div class="okk-total-val" id="okk_result" style="color:var(--red);font-size:14px;margin-top:6px">—</div><div class="okk-total-lbl">Результат (порог 85%)</div></div>'
+    +'</div>'
+    +'<div style="margin-bottom:8px"><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Комментарий ОКК</div>'
+    +'<textarea class="okk-ta" id="okk_comment">'+(existing?existing.comment||'':'')+'</textarea></div>'
+    +'<div class="okk-act">'
+    +'<button class="okk-btn okk-btn-m" onclick="okkCancelForm()">Отмена</button>'
+    +'<button class="okk-btn okk-btn-m" onclick="okkSaveCheck(\'draft\')">Черновик</button>'
+    +'<button class="okk-btn okk-btn-p" onclick="okkSaveCheck(\'done\')">Завершить проверку \u2192</button>'
+    +'</div></div>';
+
+  return hdrForm + blocksHtml + totalHtml;
+}
+
+function okkBuildItem(item, blkId, exBlocks, isPenalty) {
+  var key = blkId+'_'+item.id;
+  // Find existing value
+  var exBlk = null;
+  if (exBlocks && exBlocks.find) exBlk = exBlocks.find(function(b){return b.id===blkId;});
+  var exItem = exBlk && exBlk.items ? exBlk.items.find(function(i){return i.id===item.id;}) : null;
+  var curVal = _okkCheckedItems[key] !== undefined ? _okkCheckedItems[key] : (exItem ? exItem.score : item.opts[0]);
+
+  var opts = item.opts.map(function(o){
+    return '<option value="'+o+'"'+(o===curVal?' selected':'')+'>'+o+'</option>';
+  }).join('');
+
+  var sel = document.createElement('select');
+  sel.className = 'okk-sel' + (isPenalty?' style="color:var(--red)"':'');
+  if (isPenalty) sel.style.color = 'var(--red)';
+  sel.id = 'okk_item_'+key.replace(/[^a-z0-9]/gi,'_');
+  sel.setAttribute('data-key', key);
+  sel.setAttribute('data-max', item.opts[0]);
+  sel.setAttribute('data-penalty', isPenalty?'1':'0');
+  sel.setAttribute('onchange', 'okkItemChange(this)');
+  sel.innerHTML = opts;
+
+  var npHtml = '';
+  if (item.np) {
+    var npId = 'okk_np_'+key.replace(/[^a-z0-9]/gi,'_');
+    npHtml = '<div class="okk-np"><input type="checkbox" id="'+npId+'" data-sel="'+sel.id+'" onchange="okkNpChange(this)"><label for="'+npId+'">н/п</label></div>';
+  }
+
+  return '<div class="okk-item'+(item.rf_warn?' style=\\"background:rgba(200,122,122,.03)\\"':'')+'">'
+    +'<div><div class="okk-item-lbl">'+item.label+'</div><div class="okk-item-hint">'+item.hint+'</div></div>'
+    +'<div class="okk-item-max">'+(isPenalty?'штраф':'макс. '+item.opts[0]+' б.')+'</div>'
+    +'<div>'+sel.outerHTML+npHtml+'</div></div>';
+}
+
+function okkNpChange(cb) {
+  var sel = document.getElementById(cb.dataset.sel);
+  if (!sel) return;
+  sel.disabled = cb.checked;
+  sel.style.opacity = cb.checked ? '0.3' : '1';
+  okkRecalcScore();
+}
+
+function okkItemChange(sel) {
+  _okkCheckedItems[sel.dataset.key] = parseFloat(sel.value)||0;
+  okkRecalcScore();
+}
+
+function okkRecalcScore() {
+  var total = 0, max = 0, penalty = 0, rfOn = false;
+  var rfEl = document.getElementById('okk_rf');
+  if (rfEl) rfOn = rfEl.checked;
+
+  document.querySelectorAll('.okk-sel').forEach(function(sel) {
+    if (sel.disabled) return;
+    var v = parseFloat(sel.value)||0;
+    var isP = sel.dataset.penalty==='1';
+    var m = parseFloat(sel.dataset.max)||0;
+    if (isP) { penalty += v; }
+    else { max += m; total += v; }
+  });
+
+  var finalScore = total + penalty + (rfOn ? -100 : 0);
+  var pct = max>0 ? Math.max(0, Math.round(finalScore/max*100)) : 0;
+  var color = rfOn?'var(--red)':pct>=85?'var(--green)':pct>=70?'var(--warn)':'var(--red)';
+
+  var e;
+  e=document.getElementById('okk_total_pct'); if(e){e.textContent=pct+'%';e.style.color=color;}
+  e=document.getElementById('okk_total_score'); if(e){e.textContent=Math.max(0,total)+'/'+max;e.style.color=color;}
+  e=document.getElementById('okk_total_pen'); if(e) e.textContent=penalty+(rfOn?' + RF':'');
+  e=document.getElementById('okk_result');
+  if(e){
+    e.textContent = rfOn?'\uD83D\uDEA9 АННУЛИРОВАН':pct>=85?'\u2713 ПРОЙДЕНО':pct>=70?'\u26A0 НА ГРАНИ':'\u2717 НЕ ПРОЙДЕНО';
+    e.style.color = color;
+  }
+}
+
+function okkRestoreFormState() {
+  document.querySelectorAll('.okk-sel').forEach(function(sel) {
+    var key = sel.dataset.key;
+    if (_okkCheckedItems[key] !== undefined) {
+      sel.value = _okkCheckedItems[key];
+    }
+  });
+  okkRecalcScore();
+}
+
+function okkNewCheck(type) {
+  _okkEditId=null; _okkType=type; _okkCheckedItems={};
+  _okkTab=type; okkRender();
+}
+
+function okkEditCheck(id) {
+  _okkEditId=id; _okkCheckedItems={};
+  var c = OKK_CHECKS.find(function(x){return x.id===id;});
+  if(c){ _okkType=c.type; _okkTab=c.type; }
+  if(c&&c.blocks){ c.blocks.forEach(function(blk){ if(blk.items) blk.items.forEach(function(item){_okkCheckedItems[blk.id+'_'+item.id]=item.score||0;}); }); }
+  okkRender();
+}
+
+function okkCancelForm() { _okkEditId=null; _okkCheckedItems={}; okkRender(); }
+
+async function okkSaveCheck(status) {
+  var employee=(document.getElementById('okk_employee')?.value||'').trim();
+  var check_date=document.getElementById('okk_date')?.value||'';
+  var ticket=(document.getElementById('okk_ticket')?.value||'').trim();
+  var comment=(document.getElementById('okk_comment')?.value||'').trim();
+  var type=document.getElementById('okk_type')?.value||_okkType;
+  if(!employee){toast('Введи ФИО сотрудника');return;}
+
+  var cl=OKK_CL[type];
+  var totalScore=0, maxScore=0, hasRF=false, penaltyScore=0;
+  var rfEl=document.getElementById('okk_rf');
+  if(rfEl) hasRF=rfEl.checked;
+
+  // Collect block scores
+  var allBlocks = (cl.subs||cl.blocks||[]).concat(cl.penaltyBlocks||[]);
+  var blocksData = allBlocks.map(function(blk){
+    var allItems = blk.items ? blk.items : (blk.subs||[]).reduce(function(a,s){return a.concat(s.items);});
+    var bScore=0, bMax=0;
+    allItems.forEach(function(item){
+      var selId='okk_item_'+(blk.id+'_'+item.id).replace(/[^a-z0-9]/gi,'_');
+      var sel=document.getElementById(selId);
+      var v=sel&&!sel.disabled?parseFloat(sel.value)||0:item.opts[0];
+      if(!blk.penalty&&!blk.penaltyBlocks){bMax+=item.opts[0];}
+      bScore+=v;
+    });
+    if(!blk.penalty&&!blk.penaltyBlocks){totalScore+=bScore;maxScore+=bMax;}
+    else{penaltyScore+=bScore;}
+    return {id:blk.id,title:blk.title||'',score:bScore,max:bMax,items:allItems.map(function(item){
+      var selId='okk_item_'+(blk.id+'_'+item.id).replace(/[^a-z0-9]/gi,'_');
+      var sel=document.getElementById(selId);
+      return Object.assign({},item,{score:sel&&!sel.disabled?parseFloat(sel.value)||0:item.opts[0]});
+    })};
+  });
+
+  // Re-calculate maxScore from CL definition
+  maxScore = cl.max || maxScore;
+
+  try {
+    await api('POST','/api/okk-check',{
+      id:_okkEditId||undefined, month:curMonth, type:type, employee:employee,
+      check_date:check_date, ticket:ticket, blocks:blocksData,
+      score:totalScore+penaltyScore, max_score:maxScore,
+      red_flag:hasRF, comment:comment, status:status
+    });
+    _okkEditId=null; _okkCheckedItems={};
+    await okkLoad();
+    toast(status==='draft'?'Черновик сохранён \u2713':'Проверка завершена \u2713');
+  } catch(e){toast('Ошибка сохранения');}
+}
+
+async function okkDeleteCheck(id) {
+  if(!confirm('Переместить проверку в корзину?')) return;
+  try{ await api('DELETE','/api/okk-check/'+id); await okkLoad(); toast('Перемещено в корзину'); }catch(e){toast('Ошибка');}
+}
+
+// ── Просмотр кейса ───────────────────────────────────────────────
+function okkOpenCase(id) { _okkCaseId=id; _okkTab='case'; okkRender(); }
+
+function okkRenderCase(canAppeal) {
+  var done = OKK_CHECKS.filter(function(c){return !c.deleted_at;});
+  var c = _okkCaseId ? OKK_CHECKS.find(function(x){return x.id===_okkCaseId;}) : done[0];
+
+  var listHtml = done.map(function(ch) {
+    var pct=ch.max_score>0?Math.round(ch.score/ch.max_score*100):0;
+    var sc=pct>=80?'hi':pct>=60?'mid':'lo';
+    var openBtn=document.createElement('div');
+    openBtn.setAttribute('onclick',"okkOpenCase('"+ch.id+"')");
+    openBtn.className='okk-case-item'+(ch.id===_okkCaseId?' on':'');
+    openBtn.innerHTML='<div style="font-size:12px;font-weight:600;color:var(--text)">'+ch.employee+'</div>'
+      +'<div style="font-size:10px;color:var(--dim);margin-top:2px"><span class="okk-tag '+ch.type+'">'+ch.type.toUpperCase()+'</span> · '+ch.check_date+'</div>'
+      +'<div style="margin-top:4px"><span class="okk-sc '+sc+'" style="font-size:10px">'+pct+'%</span>'+(ch.red_flag?' <span class="okk-bdg fail" style="font-size:9px">RF</span>':'')+'</div>';
+    return openBtn.outerHTML;
+  }).join('');
+
+  if(!c) return '<div class="okk-case-grid"><div>'+listHtml+'</div><div style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px">Выбери проверку слева</div></div>';
+
+  var pct=c.max_score>0?Math.round(c.score/c.max_score*100):0;
+  var sc=pct>=80?'hi':pct>=60?'mid':'lo';
+  var existAppeal=OKK_APPEALS.find(function(a){return a.check_id===c.id;});
+  var canSubmit=canAppeal&&!existAppeal&&c.status!=='appeal'&&c.status!=='appeal_approved';
+
+  var appealSection='';
+  if(existAppeal){
+    appealSection='<div style="background:rgba(168,122,200,.07);border:1px solid rgba(168,122,200,.2);border-radius:3px;padding:10px;margin-top:8px">'
+      +'<div style="font-size:10px;font-weight:600;color:var(--purple);margin-bottom:3px">Апелляция</div>'
+      +'<div style="font-size:12px;color:var(--dim)">'+existAppeal.reason+'</div>'
+      +(existAppeal.status!=='pending'
+        ?'<div style="margin-top:6px"><span class="okk-bdg '+(existAppeal.status==='approved'?'ok':'fail')+'">'+
+          (existAppeal.status==='approved'?'Одобрена':'Отклонена')+'</span>'
+          +' · Рассмотрел: <b>'+existAppeal.resolved_by+'</b>'
+          +(existAppeal.okk_comment?' · '+existAppeal.okk_comment:'')+'</div>'
+        :'<div style="margin-top:6px"><span class="okk-bdg pend">Ожидает рассмотрения</span></div>')
+      +'</div>';
+  }
+  if(canSubmit){
+    appealSection+='<div style="margin-top:8px">'
+      +'<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Подать апелляцию</div>'
+      +'<textarea class="okk-ta" id="okk_appeal_reason" placeholder="Опиши причину апелляции..."></textarea>'
+      +'<div class="okk-act" style="margin-top:6px">'
+      +'<button class="okk-btn okk-btn-p" onclick="okkSubmitAppeal(\''+c.id+'\')">↩ Подать апелляцию</button>'
+      +'</div></div>';
+  }
+
+  var blockDetails='';
+  if(c.blocks&&c.blocks.length){
+    blockDetails='<div class="okk-cf"><label>Детализация по блокам</label>'
+      +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:2px;overflow:hidden">'
+      +c.blocks.map(function(blk,i){
+        var bPct=blk.max>0?Math.round(blk.score/blk.max*100):0;
+        var bSc=bPct>=80?'hi':bPct>=60?'mid':'lo';
+        return '<div style="display:grid;grid-template-columns:1fr auto auto;gap:4px 10px;padding:7px 10px;'+(i>0?'border-top:1px solid var(--border)':'')+'"><span style="font-size:11px;color:var(--dim)">'+blk.title+'</span>'
+          +'<span style="font-size:10px;color:var(--muted)">'+blk.score+'/'+blk.max+'</span>'
+          +'<span class="okk-sc '+bSc+'" style="font-size:10px">'+bPct+'%</span></div>';
+      }).join('')+'</div></div>';
+  }
+
+  return '<div class="okk-case-grid"><div>'+listHtml+'</div><div>'
+    +'<div class="sec-lbl">'+c.employee+' · <span class="okk-tag '+c.type+'" style="font-size:11px">'+c.type.toUpperCase()+'</span></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">'
+    +'<div class="okk-chip"><span class="n" style="font-size:18px">'+pct+'%</span><span class="l">Балл</span></div>'
+    +'<div class="okk-chip purple"><span class="n" style="font-size:18px">'+c.score+'/'+c.max_score+'</span><span class="l">Набрано / макс</span></div>'
+    +'<div class="okk-chip '+(c.red_flag?'bad':'')+'"><span class="n" style="font-size:18px;color:'+(c.red_flag?'var(--red)':'var(--green)')+'">'+
+    (c.red_flag?'\uD83D\uDEA9 Да':'Нет')+'</span><span class="l">Красный флаг</span></div></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
+    +'<div class="okk-cf"><label>Дата</label><div class="okk-cf-val">'+c.check_date+'</div></div>'
+    +'<div class="okk-cf"><label>Тикет</label><div class="okk-cf-val">'+(c.ticket||'—')+'</div></div>'
+    +'<div class="okk-cf"><label>Проверяющий</label><div class="okk-cf-val">'+c.reviewer+'</div></div>'
+    +'<div class="okk-cf"><label>Статус</label><div class="okk-cf-val"><span class="okk-bdg '+(c.status==='done'||c.status==='completed'?'ok':c.status==='draft'?'draft':'appl')+'">'+({draft:'Черновик',done:'Завершена',completed:'Завершена',appeal:'Апелляция',appeal_approved:'Апел. одобрена'}[c.status]||'Завершена')+'</span></div></div>'
+    +'</div>'
+    +blockDetails
+    +'<div class="okk-cf"><label>Комментарий проверяющего</label><div class="okk-cf-val">'+(c.comment||'—')+'</div></div>'
+    +appealSection
+    +'</div></div>';
+}
+
+// ── Апелляции ────────────────────────────────────────────────────
+function okkRenderAppeals(canApprove) {
+  var pending=OKK_APPEALS.filter(function(a){return a.status==='pending';});
+  var closed=OKK_APPEALS.filter(function(a){return a.status!=='pending';});
+
+  function card(a, showActions) {
+    var c=OKK_CHECKS.find(function(x){return x.id===a.check_id;});
+    var pct=c&&c.max_score>0?Math.round(c.score/c.max_score*100):0;
+    var resHtml='';
+    if(showActions&&a.status==='pending'){
+      var taId='okk_acomment_'+a.id;
+      var rejBtn=document.createElement('button'); rejBtn.className='okk-btn okk-btn-r';
+      rejBtn.setAttribute('data-aid',a.id); rejBtn.setAttribute('onclick',"okkResolveAppeal(this.dataset.aid,'rejected')"); rejBtn.textContent='Отклонить';
+      var appBtn=document.createElement('button'); appBtn.className='okk-btn okk-btn-g';
+      appBtn.setAttribute('data-aid',a.id); appBtn.setAttribute('onclick',"okkResolveAppeal(this.dataset.aid,'approved')"); appBtn.textContent='Одобрить';
+      resHtml='<div><div style="font-size:9px;color:var(--muted);margin-bottom:4px">Комментарий ОКК</div>'
+        +'<textarea class="okk-ta" id="'+taId+'" placeholder="Комментарий к решению..."></textarea></div>'
+        +'<div class="okk-act" style="margin-top:6px">'+rejBtn.outerHTML+appBtn.outerHTML+'</div>';
+    } else if(a.resolved_by) {
+      resHtml='<div style="background:var(--bg4);border:1px solid var(--border);border-radius:2px;padding:7px 9px;font-size:11px;color:var(--dim);margin-top:6px">'
+        +'Рассмотрел: <b>'+a.resolved_by+'</b>'+(a.okk_comment?' — '+a.okk_comment:'')+'</div>';
+    }
+    return '<div class="okk-appeal-card">'
+      +'<div class="okk-appeal-hdr"><div>'
+      +'<div class="okk-appeal-name">'+a.tl_name+'</div>'
+      +'<div class="okk-appeal-meta">'+(c?'<span class="okk-tag '+c.type+'">'+c.type.toUpperCase()+'</span> · '+c.check_date+' · '+(c.ticket||'—')+' · Балл: <span style="color:var(--warn)">'+pct+'%</span>':'—')+'</div>'
+      +'</div><span class="okk-bdg '+(a.status==='pending'?'pend':a.status==='approved'?'ok':'fail')+'">'
+      +(a.status==='pending'?'Ожидает':a.status==='approved'?'Одобрена':'Отклонена')+'</span></div>'
+      +'<div class="okk-appeal-body">'+a.reason+'</div>'+resHtml+'</div>';
+  }
+
+  var closedRows=closed.map(function(a){
+    var c=OKK_CHECKS.find(function(x){return x.id===a.check_id;});
+    var pct=c&&c.max_score>0?Math.round(c.score/c.max_score*100):0;
+    return '<tr><td>'+a.tl_name+'</td><td>'+(c?'<span class="okk-tag '+c.type+'">'+c.type.toUpperCase()+'</span>':'—')+'</td>'
+      +'<td style="white-space:nowrap">'+(c?c.check_date:'—')+'</td>'
+      +'<td><span class="okk-sc '+(pct>=80?'hi':pct>=60?'mid':'lo')+'">'+pct+'%</span></td>'
+      +'<td><span class="okk-bdg '+(a.status==='approved'?'ok':'fail')+'">'+(a.status==='approved'?'Одобрена':'Отклонена')+'</span></td>'
+      +'<td style="font-size:10px;color:var(--dim)">'+(a.resolved_by||'—')+'</td>'
+      +'<td style="font-size:10px;color:var(--dim);max-width:200px">'+(a.okk_comment||'—')+'</td>'
+      +'</tr>';
+  }).join('');
+
+  return (pending.length
+    ?'<div class="sec-lbl" style="color:var(--purple)">Ожидают рассмотрения ('+pending.length+')</div>'+pending.map(function(a){return card(a,canApprove);}).join('')
+    :'<div style="padding:16px 0;color:var(--muted);font-size:11px">Нет апелляций на рассмотрении</div>')
+    +(closed.length
+      ?'<div class="sec-lbl">Закрытые апелляции</div>'
+        +'<table class="okk-tbl"><thead><tr><th>Сотрудник</th><th>Блок</th><th>Дата</th><th>Балл</th><th>Решение</th><th>Рассмотрел</th><th>Комментарий</th></tr></thead><tbody>'+closedRows+'</tbody></table>'
+      :'');
+}
+
+// ── Корзина ──────────────────────────────────────────────────────
+function okkRenderTrashShell(isAdmin) {
+  return '<div class="okk-trash-warn">\u26A0 Удалённые проверки. '
+    +(isAdmin?'Удалить навсегда — только Head CS (admin).':'Восстановление доступно. Очистка — только Head CS.')+'</div>'
+    +'<div id="okkTrashList">Загрузка...</div>';
+}
+
+async function okkLoadTrash() {
+  try {
+    var trash=await api('GET','/api/okk-checks?month='+encodeURIComponent(curMonth)+'&trash=1');
+    var el=document.getElementById('okkTrashList');
+    if(!el) return;
+    var isAdmin=window._userRole==='admin';
+    if(!trash||!trash.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:11px">Корзина пуста</div>';return;}
+    var rows=trash.map(function(c){
+      var pct=c.max_score>0?Math.round(c.score/c.max_score*100):0;
+      var restBtn=document.createElement('button'); restBtn.className='abt'; restBtn.style.cssText='padding:2px 8px;font-size:9px;margin-right:3px';
+      restBtn.setAttribute('data-id',c.id); restBtn.setAttribute('onclick','okkRestoreCheck(this.dataset.id)'); restBtn.textContent='\u21A9 Восстановить';
+      var permBtn='';
+      if(isAdmin){
+        var pb=document.createElement('button'); pb.className='abt dl'; pb.style.cssText='padding:2px 8px;font-size:9px';
+        pb.setAttribute('data-id',c.id); pb.setAttribute('onclick','okkPermDeleteCheck(this.dataset.id)'); pb.textContent='\u2715 Удалить';
+        permBtn=pb.outerHTML;
+      }
+      return '<tr><td>'+c.employee+'</td><td><span class="okk-tag '+c.type+'">'+c.type.toUpperCase()+'</span></td>'
+        +'<td style="white-space:nowrap">'+c.check_date+'</td>'
+        +'<td><span class="okk-sc '+(pct>=80?'hi':pct>=60?'mid':'lo')+'">'+pct+'%</span></td>'
+        +'<td style="white-space:nowrap">'+restBtn.outerHTML+permBtn+'</td></tr>';
+    }).join('');
+    el.innerHTML='<table class="okk-tbl"><thead><tr><th>Сотрудник</th><th>Блок</th><th>Дата</th><th>Балл</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+  } catch(e){var el=document.getElementById('okkTrashList');if(el)el.innerHTML='Ошибка загрузки';}
+}
+
+async function okkRestoreCheck(id){try{await api('POST','/api/okk-check/'+id+'/restore');await okkLoad();toast('Восстановлено \u2713');}catch(e){toast('Ошибка');}}
+async function okkPermDeleteCheck(id){
+  if(!confirm('Удалить навсегда? Восстановить будет невозможно.'))return;
+  try{await api('DELETE','/api/okk-check/'+id+'/permanent');await okkLoad();toast('Удалено навсегда');}catch(e){toast('Ошибка');}
+}
+
+async function okkSubmitAppeal(checkId){
+  var reason=(document.getElementById('okk_appeal_reason')?.value||'').trim();
+  if(!reason){toast('Введи причину апелляции');return;}
+  try{await api('POST','/api/okk-appeal',{month:curMonth,check_id:checkId,reason:reason});await okkLoad();toast('Апелляция подана \u2713');}catch(e){toast('Ошибка');}
+}
+
+async function okkResolveAppeal(id,status){
+  var comment=(document.getElementById('okk_acomment_'+id)?.value||'').trim();
+  try{await api('PATCH','/api/okk-appeal/'+id,{status:status,okk_comment:comment});await okkLoad();toast(status==='approved'?'Апелляция одобрена \u2713':'Отклонена');}catch(e){toast('Ошибка');}
+}
+</script>
 
 </body>
 </html>
