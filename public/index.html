@@ -913,6 +913,7 @@ function showTab(name,btn){
   if(name==='reviews') renderReviews();
   if(name==='payroll') renderPayroll();
   if(name==='tasks') renderTasks();
+  if(name==='okk'){ if(typeof okkLoad==='function') okkLoad(); }
   if(name==='ops') opsRender();
   if(name==='headcs') headCsRender();
 }
@@ -3946,8 +3947,6 @@ var OKK_CL = {
 
 // ── Загрузка данных ──────────────────────────────────────────────
 async function okkLoad() {
-  var panel = document.getElementById('p-okk');
-  if (!panel || !panel.classList.contains('on')) return;
   try {
     var results = await Promise.all([
       api('GET', '/api/okk-checks?month='+encodeURIComponent(curMonth)),
