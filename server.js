@@ -25,7 +25,8 @@ app.use(express.json());
 app.set('trust proxy', 1); // Render/Heroku — за reverse proxy
 app.use(session({
   secret: process.env.SESSION_SECRET || 'cis-2026-secret',
-  resave: false,
+  resave: true,
+  rolling: true,
   saveUninitialized: false,
   cookie: { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' }
 }));
