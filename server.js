@@ -53,6 +53,12 @@ function requireOpsEditor(req, res, next) {
   if (r === 'admin' || r === 'editor' || r === 'ops_editor') return next();
   res.status(403).json({ error: 'Forbidden' });
 }
+function requireOkkOrAdmin(req, res, next) {
+  const r = req.session?.user?.role;
+  if (r === 'admin' || r === 'okk_editor') return next();
+  return res.status(403).json({ error: 'Forbidden' });
+}
+
 function requireAdmin(req, res, next) {
   if (req.session?.user?.role === 'admin') return next();
   res.status(403).json({ error: 'forbidden — admin only' });
@@ -163,6 +169,42 @@ async function initDB() {
   negative INTEGER DEFAULT 0,
   comment TEXT DEFAULT ''
 )`);
+
+  // ── ОКК: чек-листы и апелляции ─────────────────────────────────────────────
+  await pool.query(`CREATE TABLE IF NOT EXISTS okk_checks (
+    id TEXT PRIMARY KEY,
+    month TEXT NOT NULL DEFAULT '',
+    type TEXT NOT NULL DEFAULT 'krm',
+    employee TEXT NOT NULL DEFAULT '',
+    check_date TEXT NOT NULL DEFAULT '',
+    ticket TEXT DEFAULT '',
+    blocks JSONB DEFAULT '[]',
+    score NUMERIC DEFAULT 0,
+    max_score NUMERIC DEFAULT 0,
+    red_flag BOOLEAN DEFAULT FALSE,
+    comment TEXT DEFAULT '',
+    status TEXT DEFAULT 'draft',
+    reviewer TEXT DEFAULT '',
+    reviewer_email TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ DEFAULT NULL
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS okk_appeals (
+    id TEXT PRIMARY KEY,
+    month TEXT NOT NULL DEFAULT '',
+    check_id TEXT NOT NULL DEFAULT '',
+    tl_email TEXT NOT NULL DEFAULT '',
+    tl_name TEXT NOT NULL DEFAULT '',
+    reason TEXT NOT NULL DEFAULT '',
+    status TEXT DEFAULT 'pending',
+    okk_comment TEXT DEFAULT '',
+    resolved_by TEXT DEFAULT '',
+    resolved_by_email TEXT DEFAULT '',
+    resolved_at TIMESTAMPTZ DEFAULT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
   await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS month TEXT DEFAULT ''`).catch(()=>{});
   
   for (const u of INITIAL_USERS) {
@@ -548,6 +590,8 @@ app.delete('/api/month/:month', requireAuth, requireAdmin, async (req, res) => {
     await pool.query('DELETE FROM reviews WHERE month=$1', [month]).catch(()=>{});
     await pool.query('DELETE FROM ops_report WHERE period=$1', [month]).catch(()=>{});
     await pool.query('DELETE FROM head_tasks WHERE month=$1', [month]).catch(()=>{});
+    await pool.query('DELETE FROM okk_checks WHERE month=$1', [month]).catch(()=>{});
+    await pool.query('DELETE FROM okk_appeals WHERE month=$1', [month]).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -678,6 +722,153 @@ app.post('/api/ops', requireAuth, requireOpsEditor, async (req, res) => {
     res.json({ ok: true, id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── ОКК: Чек-листы ───────────────────────────────────────────────────────────
+app.get('/api/okk-checks', requireAuth, async (req, res) => {
+  const role = req.session?.user?.role;
+  if (!['admin','okk_editor','editor'].includes(role)) return res.status(403).json({error:'Forbidden'});
+  try {
+    const month = req.query.month || '';
+    const trash = req.query.trash === '1';
+    let rows;
+    if (trash) {
+      if (!['admin','okk_editor'].includes(role)) return res.status(403).json({error:'Forbidden'});
+      ({rows} = await pool.query(
+        'SELECT * FROM okk_checks WHERE month=$1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC',
+        [month]
+      ));
+    } else {
+      ({rows} = await pool.query(
+        'SELECT * FROM okk_checks WHERE month=$1 AND deleted_at IS NULL ORDER BY created_at DESC',
+        [month]
+      ));
+    }
+    res.json(rows);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/okk-check', requireAuth, requireOkkOrAdmin, async (req, res) => {
+  try {
+    const u = req.session.user;
+    const {id, month, type, employee, check_date, ticket, blocks, score, max_score, red_flag, comment, status} = req.body;
+    const cid = id || (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+    await pool.query(
+      `INSERT INTO okk_checks (id,month,type,employee,check_date,ticket,blocks,score,max_score,red_flag,comment,status,reviewer,reviewer_email)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       ON CONFLICT (id) DO UPDATE SET
+         type=$3,employee=$4,check_date=$5,ticket=$6,blocks=$7,
+         score=$8,max_score=$9,red_flag=$10,comment=$11,status=$12,
+         reviewer=$13,reviewer_email=$14`,
+      [cid, month||'', type||'krm', employee||'', check_date||'', ticket||'',
+       JSON.stringify(blocks||[]), score||0, max_score||0, red_flag||false,
+       comment||'', status||'draft', u.name||u.email, u.email]
+    );
+    // Sync to Google Sheets when finalized
+    if ((status==='done'||status==='completed') && process.env.GOOGLE_SHEET_ID && process.env.GOOGLE_CREDENTIALS) {
+      syncOkkToSheets({id:cid,month,type,employee,check_date,ticket,score,max_score,red_flag,comment,reviewer:u.name||u.email}).catch(()=>{});
+    }
+    res.json({ok:true, id:cid});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/okk-check/:id', requireAuth, requireOkkOrAdmin, async (req, res) => {
+  try {
+    await pool.query('UPDATE okk_checks SET deleted_at=NOW() WHERE id=$1', [req.params.id]);
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/okk-check/:id/restore', requireAuth, requireOkkOrAdmin, async (req, res) => {
+  try {
+    await pool.query('UPDATE okk_checks SET deleted_at=NULL WHERE id=$1', [req.params.id]);
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// Permanent delete — ТОЛЬКО ADMIN
+app.delete('/api/okk-check/:id/permanent', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM okk_checks WHERE id=$1', [req.params.id]);
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ── ОКК: Апелляции ───────────────────────────────────────────────────────────
+app.get('/api/okk-appeals', requireAuth, async (req, res) => {
+  const role = req.session?.user?.role;
+  if (!['admin','okk_editor','editor'].includes(role)) return res.status(403).json({error:'Forbidden'});
+  try {
+    const month = req.query.month || '';
+    const {rows} = await pool.query(
+      'SELECT * FROM okk_appeals WHERE month=$1 ORDER BY created_at DESC', [month]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// Подать апелляцию — editor (ТЛ, OPS) и admin
+app.post('/api/okk-appeal', requireAuth, async (req, res) => {
+  const role = req.session?.user?.role;
+  if (!['admin','editor'].includes(role)) return res.status(403).json({error:'Forbidden'});
+  try {
+    const u = req.session.user;
+    const {month, check_id, reason} = req.body;
+    if (!check_id||!reason) return res.status(400).json({error:'check_id and reason required'});
+    const id = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    await pool.query(
+      `INSERT INTO okk_appeals (id,month,check_id,tl_email,tl_name,reason,status)
+       VALUES ($1,$2,$3,$4,$5,$6,'pending')`,
+      [id, month||'', check_id, u.email, u.name||u.email, reason]
+    );
+    await pool.query("UPDATE okk_checks SET status='appeal' WHERE id=$1", [check_id]);
+    res.json({ok:true, id});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// Одобрить/отклонить — ТОЛЬКО okk_editor и admin
+app.patch('/api/okk-appeal/:id', requireAuth, requireOkkOrAdmin, async (req, res) => {
+  try {
+    const u = req.session.user;
+    const {status, okk_comment} = req.body;
+    if (!['approved','rejected'].includes(status)) return res.status(400).json({error:'Invalid status'});
+    await pool.query(
+      `UPDATE okk_appeals SET status=$1,okk_comment=$2,resolved_by=$3,resolved_by_email=$4,resolved_at=NOW() WHERE id=$5`,
+      [status, okk_comment||'', u.name||u.email, u.email, req.params.id]
+    );
+    const {rows} = await pool.query('SELECT check_id FROM okk_appeals WHERE id=$1', [req.params.id]);
+    if (rows.length) {
+      const newStatus = status==='approved' ? 'appeal_approved' : 'done';
+      await pool.query('UPDATE okk_checks SET status=$1 WHERE id=$2', [newStatus, rows[0].check_id]);
+    }
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ── Google Sheets sync (OKK) ─────────────────────────────────────────────────
+async function syncOkkToSheets(check) {
+  if (!process.env.GOOGLE_SHEET_ID || !process.env.GOOGLE_CREDENTIALS) return;
+  try {
+    const {google} = require('googleapis');
+    const creds = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+    const auth = new google.auth.GoogleAuth({credentials:creds, scopes:['https://www.googleapis.com/auth/spreadsheets']});
+    const sheets = google.sheets({version:'v4', auth});
+    const pct = check.max_score>0 ? Math.round(check.score/check.max_score*100) : 0;
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: process.env.GOOGLE_SHEET_ID,
+      range: 'ОКК!A:L',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {values: [[
+        check.month, check.type?.toUpperCase(), check.employee,
+        check.check_date, check.ticket,
+        check.score, check.max_score, pct+'%',
+        check.red_flag?'Да':'Нет',
+        check.reviewer, check.comment,
+        new Date().toLocaleDateString('ru-RU')
+      ]]}
+    });
+  } catch(e) { console.error('GSheets OKK error:', e.message); }
+}
+
 
 app.get('*', (req, res) => res.redirect('/'));
 
