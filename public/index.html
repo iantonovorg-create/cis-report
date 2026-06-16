@@ -597,7 +597,20 @@ function pickCustomMonth(){
   document.getElementById('customYearInp').style.borderColor='var(--accent)';
 }
 
-async function api(method,url,body){const opts={method,headers:{'Content-Type':'application/json'}};if(body)opts.body=JSON.stringify(body);const r=await fetch(url,opts);return r.json();}
+async function api(method,url,body){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(body) opts.body=JSON.stringify(body);
+  const r=await fetch(url,opts);
+  if(r.status===401){
+    // Сессия истекла — редиректим на логин без петли
+    if(!window._loggingOut){
+      window._loggingOut=true;
+      window.location.href='/';
+    }
+    throw new Error('Unauthorized');
+  }
+  return r.json();
+}
 function applyRoleRestrictions(role){
   const TAB_MAP = {
     'team':'Команда','km':'Работа с КМ','tasks':'Задачи',
@@ -670,6 +683,7 @@ async function loadData(){
   try{
     DB=await api('GET','/api/data');
     const me=await api('GET','/auth/me');
+    if(!me||!me.role){ window.location.href='/'; return; }
     window._userRole=me.role;
     applyRoleRestrictions(me.role);
     document.body.classList.remove('loading');
