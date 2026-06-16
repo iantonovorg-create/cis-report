@@ -4006,7 +4006,7 @@ function okkRender() {
   if (_okkTab==='summary') sub.innerHTML = okkRenderSummary();
   else if (_okkTab==='krm'||_okkTab==='km'||_okkTab==='thp') okkRenderCheckList(_okkTab, canEdit, sub);
   else if (_okkTab==='case') sub.innerHTML = okkRenderCase(canAppeal);
-  else if (_okkTab==='appeals') sub.innerHTML = okkRenderAppeals(canApprove);
+  else if (_okkTab==='appeals') sub.innerHTML = okkRenderAppeals(canApprove, isAdmin);
   else if (_okkTab==='trash') { sub.innerHTML = okkRenderTrashShell(isAdmin); setTimeout(okkLoadTrash, 50); }
 }
 
@@ -4477,7 +4477,7 @@ function okkRenderCase(canAppeal) {
 }
 
 // ── Апелляции ────────────────────────────────────────────────────
-function okkRenderAppeals(canApprove) {
+function okkRenderAppeals(canApprove, isAdmin) {
   var pending=OKK_APPEALS.filter(function(a){return a.status==='pending';});
   var closed=OKK_APPEALS.filter(function(a){return a.status!=='pending';});
 
@@ -4516,6 +4516,7 @@ function okkRenderAppeals(canApprove) {
       +'<td><span class="okk-bdg '+(a.status==='approved'?'ok':'fail')+'">'+(a.status==='approved'?'Одобрена':'Отклонена')+'</span></td>'
       +'<td style="font-size:10px;color:var(--dim)">'+(a.resolved_by||'—')+'</td>'
       +'<td style="font-size:10px;color:var(--dim);max-width:200px">'+(a.okk_comment||'—')+'</td>'
+      +(isAdmin?(function(){var b=document.createElement('button');b.className='abt dl';b.style.cssText='padding:2px 8px;font-size:9px';b.setAttribute('data-aid',a.id);b.setAttribute('onclick',"okkDeleteAppeal(this.dataset.aid)");b.textContent='✕';return '<td>'+b.outerHTML+'</td>';})():'<td></td>')
       +'</tr>';
   }).join('');
 
@@ -4524,7 +4525,7 @@ function okkRenderAppeals(canApprove) {
     :'<div style="padding:16px 0;color:var(--muted);font-size:11px">Нет апелляций на рассмотрении</div>')
     +(closed.length
       ?'<div class="sec-lbl">Закрытые апелляции</div>'
-        +'<table class="okk-tbl"><thead><tr><th>Сотрудник</th><th>Блок</th><th>Дата</th><th>Балл</th><th>Решение</th><th>Рассмотрел</th><th>Комментарий</th></tr></thead><tbody>'+closedRows+'</tbody></table>'
+        +'<table class="okk-tbl"><thead><tr><th>Сотрудник</th><th>Блок</th><th>Дата</th><th>Балл</th><th>Решение</th><th>Рассмотрел</th><th>Комментарий</th>'+(isAdmin?'<th></th>':'')+' </tr></thead><tbody>'+closedRows+'</tbody></table>'
       :'');
 }
 
@@ -4567,6 +4568,14 @@ async function okkPermDeleteCheck(id){
   try{await api('DELETE','/api/okk-check/'+id+'/permanent');await okkLoad();toast('Удалено навсегда');}catch(e){toast('Ошибка');}
 }
 
+async function okkDeleteAppeal(id){
+  if(!confirm('Удалить апелляцию навсегда?')) return;
+  try{
+    await api('DELETE','/api/okk-appeal/'+id);
+    await okkLoad();
+    toast('Апелляция удалена');
+  }catch(e){toast('Ошибка');}
+}
 async function okkSubmitAppeal(checkId){
   var reason=(document.getElementById('okk_appeal_reason')?.value||'').trim();
   if(!reason){toast('Введи причину апелляции');return;}
