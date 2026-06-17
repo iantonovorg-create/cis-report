@@ -207,6 +207,9 @@ async function initDB() {
   )`);
 
   await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS month TEXT DEFAULT ''`).catch(()=>{});
+  await pool.query(`ALTER TABLE okk_appeals ADD COLUMN IF NOT EXISTS desired_score INTEGER DEFAULT NULL`).catch(()=>{});
+  await pool.query(`ALTER TABLE okk_checks ADD COLUMN IF NOT EXISTS appeal_score INTEGER DEFAULT NULL`).catch(()=>{});
+
   
   for (const u of INITIAL_USERS) {
     await pool.query(
@@ -800,6 +803,23 @@ app.delete('/api/okk-check/:id/permanent', requireAuth, requireAdmin, async (req
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
+// GET employees for OKK dropdown (only КРМ/ТХП and КМ blocks, no OPS/HEAD/TL)
+app.get('/api/okk-employees', requireAuth, async (req, res) => {
+  const role = req.session?.user?.role;
+  if (!['admin','okk_editor','editor','ops_editor'].includes(role)) return res.status(403).json({error:'Forbidden'});
+  try {
+    const month = req.query.month || '';
+    const {rows} = await pool.query(
+      `SELECT DISTINCT name, block, sub FROM employees
+       WHERE month=$1 AND block IN ('КРМ/ТХП','КМ')
+       AND name IS NOT NULL AND name != ''
+       ORDER BY block, name`,
+      [month]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 // ── ОКК: Апелляции ───────────────────────────────────────────────────────────
 app.get('/api/okk-appeals', requireAuth, async (req, res) => {
   const role = req.session?.user?.role;
@@ -822,10 +842,11 @@ app.post('/api/okk-appeal', requireAuth, async (req, res) => {
     const {month, check_id, reason} = req.body;
     if (!check_id||!reason) return res.status(400).json({error:'check_id and reason required'});
     const id = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    const desiredScore = req.body.desired_score !== undefined ? parseInt(req.body.desired_score)||null : null;
     await pool.query(
-      `INSERT INTO okk_appeals (id,month,check_id,tl_email,tl_name,reason,status)
-       VALUES ($1,$2,$3,$4,$5,$6,'pending')`,
-      [id, month||'', check_id, u.email, u.name||u.email, reason]
+      `INSERT INTO okk_appeals (id,month,check_id,tl_email,tl_name,reason,status,desired_score)
+       VALUES ($1,$2,$3,$4,$5,$6,'pending',$7)`,
+      [id, month||'', check_id, u.email, u.name||u.email, reason, desiredScore]
     );
     await pool.query("UPDATE okk_checks SET status='appeal' WHERE id=$1", [check_id]);
     res.json({ok:true, id});
@@ -847,7 +868,18 @@ app.patch('/api/okk-appeal/:id', requireAuth, async (req, res) => {
     const {rows} = await pool.query('SELECT check_id FROM okk_appeals WHERE id=$1', [req.params.id]);
     if (rows.length) {
       const newStatus = status==='approved' ? 'appeal_approved' : 'done';
-      await pool.query('UPDATE okk_checks SET status=$1 WHERE id=$2', [newStatus, rows[0].check_id]);
+      if (status === 'approved') {
+        // Если ТЛ указал желаемый балл — применяем его
+        const {rows: aRows} = await pool.query('SELECT desired_score FROM okk_appeals WHERE id=$1', [req.params.id]);
+        const desiredScore = aRows[0]?.desired_score;
+        if (desiredScore !== null && desiredScore !== undefined) {
+          await pool.query('UPDATE okk_checks SET status=$1, appeal_score=$2 WHERE id=$3', [newStatus, desiredScore, rows[0].check_id]);
+        } else {
+          await pool.query('UPDATE okk_checks SET status=$1 WHERE id=$2', [newStatus, rows[0].check_id]);
+        }
+      } else {
+        await pool.query('UPDATE okk_checks SET status=$1 WHERE id=$2', [newStatus, rows[0].check_id]);
+      }
     }
     res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
