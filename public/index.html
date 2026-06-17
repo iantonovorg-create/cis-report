@@ -647,6 +647,7 @@ function applyRoleRestrictions(role){
     document.querySelectorAll('.tab').forEach(t=>{if(!t.textContent.includes('Опер')&&t.id!=='okkTab')t.style.display='none';});
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
     document.getElementById('p-ops')?.classList.add('on');
+    const okkTops=document.getElementById('okkTab'); if(okkTops) okkTops.style.display='';
     document.getElementById('hdrStats')?.style&&(document.getElementById('hdrStats').style.display='none');
     setTimeout(opsRender,100);
     return;
