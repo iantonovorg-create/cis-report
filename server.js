@@ -748,7 +748,9 @@ app.get('/api/okk-checks', requireAuth, async (req, res) => {
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
-app.post('/api/okk-check', requireAuth, requireOkkOrAdmin, async (req, res) => {
+app.post('/api/okk-check', requireAuth, async (req, res) => {
+  const _r = req.session?.user?.role;
+  if (!['admin','okk_editor','ops_editor'].includes(_r)) return res.status(403).json({error:'Forbidden'});
   try {
     const u = req.session.user;
     const {id, month, type, employee, check_date, ticket, blocks, score, max_score, red_flag, comment, status} = req.body;
@@ -772,14 +774,18 @@ app.post('/api/okk-check', requireAuth, requireOkkOrAdmin, async (req, res) => {
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
-app.delete('/api/okk-check/:id', requireAuth, requireOkkOrAdmin, async (req, res) => {
+app.delete('/api/okk-check/:id', requireAuth, async (req, res) => {
+  const _r2 = req.session?.user?.role;
+  if (!['admin','okk_editor','ops_editor'].includes(_r2)) return res.status(403).json({error:'Forbidden'});
   try {
     await pool.query('UPDATE okk_checks SET deleted_at=NOW() WHERE id=$1', [req.params.id]);
     res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
-app.post('/api/okk-check/:id/restore', requireAuth, requireOkkOrAdmin, async (req, res) => {
+app.post('/api/okk-check/:id/restore', requireAuth, async (req, res) => {
+  const _r3 = req.session?.user?.role;
+  if (!['admin','okk_editor','ops_editor'].includes(_r3)) return res.status(403).json({error:'Forbidden'});
   try {
     await pool.query('UPDATE okk_checks SET deleted_at=NULL WHERE id=$1', [req.params.id]);
     res.json({ok:true});
@@ -827,7 +833,9 @@ app.post('/api/okk-appeal', requireAuth, async (req, res) => {
 });
 
 // Одобрить/отклонить — ТОЛЬКО okk_editor и admin
-app.patch('/api/okk-appeal/:id', requireAuth, requireOkkOrAdmin, async (req, res) => {
+app.patch('/api/okk-appeal/:id', requireAuth, async (req, res) => {
+  const _ra = req.session?.user?.role;
+  if (!['admin','okk_editor','ops_editor'].includes(_ra)) return res.status(403).json({error:'Forbidden'});
   try {
     const u = req.session.user;
     const {status, okk_comment} = req.body;
