@@ -3992,8 +3992,8 @@ function okkRender() {
   var el = document.getElementById('okkContent');
   if (!el) return;
   var role = window._userRole || 'viewer';
-  var canEdit = (role === 'admin' || role === 'okk_editor');
-  var canApprove = (role === 'admin' || role === 'okk_editor');
+  var canEdit = (role === 'admin' || role === 'okk_editor' || role === 'ops_editor');
+  var canApprove = (role === 'admin' || role === 'okk_editor' || role === 'ops_editor');
   var canAppeal = (role === 'admin' || role === 'editor');
   var isAdmin = role === 'admin';
   var pendCount = OKK_APPEALS.filter(function(a){return a.status==='pending';}).length;
