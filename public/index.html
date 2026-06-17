@@ -3405,7 +3405,7 @@ function refreshRoleSelect() {
   const sel = document.getElementById('u_role');
   if (!sel) return;
   // Remove old custom options
-  Array.from(sel.options).forEach(o => { if (!['viewer','editor','reviews_editor','ops_editor'].includes(o.value)) o.remove(); });
+  Array.from(sel.options).forEach(o => { if (!['viewer','editor','reviews_editor','ops_editor','okk_editor'].includes(o.value)) o.remove(); });
   // Add current custom roles
   (DB.customRoles||[]).forEach(r => {
     const opt = document.createElement('option');
@@ -3536,6 +3536,7 @@ const ALL_TABS = [
   {id:'ops', label:'Опер. показатели'},
   {id:'reviews', label:'Отзывы'},
   {id:'payroll', label:'ЗП Ведомость'},
+  {id:'okk', label:'ОКК'},
 ];
 
 function renderCustomRolesList() {
