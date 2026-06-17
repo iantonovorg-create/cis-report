@@ -3364,6 +3364,7 @@ async function headCsRender() {
             <option value="editor">editor — редактирование всего</option>
             <option value="reviews_editor">reviews_editor — только отзывы</option>
             <option value="ops_editor">ops_editor — только опер. показатели</option>
+            <option value="okk_editor">okk_editor — только ОКК (проверки + апелляции)</option>
           </select>
         </div>
       </div>
@@ -3381,6 +3382,7 @@ const ROLE_LABELS = {
   'viewer': '👁 Viewer',
   'reviews_editor': '⭐ Отзывы',
   'ops_editor': '📊 Опер. данные',
+  'okk_editor': '🔍 ОКК',
 };
 const ROLE_COLORS = {
   'admin': 'var(--gold)',
@@ -3388,6 +3390,7 @@ const ROLE_COLORS = {
   'viewer': 'var(--dim)',
   'reviews_editor': 'var(--purple)',
   'ops_editor': 'var(--sage)',
+  'okk_editor': 'var(--purple)',
 };
 
 let _usersList = [];
@@ -3440,6 +3443,7 @@ function renderUsersList() {
         <option value="editor" ${u.role==='editor'?'selected':''}>editor</option>
         <option value="reviews_editor" ${u.role==='reviews_editor'?'selected':''}>reviews_editor</option>
         <option value="ops_editor" ${u.role==='ops_editor'?'selected':''}>ops_editor</option>
+        <option value="okk_editor" ${u.role==='okk_editor'?'selected':''}>okk_editor</option>
         ${(DB.customRoles||[]).map(r=>`<option value="${r.name}" ${u.role===r.name?'selected':''}>${r.name}</option>`).join('')}
         ${isAdmin?'<option value="admin" selected>admin</option>':''}
       </select>
