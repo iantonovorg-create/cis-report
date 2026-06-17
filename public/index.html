@@ -932,7 +932,7 @@ function showTab(name,btn){
   if(name==='ops') opsRender();
   if(name==='headcs') headCsRender();
 }
-function switchMonth(m){curMonth=m;try{localStorage.setItem('cis_last_month',m);}catch(e){}renderAll();loadTasks();loadReviews();kmFilter='cur';renderKM();opsStore={1:{},2:{},3:{},4:{}};opsCurWeek=0;opsPeriod='';HC_TASKS=[];OKK_CHECKS=[];OKK_APPEALS=[];if(typeof okkLoad==='function'&&document.getElementById('p-okk')?.classList.contains('on'))okkLoad();}
+function switchMonth(m){curMonth=m;try{localStorage.setItem('cis_last_month',m);}catch(e){}renderAll();loadTasks();loadReviews();kmFilter='cur';renderKM();opsStore={1:{},2:{},3:{},4:{}};opsCurWeek=0;opsPeriod='';HC_TASKS=[];OKK_CHECKS=[];OKK_APPEALS=[];OKK_EMPLOYEES=[];if(typeof okkLoad==='function'&&document.getElementById('p-okk')?.classList.contains('on'))okkLoad();}
 function parseKD(s){const m=s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
 function renderKM(){const q=(document.getElementById('kmQ')?.value||'').toLowerCase().trim();const rows=DB.meetings.filter(r=>{if(q&&!(r.name||'').toLowerCase().includes(q))return false;if(kmFilter==='cur')return r.month===curMonth;if(kmFilter==='all')return true;const dt=parseKD(r.date||'');if(!dt)return false;if(kmFilter==='2025')return dt.getFullYear()===2025;if(kmFilter==='2026')return dt.getFullYear()===2026;return true;});document.getElementById('kmBody').innerHTML=rows.map(r=>{const dc=r.dyn==='Улучшение'?'du':r.dyn==='Спад'?'dd':r.dyn?'df':'';return`<tr><td style="font-weight:600;white-space:nowrap">${r.name||'—'}</td><td style="white-space:nowrap">${r.date||'—'}</td><td>${r.topic||'—'}</td><td>${r.tasks||'—'}</td><td style="white-space:nowrap">${r.next||'—'}</td><td class="${dc}">${r.dyn||'—'}</td><td style="white-space:nowrap">${r.tl||'—'}</td><td style="white-space:nowrap"><button class="kbt e" onclick="openEditKM('${r.id}')">✎</button><button class="kbt d" onclick="delKM('${r.id}')">✕</button></td></tr>`;}).join('');}
 function kp(p,btn){kmFilter=p;btn.closest('.km-ctrl').querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderKM();}
@@ -3789,6 +3789,7 @@ async function deleteCustomRole(name) {
 // ════════════════════════════════════════════════════════════════
 var OKK_CHECKS = [];
 var OKK_APPEALS = [];
+var OKK_EMPLOYEES = []; // сотрудники КРМ/ТХП и КМ для dropdown
 var _okkTab = 'summary';
 var _okkEditId = null;
 var _okkType = 'krm';
@@ -3971,10 +3972,12 @@ async function okkLoad() {
   try {
     var results = await Promise.all([
       api('GET', '/api/okk-checks?month='+encodeURIComponent(curMonth)),
-      api('GET', '/api/okk-appeals?month='+encodeURIComponent(curMonth)).catch(function(){return [];})
+      api('GET', '/api/okk-appeals?month='+encodeURIComponent(curMonth)).catch(function(){return [];}),
+      api('GET', '/api/okk-employees?month='+encodeURIComponent(curMonth)).catch(function(){return [];})
     ]);
     OKK_CHECKS = Array.isArray(results[0]) ? results[0] : [];
     OKK_APPEALS = Array.isArray(results[1]) ? results[1] : [];
+    OKK_EMPLOYEES = Array.isArray(results[2]) ? results[2] : [];
   } catch(e) { OKK_CHECKS=[]; OKK_APPEALS=[]; }
   okkRender();
 }
@@ -4007,7 +4010,8 @@ function okkRender() {
     ['summary','Сводка'],['krm','КРМ'],['km','КМ'],['thp','ТХП'],
     ['case','Просмотр кейса'],['appeals','Апелляции'+(pendCount?' ('+pendCount+')':'')]
   ];
-  if (canEdit || isAdmin) tabs.push(['trash','\uD83D\uDDD1 Корзина']);
+  if (canEdit || isAdmin) tabs.push(['staff','По сотрудникам']);
+  tabs.push(['trash','\uD83D\uDDD1 Корзина']);
 
   var tabsHtml = '<div class="okk-ntabs">';
   tabs.forEach(function(t) {
@@ -4027,6 +4031,7 @@ function okkRender() {
   else if (_okkTab==='krm'||_okkTab==='km'||_okkTab==='thp') okkRenderCheckList(_okkTab, canEdit, sub);
   else if (_okkTab==='case') sub.innerHTML = okkRenderCase(canAppeal);
   else if (_okkTab==='appeals') sub.innerHTML = okkRenderAppeals(canApprove, isAdmin);
+  else if (_okkTab==='staff') sub.innerHTML = okkRenderStaff();
   else if (_okkTab==='trash') { sub.innerHTML = okkRenderTrashShell(isAdmin); setTimeout(okkLoadTrash, 50); }
 }
 
@@ -4038,7 +4043,7 @@ function okkRenderSummary() {
   var thp = done.filter(function(c){return c.type==='thp';});
   function avg(arr) {
     if (!arr.length) return 0;
-    return Math.round(arr.reduce(function(s,c){return s+(c.red_flag?0:c.max_score>0?c.score/c.max_score*100:0);},0)/arr.length);
+    return Math.round(arr.reduce(function(s,c){var ep=(c.appeal_score!==null&&c.appeal_score!==undefined)?c.appeal_score:(c.max_score>0?Math.round(c.score/c.max_score*100):0);return s+(c.red_flag?0:ep);},0)/arr.length);
   }
   var rf = done.filter(function(c){return c.red_flag;}).length;
   var pend = OKK_APPEALS.filter(function(a){return a.status==='pending';}).length;
@@ -4053,7 +4058,8 @@ function okkRenderSummary() {
   }
 
   var rows = done.slice(0,10).map(function(c) {
-    var pct = c.red_flag ? 0 : (c.max_score>0?Math.round(c.score/c.max_score*100):0);
+    var effectiveScore = (c.appeal_score!==null&&c.appeal_score!==undefined) ? c.appeal_score : (c.max_score>0?Math.round(c.score/c.max_score*100):0);
+    var pct = c.red_flag ? 0 : effectiveScore;
     var sc = pct>=80?'hi':pct>=60?'mid':'lo';
     var st = {draft:'draft',appeal:'appl',appeal_approved:'ok',done:'ok',completed:'ok'}[c.status]||'ok';
     var stL = {draft:'Черновик',appeal:'Апелляция',appeal_approved:'Апел. одобрена',done:'Завершена',completed:'Завершена'}[c.status]||'Завершена';
@@ -4149,7 +4155,7 @@ function okkBuildForm(type) {
   var exBlocks = existing && existing.blocks ? existing.blocks : [];
 
   var hdrForm = '<div class="okk-hdr-form">'
-    +'<div class="okk-hf"><label>Сотрудник</label><input id="okk_employee" value="'+(existing?existing.employee:'')+'" placeholder="ФИО сотрудника"></div>'
+    +'<div class="okk-hf"><label>Сотрудник</label>'+'<div style="position:relative">'+'<input id="okk_employee" value="'+(existing?existing.employee:'')+'" placeholder="Начни вводить имя..." autocomplete="off" oninput="okkFilterEmps(this)" onfocus="okkShowEmps()" onblur="setTimeout(okkHideEmps,200)">'+'<div id="okk_emp_dd" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg3);border:1px solid var(--border2);border-top:none;border-radius:0 0 3px 3px;max-height:130px;overflow-y:auto;z-index:10">'+'</div></div></div>'
     +'<div class="okk-hf"><label>Дата проверки</label><input id="okk_date" type="date" value="'+(existing?existing.check_date:new Date().toISOString().slice(0,10))+'"></div>'
     +'<div class="okk-hf"><label>Ссылка на тикет</label><input id="okk_ticket" value="'+(existing?existing.ticket||'':'')+'" placeholder="https://kodland.omnidesk.ru/..."></div>'
     +'<input type="hidden" id="okk_type" value="'+type+'"></div>';
@@ -4351,6 +4357,123 @@ function okkEditCheck(id) {
 
 function okkCancelForm() { _okkEditId=null; _okkCheckedItems={}; _okkShowForm=false; okkRender(); }
 
+function okkShowEmps() {
+  var dd = document.getElementById('okk_emp_dd');
+  if (!dd) return;
+  var inp = document.getElementById('okk_employee');
+  var val = inp ? inp.value.toLowerCase() : '';
+  okkRenderEmpDD(val);
+  dd.style.display = '';
+}
+function okkHideEmps() {
+  var dd = document.getElementById('okk_emp_dd');
+  if (dd) dd.style.display = 'none';
+}
+function okkPickEmp(name) {
+  var inp = document.getElementById('okk_employee');
+  if (inp) inp.value = name;
+  okkHideEmps();
+}
+function okkFilterEmps(inp) {
+  var val = (inp.value||'').toLowerCase();
+  okkRenderEmpDD(val);
+  var dd = document.getElementById('okk_emp_dd');
+  if (dd) dd.style.display = '';
+}
+function okkRenderEmpDD(filter) {
+  var dd = document.getElementById('okk_emp_dd');
+  if (!dd) return;
+  // Только КРМ/ТХП и КМ, без OPS/HEAD/TL
+  var list = OKK_EMPLOYEES.filter(function(e) {
+    return !filter || e.name.toLowerCase().includes(filter);
+  });
+  if (!list.length) { dd.innerHTML = '<div style="padding:8px 10px;font-size:11px;color:var(--muted)">Не найдено</div>'; return; }
+  dd.innerHTML = list.map(function(e) {
+    var btn = document.createElement('div');
+    btn.style.cssText = 'padding:6px 10px;font-size:12px;color:var(--dim);cursor:pointer';
+    btn.setAttribute('onmouseover', "this.style.background='rgba(168,122,200,.08)';this.style.color='var(--text)'");
+    btn.setAttribute('onmouseout', "this.style.background='';this.style.color='var(--dim)'");
+    btn.setAttribute('data-name', e.name);
+    btn.setAttribute('onclick', "okkPickEmp(this.dataset.name)");
+    btn.innerHTML = e.name + '<span style="font-size:10px;color:var(--muted);margin-left:6px">' + (e.block||'') + '</span>';
+    return btn.outerHTML;
+  }).join('');
+}
+
+// ── По сотрудникам ───────────────────────────────────────────────
+function okkRenderStaff() {
+  var done = OKK_CHECKS.filter(function(c){return !c.deleted_at;});
+  var krm = done.filter(function(c){return c.type==='krm';});
+  var km  = done.filter(function(c){return c.type==='km';});
+  var thp = done.filter(function(c){return c.type==='thp';});
+
+  function effectivePct(c) {
+    if (c.red_flag) return 0;
+    if (c.appeal_score !== null && c.appeal_score !== undefined) return c.appeal_score;
+    return c.max_score>0 ? Math.round(c.score/c.max_score*100) : 0;
+  }
+  function wasAppealed(c) { return c.appeal_score !== null && c.appeal_score !== undefined; }
+
+  function buildBars(checks) {
+    if (!checks.length) return '<div style="font-size:11px;color:var(--muted);padding:8px 0">Проверок нет</div>';
+    // Group by name
+    var staff = {};
+    checks.forEach(function(c){
+      if (!staff[c.employee]) staff[c.employee] = [];
+      staff[c.employee].push(c);
+    });
+    var html = '';
+    Object.keys(staff).sort().forEach(function(name){
+      var checks_ = staff[name];
+      var avg = Math.round(checks_.reduce(function(s,c){return s+effectivePct(c);},0)/checks_.length);
+      var appealed = checks_.some(wasAppealed);
+      var color = avg>=85?'rgba(122,200,144,.65)':avg>=70?'rgba(200,168,122,.65)':'rgba(200,122,122,.65)';
+      var valColor = avg>=85?'var(--green)':avg>=70?'var(--warn)':'var(--red)';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'
+        +'<div style="font-size:11px;color:var(--dim);width:150px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+name+'</div>'
+        +'<div style="flex:1;background:var(--bg4);border-radius:2px;height:18px;overflow:hidden">'
+        +'<div style="height:100%;width:'+avg+'%;background:'+color+';display:flex;align-items:center;padding:0 7px;font-size:10px;font-weight:700;color:#fff">'+avg+'%</div></div>'
+        +'<div style="font-size:11px;color:'+valColor+';width:36px;text-align:right">'+avg+'%</div>'
+        +'<div style="font-size:10px;color:var(--muted);width:55px;text-align:right">'+checks_.length+' пров.</div>'
+        +'</div>'
+        +(appealed?'<div style="font-size:10px;color:var(--purple);font-style:italic;padding-left:158px;margin-bottom:4px">↑ пересмотрен после апелляции</div>':'');
+    });
+    return html;
+  }
+
+  function groupAvg(checks) {
+    if (!checks.length) return null;
+    return Math.round(checks.reduce(function(s,c){return s+effectivePct(c);},0)/checks.length);
+  }
+
+  function avgBlock(label, checks, color) {
+    var avg = groupAvg(checks);
+    var dispAvg = avg !== null ? avg+'%' : '—';
+    var valColor = avg===null?'var(--muted)':avg>=85?'var(--green)':avg>=70?'var(--warn)':'var(--red)';
+    return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:12px;margin-bottom:12px">'
+      +'<div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">'+label+'</div>'
+      +buildBars(checks)
+      +'<div style="padding:7px 10px;border-radius:2px;font-size:10px;margin-top:8px;display:flex;align-items:center;justify-content:space-between;background:'+color+'.07);border:1px solid '+color+'.2)">'
+      +'<span style="color:'+color+'1)">Средний '+label.split(' — ')[0]+'</span>'
+      +'<span style="font-size:16px;font-weight:700;font-family:monospace;color:'+valColor+'">'+dispAvg+'</span></div>'
+      +'</div>';
+  }
+
+  var belowCount = done.filter(function(c){return !c.red_flag && effectivePct(c)<85;}).length;
+  var appealedCount = done.filter(function(c){return c.appeal_score!==null&&c.appeal_score!==undefined;}).length;
+
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:16px">'
+    +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:10px 12px"><span style="font-size:18px;font-weight:700;font-family:monospace;color:var(--purple);display:block">'+done.length+'</span><span style="font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Всего проверок</span></div>'
+    +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:10px 12px"><span style="font-size:18px;font-weight:700;font-family:monospace;color:var(--red);display:block">'+belowCount+'</span><span style="font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Ниже порога 85%</span></div>'
+    +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:10px 12px"><span style="font-size:18px;font-weight:700;font-family:monospace;color:var(--purple);display:block">'+appealedCount+'</span><span style="font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:2px">Апелляций одобрено</span></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    +avgBlock('КРМ — по сотрудникам', krm, 'rgba(200,122,122,')
+    +avgBlock('КМ — по сотрудникам', km, 'rgba(168,122,200,')
+    +avgBlock('ТХП — по сотрудникам', thp, 'rgba(200,168,122,')
+    +'</div>';
+}
+
 async function okkSaveCheck(status) {
   var employee=(document.getElementById('okk_employee')?.value||'').trim();
   var check_date=document.getElementById('okk_date')?.value||'';
@@ -4458,7 +4581,7 @@ function okkRenderCase(canAppeal) {
   if(canSubmit){
     appealSection+='<div style="margin-top:8px">'
       +'<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Подать апелляцию</div>'
-      +'<textarea class="okk-ta" id="okk_appeal_reason" placeholder="Опиши причину апелляции..."></textarea>'
+      +'<textarea class="okk-ta" id="okk_appeal_reason" placeholder="Опиши причину апелляции..."></textarea>'+'<div style="display:flex;align-items:center;gap:10px;margin-top:8px">'+'<span style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Желаемый балл после пересмотра (%)</span>'+'<input type="number" id="okk_appeal_desired" min="0" max="100" placeholder="—" style="width:64px;background:var(--bg4);border:1px solid var(--border2);color:var(--purple);padding:4px 8px;font-family:monospace;font-size:13px;border-radius:2px;outline:none">'+'</div>'
       +'<div class="okk-act" style="margin-top:6px">'
       +'<button class="okk-btn okk-btn-p" onclick="okkSubmitAppeal(\''+c.id+'\')">↩ Подать апелляцию</button>'
       +'</div></div>';
@@ -4481,7 +4604,7 @@ function okkRenderCase(canAppeal) {
     +'<div class="sec-lbl">'+c.employee+' · <span class="okk-tag '+c.type+'" style="font-size:11px">'+c.type.toUpperCase()+'</span></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">'
     +'<div class="okk-chip"><span class="n" style="font-size:18px">'+pct+'%</span><span class="l">Балл</span></div>'
-    +'<div class="okk-chip purple"><span class="n" style="font-size:18px">'+(c.red_flag?'0':c.score)+'/'+c.max_score+'</span><span class="l">Набрано / макс</span></div>'
+    +(c.appeal_score!==null&&c.appeal_score!==undefined?'<div class="okk-chip purple"><span class="n" style="font-size:18px">'+c.appeal_score+'%</span><span class="l">После апелляции</span></div>':'<div class="okk-chip purple"><span class="n" style="font-size:18px">'+(c.red_flag?'0':c.score)+'/'+c.max_score+'</span><span class="l">Набрано / макс</span></div>')
     +'<div class="okk-chip '+(c.red_flag?'bad':'')+'"><span class="n" style="font-size:18px;color:'+(c.red_flag?'var(--red)':'var(--green)')+'">'+
     (c.red_flag?'\uD83D\uDEA9 Да':'Нет')+'</span><span class="l">Красный флаг</span></div></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
@@ -4510,7 +4633,8 @@ function okkRenderAppeals(canApprove, isAdmin) {
       var rejBtn=document.createElement('button'); rejBtn.className='okk-btn okk-btn-r';
       rejBtn.setAttribute('data-aid',a.id); rejBtn.setAttribute('onclick',"okkResolveAppeal(this.dataset.aid,'rejected')"); rejBtn.textContent='Отклонить';
       var appBtn=document.createElement('button'); appBtn.className='okk-btn okk-btn-g';
-      appBtn.setAttribute('data-aid',a.id); appBtn.setAttribute('onclick',"okkResolveAppeal(this.dataset.aid,'approved')"); appBtn.textContent='Одобрить';
+      appBtn.setAttribute('data-aid',a.id); appBtn.setAttribute('onclick',"okkResolveAppeal(this.dataset.aid,'approved')");
+      appBtn.textContent = a.desired_score ? 'Одобрить и применить '+a.desired_score+'%' : 'Одобрить';
       resHtml='<div><div style="font-size:9px;color:var(--muted);margin-bottom:4px">Комментарий ОКК</div>'
         +'<textarea class="okk-ta" id="'+taId+'" placeholder="Комментарий к решению..."></textarea></div>'
         +'<div class="okk-act" style="margin-top:6px">'+rejBtn.outerHTML+appBtn.outerHTML+'</div>';
@@ -4524,7 +4648,7 @@ function okkRenderAppeals(canApprove, isAdmin) {
       +'<div class="okk-appeal-meta">'+(c?'<span class="okk-tag '+c.type+'">'+c.type.toUpperCase()+'</span> · '+c.check_date+' · '+(c.ticket||'—')+' · Балл: <span style="color:var(--warn)">'+pct+'%</span>':'—')+'</div>'
       +'</div><span class="okk-bdg '+(a.status==='pending'?'pend':a.status==='approved'?'ok':'fail')+'">'
       +(a.status==='pending'?'Ожидает':a.status==='approved'?'Одобрена':'Отклонена')+'</span></div>'
-      +'<div class="okk-appeal-body">'+a.reason+'</div>'+resHtml+'</div>';
+      +(a.desired_score?'<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(168,122,200,.06);border:1px solid rgba(168,122,200,.2);border-radius:2px;margin:7px 0">'+'<span style="font-size:10px;color:var(--purple);flex:1">Желаемый балл после пересмотра (указан ТЛ)</span>'+'<span style="font-size:14px;font-weight:700;font-family:monospace;color:var(--purple)">'+a.desired_score+'%</span></div>':'')+'<div class="okk-appeal-body">'+a.reason+'</div>'+resHtml+'</div>';
   }
 
   var closedRows=closed.map(function(a){
@@ -4599,7 +4723,8 @@ async function okkDeleteAppeal(id){
 async function okkSubmitAppeal(checkId){
   var reason=(document.getElementById('okk_appeal_reason')?.value||'').trim();
   if(!reason){toast('Введи причину апелляции');return;}
-  try{await api('POST','/api/okk-appeal',{month:curMonth,check_id:checkId,reason:reason});await okkLoad();toast('Апелляция подана \u2713');}catch(e){toast('Ошибка');}
+  try{var desired=parseInt(document.getElementById('okk_appeal_desired')?.value)||null;
+  await api('POST','/api/okk-appeal',{month:curMonth,check_id:checkId,reason:reason,desired_score:desired});await okkLoad();toast('Апелляция подана \u2713');}catch(e){toast('Ошибка');}
 }
 
 async function okkResolveAppeal(id,status){
