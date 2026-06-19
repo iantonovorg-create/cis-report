@@ -730,13 +730,13 @@ app.post('/api/ops', requireAuth, requireOpsEditor, async (req, res) => {
 // ── ОКК: Чек-листы ───────────────────────────────────────────────────────────
 app.get('/api/okk-checks', requireAuth, async (req, res) => {
   const role = req.session?.user?.role;
-  if (!['admin','okk_editor','editor'].includes(role)) return res.status(403).json({error:'Forbidden'});
+  if (!['admin','okk_editor','editor','ops_editor'].includes(role)) return res.status(403).json({error:'Forbidden'});
   try {
     const month = req.query.month || '';
     const trash = req.query.trash === '1';
     let rows;
     if (trash) {
-      if (!['admin','okk_editor'].includes(role)) return res.status(403).json({error:'Forbidden'});
+      if (!['admin','okk_editor','ops_editor'].includes(role)) return res.status(403).json({error:'Forbidden'});
       ({rows} = await pool.query(
         'SELECT * FROM okk_checks WHERE month=$1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC',
         [month]
@@ -823,7 +823,7 @@ app.get('/api/okk-employees', requireAuth, async (req, res) => {
 // ── ОКК: Апелляции ───────────────────────────────────────────────────────────
 app.get('/api/okk-appeals', requireAuth, async (req, res) => {
   const role = req.session?.user?.role;
-  if (!['admin','okk_editor','editor'].includes(role)) return res.status(403).json({error:'Forbidden'});
+  if (!['admin','okk_editor','editor','ops_editor'].includes(role)) return res.status(403).json({error:'Forbidden'});
   try {
     const month = req.query.month || '';
     const {rows} = await pool.query(
