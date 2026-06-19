@@ -4058,7 +4058,8 @@ function okkRenderSummary() {
   }
 
   var rows = done.slice(0,10).map(function(c) {
-    var effectiveScore = (c.appeal_score!==null&&c.appeal_score!==undefined) ? c.appeal_score : (c.max_score>0?Math.round(c.score/c.max_score*100):0);
+    var origPct = c.max_score>0?Math.round(c.score/c.max_score*100):0;
+    var effectiveScore = (c.appeal_score!==null&&c.appeal_score!==undefined) ? c.appeal_score : origPct;
     var pct = c.red_flag ? 0 : effectiveScore;
     var sc = pct>=80?'hi':pct>=60?'mid':'lo';
     var st = {draft:'draft',appeal:'appl',appeal_approved:'ok',done:'ok',completed:'ok'}[c.status]||'ok';
