@@ -4011,7 +4011,8 @@ function okkRender() {
     ['case','Просмотр кейса'],['appeals','Апелляции'+(pendCount?' ('+pendCount+')':'')]
   ];
   if (canEdit || isAdmin) tabs.push(['staff','По сотрудникам']);
-  tabs.push(['trash','\uD83D\uDDD1 Корзина']);
+  tabs.push(['guide','Чек-лист']);
+  if (canEdit || isAdmin) tabs.push(['trash','\uD83D\uDDD1 Корзина']);
 
   var tabsHtml = '<div class="okk-ntabs">';
   tabs.forEach(function(t) {
@@ -4032,6 +4033,7 @@ function okkRender() {
   else if (_okkTab==='case') sub.innerHTML = okkRenderCase(canAppeal);
   else if (_okkTab==='appeals') sub.innerHTML = okkRenderAppeals(canApprove, isAdmin);
   else if (_okkTab==='staff') sub.innerHTML = okkRenderStaff();
+  else if (_okkTab==='guide') sub.innerHTML = okkRenderGuide();
   else if (_okkTab==='trash') { sub.innerHTML = okkRenderTrashShell(isAdmin); setTimeout(okkLoadTrash, 50); }
 }
 
@@ -4691,6 +4693,77 @@ function okkRenderAppeals(canApprove, isAdmin) {
 }
 
 // ── Корзина ──────────────────────────────────────────────────────
+// ── Чек-лист (справочно, без заполнения) ──────────────────────────
+var _okkGuideType = 'krm';
+function okkGuideShowType(type, btn) {
+  _okkGuideType = type;
+  var sub = document.getElementById('okkSubContent');
+  if (sub) sub.innerHTML = okkRenderGuide();
+}
+function okkRenderGuide() {
+  var type = _okkGuideType;
+  var cl = OKK_CL[type];
+  var typeBtns = ['krm','km','thp'].map(function(t) {
+    var b = document.createElement('button');
+    b.className = 'okk-btn' + (t===type?' okk-btn-p':' okk-btn-m');
+    b.setAttribute('data-t', t);
+    b.setAttribute('onclick', "okkGuideShowType(this.dataset.t,this)");
+    b.textContent = t.toUpperCase();
+    return b.outerHTML;
+  }).join(' ');
+
+  var blocksHtml = '';
+  var mainBlocks = cl.subs || cl.blocks || [];
+  mainBlocks.forEach(function(blk, bi) {
+    var itemsHtml = '';
+    if (blk.subs) {
+      blk.subs.forEach(function(sub) {
+        itemsHtml += '<div class="okk-sub-hdr"><span class="okk-sub-title">'+sub.title+'</span>'
+          +'<span class="okk-sub-sc">макс. '+sub.max+' б.</span></div>';
+        sub.items.forEach(function(item) {
+          itemsHtml += '<div class="okk-item" style="grid-template-columns:1fr 70px">'
+            +'<div><div class="okk-item-lbl">'+item.label+'</div><div class="okk-item-hint">'+item.hint+'</div></div>'
+            +'<div class="okk-item-max" style="text-align:right">'+item.opts.join(' / ')+' б.</div></div>';
+        });
+      });
+    } else if (blk.items) {
+      blk.items.forEach(function(item) {
+        itemsHtml += '<div class="okk-item" style="grid-template-columns:1fr 70px">'
+          +'<div><div class="okk-item-lbl">'+item.label+'</div><div class="okk-item-hint">'+item.hint+'</div></div>'
+          +'<div class="okk-item-max" style="text-align:right">'+item.opts.join(' / ')+' б.</div></div>';
+      });
+    }
+    blocksHtml += '<div class="okk-blk">'
+      +'<div class="okk-blk-hdr"><div class="okk-blk-left"><span class="okk-blk-num">'+(bi+1)+'</span>'
+      +'<span class="okk-blk-title">'+(blk.title||'Блок '+(bi+1))+'</span>'
+      +(blk.note?'<span style="font-size:9px;color:var(--muted);margin-left:6px">'+blk.note+'</span>':'')
+      +'</div><span class="okk-blk-score">'+(blk.max?'макс. '+blk.max+' б.':'')+'</span></div>'
+      +'<div>'+itemsHtml+'</div></div>';
+  });
+
+  var penaltyHtml = '';
+  (cl.penaltyBlocks||[]).forEach(function(pblk) {
+    var pItemsHtml = (pblk.items||[]).map(function(item) {
+      return '<div class="okk-item" style="grid-template-columns:1fr 70px">'
+        +'<div><div class="okk-item-lbl">'+item.label+'</div><div class="okk-item-hint">'+item.hint+'</div></div>'
+        +'<div class="okk-item-max" style="text-align:right;color:var(--red)">'+item.opts.join(' / ')+'</div></div>';
+    }).join('');
+    penaltyHtml += '<div class="okk-blk okk-penalty">'
+      +'<div class="okk-blk-hdr"><div class="okk-blk-left"><span class="okk-blk-num">Ш</span>'
+      +'<span class="okk-blk-title">'+pblk.title+'</span></div></div>'
+      +'<div>'+pItemsHtml+'</div></div>';
+  });
+
+  var rfHtml = '<div class="okk-rf-blk"><div><div class="okk-rf-title">\uD83D\uDEA9 Красный флаг</div>'
+    +'<div class="okk-rf-desc">'+cl.rf+'</div></div>'
+    +'<div class="okk-rf-pen">-100 б., кейс аннулируется</div></div>';
+
+  return '<div style="display:flex;gap:8px;margin-bottom:16px">'+typeBtns+'</div>'
+    +'<div class="sec-lbl">'+cl.label+' — макс. '+cl.max+' баллов, порог прохождения 85%</div>'
+    +blocksHtml+penaltyHtml+rfHtml
+    +'<div style="font-size:10px;color:var(--muted);font-style:italic;margin-top:12px">Справочный материал. Заполнение проверок доступно только ОКК и Head CS.</div>';
+}
+
 function okkRenderTrashShell(isAdmin) {
   return '<div class="okk-trash-warn">\u26A0 Удалённые проверки. '
     +(isAdmin?'Удалить навсегда — только Head CS (admin).':'Восстановление доступно. Очистка — только Head CS.')+'</div>'
