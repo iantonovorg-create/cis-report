@@ -4068,7 +4068,9 @@ function okkRenderSummary() {
     openBtn.setAttribute('onclick',"okkOpenCase('"+c.id+"')"); openBtn.textContent='Открыть';
     return '<tr><td>'+c.employee+'</td><td><span class="okk-tag '+c.type+'">'+c.type.toUpperCase()+'</span></td>'
       +'<td style="white-space:nowrap">'+c.check_date+'</td><td>'+c.reviewer+'</td>'
-      +'<td><span class="okk-sc '+sc+'">'+pct+'%</span></td>'
+      +(c.appeal_score!==null&&c.appeal_score!==undefined&&!c.red_flag
+      ?'<td><div style="display:inline-flex;align-items:center;gap:4px"><span class="okk-sc '+(origPct>=80?'hi':(origPct>=60?'mid':'lo'))+'" style="text-decoration:line-through;opacity:.5">'+origPct+'%</span><span style="font-size:10px;color:var(--muted)">→</span><span class="okk-sc ap">'+pct+'%</span></div></td>'
+      :'<td><span class="okk-sc '+sc+'">'+pct+'%</span></td>')
       +'<td>'+(c.red_flag?'<span class="okk-bdg fail">\uD83D\uDEA9 Да</span>':'—')+'</td>'
       +'<td><span class="okk-bdg '+st+'">'+stL+'</span></td>'
       +'<td>'+openBtn.outerHTML+'</td></tr>';
@@ -4112,7 +4114,9 @@ function okkRenderCheckList(type, canEdit, container) {
   }
 
   var rows = checks.map(function(c) {
-    var pct = c.red_flag ? 0 : (c.max_score>0?Math.round(c.score/c.max_score*100):0);
+    var origPct = c.max_score>0?Math.round(c.score/c.max_score*100):0;
+    var effPct = c.red_flag ? 0 : (c.appeal_score!==null&&c.appeal_score!==undefined ? c.appeal_score : origPct);
+    var pct = effPct;
     var sc = pct>=80?'hi':pct>=60?'mid':'lo';
     var openBtn = document.createElement('button');
     openBtn.className='abt'; openBtn.style.cssText='padding:2px 8px;font-size:9px;margin-right:3px';
@@ -4131,8 +4135,11 @@ function okkRenderCheckList(type, canEdit, container) {
     })() : '';
     var st = {draft:'draft',appeal:'appl',appeal_approved:'ok',done:'ok',completed:'ok'}[c.status]||'ok';
     var stL = {draft:'Черновик',appeal:'Апелляция',appeal_approved:'Апел. одобрена',done:'Завершена',completed:'Завершена'}[c.status]||'Завершена';
+    var scoreCell = c.appeal_score!==null&&c.appeal_score!==undefined&&!c.red_flag
+      ?'<div style="display:inline-flex;align-items:center;gap:4px"><span class="okk-sc '+(origPct>=80?'hi':(origPct>=60?'mid':'lo'))+'" style="text-decoration:line-through;opacity:.5">'+origPct+'%</span><span style="font-size:10px;color:var(--muted)">→</span><span class="okk-sc ap">'+pct+'%</span></div>'
+      :'<span class="okk-sc '+sc+'">'+pct+'%</span>';
     return '<tr><td>'+c.employee+'</td><td style="white-space:nowrap">'+c.check_date+'</td>'
-      +'<td>'+(c.ticket||'—')+'</td><td><span class="okk-sc '+sc+'">'+pct+'%</span></td>'
+      +'<td>'+(c.ticket||'—')+'</td><td>'+scoreCell+'</td>'
       +'<td>'+(c.red_flag?'<span class="okk-bdg fail">\uD83D\uDEA9</span>':'—')+'</td>'
       +'<td><span class="okk-bdg '+st+'">'+stL+'</span></td>'
       +'<td style="white-space:nowrap">'+openBtn.outerHTML+editBtn+delBtn+'</td></tr>';
@@ -4142,7 +4149,7 @@ function okkRenderCheckList(type, canEdit, container) {
 
   container.innerHTML = addBtn + formHtml
     + (checks.length
-      ? '<table class="okk-tbl"><thead><tr><th>Сотрудник</th><th>Дата</th><th>Тикет</th><th>Балл</th><th>\uD83D\uDEA9</th><th>Статус</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+      ? '<table class="okk-tbl"><thead><tr><th>Сотрудник</th><th>Дата</th><th>Тикет</th><th>Балл</th><th>После апелл.</th><th>\uD83D\uDEA9</th><th>Статус</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
       : (canEdit?'':'<div style="padding:24px;text-align:center;color:var(--muted);font-size:11px">Проверок за этот месяц нет</div>'));
 
   if (_okkEditId || _okkShowForm) { okkRestoreFormState(); setTimeout(okkRecalcScore, 0); }
@@ -4604,7 +4611,7 @@ function okkRenderCase(canAppeal) {
     +'<div class="sec-lbl">'+c.employee+' · <span class="okk-tag '+c.type+'" style="font-size:11px">'+c.type.toUpperCase()+'</span></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">'
     +'<div class="okk-chip"><span class="n" style="font-size:18px">'+pct+'%</span><span class="l">Балл</span></div>'
-    +(c.appeal_score!==null&&c.appeal_score!==undefined?'<div class="okk-chip purple"><span class="n" style="font-size:18px">'+c.appeal_score+'%</span><span class="l">После апелляции</span></div>':'<div class="okk-chip purple"><span class="n" style="font-size:18px">'+(c.red_flag?'0':c.score)+'/'+c.max_score+'</span><span class="l">Набрано / макс</span></div>')
+    +(c.appeal_score!==null&&c.appeal_score!==undefined?'<div class="okk-chip purple"><span class="n" style="font-size:18px">'+c.appeal_score+'%</span><span class="l">После апелляции</span></div>':'<div class="okk-chip purple"><span class="n" style="font-size:18px">'+(c.red_flag?'0':(c.appeal_score!==null&&c.appeal_score!==undefined?c.appeal_score+'%':c.score+'/'+c.max_score))+'</span><span class="l">'+(c.appeal_score!==null&&c.appeal_score!==undefined?'После апелляции':'Набрано / макс')+'</span></div>')
     +'<div class="okk-chip '+(c.red_flag?'bad':'')+'"><span class="n" style="font-size:18px;color:'+(c.red_flag?'var(--red)':'var(--green)')+'">'+
     (c.red_flag?'\uD83D\uDEA9 Да':'Нет')+'</span><span class="l">Красный флаг</span></div></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
@@ -4653,10 +4660,19 @@ function okkRenderAppeals(canApprove, isAdmin) {
 
   var closedRows=closed.map(function(a){
     var c=OKK_CHECKS.find(function(x){return x.id===a.check_id;});
-    var pct=c&&c.max_score>0?Math.round(c.score/c.max_score*100):0;
+    var origPct=c&&c.max_score>0?Math.round(c.score/c.max_score*100):0;
+    var hasAppeal=c&&c.appeal_score!==null&&c.appeal_score!==undefined;
+    var pct=c&&c.red_flag?0:(hasAppeal?c.appeal_score:origPct);
+    var appealCell=hasAppeal&&a.status==='approved'
+      ?'<div style="display:inline-flex;align-items:center;gap:5px">'
+        +'<span class="okk-sc '+(origPct>=80?'hi':origPct>=60?'mid':'lo')+'" style="text-decoration:line-through;opacity:.5">'+origPct+'%</span>'
+        +'<span style="font-size:10px;color:var(--muted)">→</span>'
+        +'<span class="okk-sc ap">'+c.appeal_score+'%</span></div>'
+      :'<span style="font-size:10px;color:var(--muted)">—</span>';
     return '<tr><td>'+a.tl_name+'</td><td>'+(c?'<span class="okk-tag '+c.type+'">'+c.type.toUpperCase()+'</span>':'—')+'</td>'
       +'<td style="white-space:nowrap">'+(c?c.check_date:'—')+'</td>'
-      +'<td><span class="okk-sc '+(pct>=80?'hi':pct>=60?'mid':'lo')+'">'+pct+'%</span></td>'
+      +'<td><span class="okk-sc '+(origPct>=80?'hi':origPct>=60?'mid':'lo')+'">'+origPct+'%</span></td>'
+      +'<td>'+appealCell+'</td>'
       +'<td><span class="okk-bdg '+(a.status==='approved'?'ok':'fail')+'">'+(a.status==='approved'?'Одобрена':'Отклонена')+'</span></td>'
       +'<td style="font-size:10px;color:var(--dim)">'+(a.resolved_by||'—')+'</td>'
       +'<td style="font-size:10px;color:var(--dim);max-width:200px">'+(a.okk_comment||'—')+'</td>'
@@ -4669,7 +4685,7 @@ function okkRenderAppeals(canApprove, isAdmin) {
     :'<div style="padding:16px 0;color:var(--muted);font-size:11px">Нет апелляций на рассмотрении</div>')
     +(closed.length
       ?'<div class="sec-lbl">Закрытые апелляции</div>'
-        +'<table class="okk-tbl"><thead><tr><th>Сотрудник</th><th>Блок</th><th>Дата</th><th>Балл</th><th>Решение</th><th>Рассмотрел</th><th>Комментарий</th>'+(isAdmin?'<th></th>':'')+' </tr></thead><tbody>'+closedRows+'</tbody></table>'
+        +'<table class="okk-tbl"><thead><tr><th>Сотрудник</th><th>Блок</th><th>Дата</th><th>Балл</th><th>После апелляции</th><th>Решение</th><th>Рассмотрел</th><th>Комментарий</th>'+(isAdmin?'<th></th>':'')+' </tr></thead><tbody>'+closedRows+'</tbody></table>'
       :'');
 }
 
