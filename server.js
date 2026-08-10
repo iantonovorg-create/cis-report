@@ -16,7 +16,6 @@ const pool = new Pool({
 const INITIAL_USERS = [
   { email: 'i.antonov.org@kodland.org',       role: 'admin'  },
   { email: 'natali.evstigneeva@kodland.team', role: 'editor' },
-  { email: 't.bushmanova@kodland.team',        role: 'editor' },
   { email: 'v.nemezhanskaya@kodland.org',      role: 'viewer' },
   { email: 'k.abduganieva@kodland.team', role: 'reviews_editor' },
 ];
@@ -219,13 +218,8 @@ async function initDB() {
 
 
   console.log('DB ready');
-  // Auto-cleanup: permanently delete tasks in trash older than 30 days
-  setInterval(async () => {
-    try {
-      const res = await pool.query("DELETE FROM tasks WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'");
-      if (res.rowCount > 0) console.log(`Auto-cleanup: deleted ${res.rowCount} tasks from trash`);
-    } catch(e) { console.error('Auto-cleanup error:', e.message); }
-  }, 1000 * 60 * 60 * 24); // run every 24 hours
+  // Автоочистка корзины ОТКЛЮЧЕНА по решению админа — задачи в корзине хранятся бессрочно,
+  // удаляются только вручную (permanent delete, admin-only). Данные сами не пропадают.
 }
 
 // ── LOGIN PAGE ───────────────────────────────────────────────────────────────
