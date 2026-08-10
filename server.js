@@ -12,12 +12,11 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// Начальный список доступов
+// Начальный список доступов — ТОЛЬКО админ (гарантия, что не потеряешь доступ).
+// Остальные доступы живут в БД и управляются через панель «Доступы».
+// Никто, кроме админа, здесь не прописан — значит удалённые через UI НЕ возвращаются при рестарте.
 const INITIAL_USERS = [
-  { email: 'i.antonov.org@kodland.org',       role: 'admin'  },
-  { email: 'natali.evstigneeva@kodland.team', role: 'editor' },
-  { email: 'v.nemezhanskaya@kodland.org',      role: 'viewer' },
-  { email: 'k.abduganieva@kodland.team', role: 'reviews_editor' },
+  { email: 'i.antonov.org@kodland.org', role: 'admin' },
 ];
 
 app.use(express.json());
@@ -127,6 +126,10 @@ async function initDB() {
   extra_bonuses TEXT DEFAULT '[]',
   total NUMERIC DEFAULT 0
 )`);
+  // Латентная страховка: эти колонки уже есть в живой базе; дописываем в код,
+  // чтобы при пересоздании базы с нуля сохранение ЗП не отвалилось. IF NOT EXISTS — безопасно.
+  await pool.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS plan_days NUMERIC DEFAULT 0`).catch(()=>{});
+  await pool.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS fact_days NUMERIC DEFAULT 0`).catch(()=>{});
 
   await pool.query(`CREATE TABLE IF NOT EXISTS custom_roles (
     name TEXT PRIMARY KEY,
