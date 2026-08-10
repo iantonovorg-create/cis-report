@@ -369,14 +369,14 @@ body.viewer-mode .pr-save-btn
 
     <!-- ТАНЯ -->
     <div>
-      <div class="sec-lbl">Бушманова Татьяна — задачи</div>
+      <div class="sec-lbl" id="tasks-bush-lbl">Задачи · КРМ/ТХП</div>
       <button class="btn-add" style="margin-bottom:12px;margin-left:0" onclick="openAddTask('Таня')">+ Добавить задачу</button>
       <div id="tasks-bush"></div>
     </div>
 
     <!-- НАТАША -->
     <div>
-      <div class="sec-lbl">Евстигнеева Наталья — задачи</div>
+      <div class="sec-lbl" id="tasks-evs-lbl">Задачи · КМ</div>
       <button class="btn-add" style="margin-bottom:12px;margin-left:0" onclick="openAddTask('Наташа')">+ Добавить задачу</button>
       <div id="tasks-evs"></div>
     </div>
@@ -791,7 +791,7 @@ function ini(n){return(n||'').split(' ').slice(0,2).map(w=>w[0]||'').join('');}
 function byM(arr){return arr.filter(e=>e.month===curMonth);}
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
 
-function renderAll(){renderSel();renderStats();renderBirthdays();renderVacations();renderHead();renderTL();renderOPS();renderGrid('bush','КРМ/ТХП');renderGrid('evs','КМ');renderKM();document.getElementById('footM').textContent=curMonth;document.getElementById('footUpd').textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU');}
+function renderAll(){renderSel();renderStats();renderBirthdays();renderVacations();renderHead();renderTL();renderOPS();renderGrid('bush','КРМ/ТХП');renderGrid('evs','КМ');renderKM();refreshOpsLead();document.getElementById('footM').textContent=curMonth;document.getElementById('footUpd').textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU');}
 function renderSel(){const months=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];document.getElementById('msel').innerHTML=months.map(m=>`<option value="${m}"${m===curMonth?' selected':''}>${m}</option>`).join('');}
 function renderStats(){
   const rows=byM(DB.employees).filter(e=>!['HEAD','TL_BUSH','TL_EVS'].includes(e.block));
@@ -907,6 +907,10 @@ function renderVacations(){
 }
 
 function renderHead(){const h=byM(DB.employees).find(e=>e.block==='HEAD');if(!h){document.getElementById('headCard').innerHTML='';return;}document.getElementById('headCard').innerHTML=`<div class="head-card"><div class="ava av-gold">${ini(h.name)}</div><div class="head-info"><div class="head-name">${h.name}</div><div class="head-role">${h.role||'HEAD'}</div><div class="head-meta"><div class="hm">Вход: <b>${h.entry||'—'}</b></div><div class="hm">Стаж: <b>${tenure(h.entry)}</b></div><div class="hm">График: <b>${h.schedule||'—'}</b></div><div class="hm">Город: <b>${h.city||'—'}</b></div><div class="hm">ЧП: <b>${h.tz||'—'}</b></div><div class="hm">TG: <b>${h.tg||'—'}</b></div></div></div><button class="abt ed" onclick="openEditEmp('${h.id}','HEAD')">✎ Редактировать</button></div>`;}
+function tlNameOf(block){const e=byM(DB.employees).find(x=>x.block===block);return (e&&e.name)?e.name:'';}
+function tlNameByKey(k){return (k==='Таня')?tlNameOf('TL_BUSH'):tlNameOf('TL_EVS');}
+function tlShortByKey(k){const n=tlNameByKey(k);if(n)return n.split(' ')[0];return k==='Таня'?'Бушманова':'Евстигнеева';}
+function refreshOpsLead(){const n=tlNameOf('TL_BUSH');if(!n)return;const nm=document.getElementById('ops-bush-name');if(nm)nm.textContent=n;const av=document.getElementById('ops-bush-ava');if(av)av.textContent=ini(n);}
 const TL_LBL_PREFIX={bush:'КРМ · ТХП',evs:'КМ — клиентский опыт'};
 function renderTL(){['TL_BUSH','TL_EVS'].forEach(block=>{
   const key=block==='TL_BUSH'?'bush':'evs';
@@ -1192,7 +1196,7 @@ async function moveEmp(id, currentBlock) {
   const targets = {'КРМ/ТХП': 'КМ', 'КМ': 'КРМ/ТХП'};
   const newBlock = targets[currentBlock];
   if (!newBlock) { alert('Перенос возможен только между КРМ/ТХП и КМ'); return; }
-  const blockName = newBlock === 'КМ' ? 'Евстигнеева (КМ)' : 'Бушманова (КРМ/ТХП)';
+  const blockName = newBlock === 'КМ' ? ((tlNameOf('TL_EVS')||'Евстигнеева')+' (КМ)') : ((tlNameOf('TL_BUSH')||'Бушманова')+' (КРМ/ТХП)');
   if (!confirm(`Перенести сотрудника в блок ${blockName}?`)) return;
   const e = DB.employees.find(x => x.id === id);
   if (!e) return;
@@ -1301,6 +1305,8 @@ function renderTasks() {
   renderTasksSummary();
   renderTasksList('Таня', 'tasks-bush');
   renderTasksList('Наташа', 'tasks-evs');
+  const _tb=document.getElementById('tasks-bush-lbl'); if(_tb)_tb.textContent=(tlNameOf('TL_BUSH')||'Бушманова')+' — задачи';
+  const _te=document.getElementById('tasks-evs-lbl'); if(_te)_te.textContent=(tlNameOf('TL_EVS')||'Евстигнеева')+' — задачи';
 }
 
 function renderTasksSummary() {
@@ -1322,7 +1328,7 @@ function renderTasksSummary() {
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:18px 20px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div>
-          <div style="font-family:'Unbounded',sans-serif;font-size:13px;font-weight:600;color:var(--gold)">${d.tl === 'Таня' ? 'Бушманова Татьяна' : 'Евстигнеева Наталья'}</div>
+          <div style="font-family:'Unbounded',sans-serif;font-size:13px;font-weight:600;color:var(--gold)">${tlNameByKey(d.tl) || (d.tl === 'Таня' ? 'Бушманова Татьяна' : 'Евстигнеева Наталья')}</div>
           <div style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:3px">Team Lead</div>
         </div>
         <div style="position:relative;width:64px;height:64px">
@@ -1411,7 +1417,7 @@ function taskCard(t) {
 
 function openAddTask(tl) {
   _tId = null; _tTL = tl;
-  document.getElementById('taskTitle').textContent = 'Новая задача — ' + (tl==='Таня'?'Бушманова':'Евстигнеева');
+  document.getElementById('taskTitle').textContent = 'Новая задача — ' + tlShortByKey(tl);
   TF.forEach(k => { const el=document.getElementById('t_'+k); if(el) el.value = k==='priority'?'Средний':k==='progress'?'0':''; });
   om('taskOv');
 }
@@ -1660,7 +1666,7 @@ function renderPayrollTable() {
 
   orderedBushSubs.forEach(sub => {
     const subEmps = bushBlock.filter(e => normSub(e) === sub);
-    if (subEmps.length) sections.push({ label: subLabels[sub] || sub + ' — Блок Бушмановой', emps: subEmps });
+    if (subEmps.length) sections.push({ label: subLabels[sub] || sub + ' — Блок КРМ/ТХП', emps: subEmps });
   });
 
   // Сотрудники без определяемой подгруппы
@@ -2461,12 +2467,12 @@ function opsRenderSummary() {
     '<div style="position:relative;width:100%;height:200px"><canvas id="ops_summaryChart"></canvas></div>'+
   '</div>'+
 
-  // Бушманова итог
-  '<div class="sec-lbl" style="color:var(--sage)">Бушманова — итог</div>'+
+  // Руководитель КРМ/ТХП — итог
+  '<div class="sec-lbl" style="color:var(--sage)">'+(tlNameOf('TL_BUSH')||'Бушманова')+' — итог</div>'+
   '<div class="ops-sum-tl">'+
     '<div class="ops-sum-tl-hdr">'+
-      '<div class="ops-team-ava">ТБ</div>'+
-      '<div><div class="ops-team-name">Бушманова Татьяна Михайловна</div><div class="ops-team-role">КРМ · ТХП · ВР · Чаты</div></div>'+
+      '<div class="ops-team-ava">'+ini(tlNameOf('TL_BUSH')||'Бушманова Татьяна')+'</div>'+
+      '<div><div class="ops-team-name">'+(tlNameOf('TL_BUSH')||'Бушманова Татьяна Михайловна')+'</div><div class="ops-team-role">КРМ · ТХП · ВР · Чаты</div></div>'+
     '</div>'+
     '<div class="ops-sum-tl-body">'+
       '<div class="ops-sum-inner">'+
@@ -2839,9 +2845,9 @@ function opsHTML() {
   <!-- ══ БУШМАНОВА ══════════════════════════════════════════════════ -->
   <div class="ops-tl-block">
     <div class="ops-tl-hdr">
-      <div class="ops-team-ava">ТБ</div>
+      <div class="ops-team-ava" id="ops-bush-ava">ТБ</div>
       <div>
-        <div class="ops-team-name">Бушманова Татьяна Михайловна</div>
+        <div class="ops-team-name" id="ops-bush-name">Бушманова Татьяна Михайловна</div>
         <div class="ops-team-role">Team Lead · КРМ · ТХП · ВР · Чаты</div>
       </div>
       <div class="ops-week-badge" id="ops_wb-bush">Неделя</div>
