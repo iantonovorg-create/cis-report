@@ -4093,7 +4093,7 @@ function okkRenderSummary() {
   var thp = done.filter(function(c){return c.type==='thp';});
   function avg(arr) {
     if (!arr.length) return 0;
-    return Math.round(arr.reduce(function(s,c){var ep=(c.appeal_score!==null&&c.appeal_score!==undefined)?c.appeal_score:(c.max_score>0?Math.round(c.score/c.max_score*100):0);return s+(c.red_flag?0:ep);},0)/arr.length);
+    return Math.round(arr.reduce(function(s,c){var ep=(c.appeal_score!==null&&c.appeal_score!==undefined)?c.appeal_score:(c.red_flag?0:(c.max_score>0?Math.round(c.score/c.max_score*100):0));return s+ep;},0)/arr.length);
   }
   var rf = done.filter(function(c){return c.red_flag;}).length;
   var pend = OKK_APPEALS.filter(function(a){return a.status==='pending';}).length;
@@ -4110,7 +4110,7 @@ function okkRenderSummary() {
   var rows = done.slice(0,10).map(function(c) {
     var origPct = c.max_score>0?Math.round(c.score/c.max_score*100):0;
     var effectiveScore = (c.appeal_score!==null&&c.appeal_score!==undefined) ? c.appeal_score : origPct;
-    var pct = c.red_flag ? 0 : effectiveScore;
+    var pct = (c.appeal_score!==null&&c.appeal_score!==undefined) ? c.appeal_score : (c.red_flag ? 0 : origPct);
     var sc = pct>=80?'hi':pct>=60?'mid':'lo';
     var st = {draft:'draft',appeal:'appl',appeal_approved:'ok',done:'ok',completed:'ok'}[c.status]||'ok';
     var stL = {draft:'Черновик',appeal:'Апелляция',appeal_approved:'Апел. одобрена',done:'Завершена',completed:'Завершена'}[c.status]||'Завершена';
@@ -4119,7 +4119,7 @@ function okkRenderSummary() {
     openBtn.setAttribute('onclick',"okkOpenCase('"+c.id+"')"); openBtn.textContent='Открыть';
     return '<tr><td>'+c.employee+'</td><td><span class="okk-tag '+c.type+'">'+c.type.toUpperCase()+'</span></td>'
       +'<td style="white-space:nowrap">'+c.check_date+'</td><td>'+c.reviewer+'</td>'
-      +(c.appeal_score!==null&&c.appeal_score!==undefined&&!c.red_flag
+      +(c.appeal_score!==null&&c.appeal_score!==undefined
       ?'<td><div style="display:inline-flex;align-items:center;gap:4px"><span class="okk-sc '+(origPct>=80?'hi':(origPct>=60?'mid':'lo'))+'" style="text-decoration:line-through;opacity:.5">'+origPct+'%</span><span style="font-size:10px;color:var(--muted)">→</span><span class="okk-sc ap">'+pct+'%</span></div></td>'
       :'<td><span class="okk-sc '+sc+'">'+pct+'%</span></td>')
       +'<td>'+(c.red_flag?'<span class="okk-bdg fail">\uD83D\uDEA9 Да</span>':'—')+'</td>'
@@ -4166,7 +4166,7 @@ function okkRenderCheckList(type, canEdit, container) {
 
   var rows = checks.map(function(c) {
     var origPct = c.max_score>0?Math.round(c.score/c.max_score*100):0;
-    var effPct = c.red_flag ? 0 : (c.appeal_score!==null&&c.appeal_score!==undefined ? c.appeal_score : origPct);
+    var effPct = (c.appeal_score!==null&&c.appeal_score!==undefined) ? c.appeal_score : (c.red_flag ? 0 : origPct);
     var pct = effPct;
     var sc = pct>=80?'hi':pct>=60?'mid':'lo';
     var openBtn = document.createElement('button');
@@ -4186,7 +4186,7 @@ function okkRenderCheckList(type, canEdit, container) {
     })() : '';
     var st = {draft:'draft',appeal:'appl',appeal_approved:'ok',done:'ok',completed:'ok'}[c.status]||'ok';
     var stL = {draft:'Черновик',appeal:'Апелляция',appeal_approved:'Апел. одобрена',done:'Завершена',completed:'Завершена'}[c.status]||'Завершена';
-    var scoreCell = c.appeal_score!==null&&c.appeal_score!==undefined&&!c.red_flag
+    var scoreCell = c.appeal_score!==null&&c.appeal_score!==undefined
       ?'<div style="display:inline-flex;align-items:center;gap:4px"><span class="okk-sc '+(origPct>=80?'hi':(origPct>=60?'mid':'lo'))+'" style="text-decoration:line-through;opacity:.5">'+origPct+'%</span><span style="font-size:10px;color:var(--muted)">→</span><span class="okk-sc ap">'+pct+'%</span></div>'
       :'<span class="okk-sc '+sc+'">'+pct+'%</span>';
     return '<tr><td>'+c.employee+'</td><td style="white-space:nowrap">'+c.check_date+'</td>'
@@ -4466,8 +4466,8 @@ function okkRenderStaff() {
   var thp = done.filter(function(c){return c.type==='thp';});
 
   function effectivePct(c) {
-    if (c.red_flag) return 0;
     if (c.appeal_score !== null && c.appeal_score !== undefined) return c.appeal_score;
+    if (c.red_flag) return 0;
     return c.max_score>0 ? Math.round(c.score/c.max_score*100) : 0;
   }
   function wasAppealed(c) { return c.appeal_score !== null && c.appeal_score !== undefined; }
@@ -4725,7 +4725,7 @@ function okkRenderAppeals(canApprove, isAdmin) {
     var c=OKK_CHECKS.find(function(x){return x.id===a.check_id;});
     var origPct=c&&c.max_score>0?Math.round(c.score/c.max_score*100):0;
     var hasAppeal=c&&c.appeal_score!==null&&c.appeal_score!==undefined;
-    var pct=c&&c.red_flag?0:(hasAppeal?c.appeal_score:origPct);
+    var pct=hasAppeal?c.appeal_score:(c&&c.red_flag?0:origPct);
     var appealCell=hasAppeal&&a.status==='approved'
       ?'<div style="display:inline-flex;align-items:center;gap:5px">'
         +'<span class="okk-sc '+(origPct>=80?'hi':origPct>=60?'mid':'lo')+'" style="text-decoration:line-through;opacity:.5">'+origPct+'%</span>'
