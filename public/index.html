@@ -4621,25 +4621,30 @@ function okkRenderCase(canAppeal) {
 
   var pct=c.max_score>0?Math.round(c.score/c.max_score*100):0;
   var sc=pct>=80?'hi':pct>=60?'mid':'lo';
-  var existAppeal=OKK_APPEALS.find(function(a){return a.check_id===c.id;});
-  var canSubmit=canAppeal&&!existAppeal&&c.status!=='appeal'&&c.status!=='appeal_approved';
+  var appealsForCheck=OKK_APPEALS.filter(function(a){return a.check_id===c.id;}); // отсортированы по created_at DESC
+  var latestAppeal=appealsForCheck[0];
+  var rounds=appealsForCheck.length;
+  var canSubmit=canAppeal&&rounds<2&&(rounds===0||(latestAppeal&&latestAppeal.status==='rejected'))&&c.status!=='appeal'&&c.status!=='appeal_approved';
 
   var appealSection='';
-  if(existAppeal){
-    appealSection='<div style="background:rgba(168,122,200,.07);border:1px solid rgba(168,122,200,.2);border-radius:3px;padding:10px;margin-top:8px">'
-      +'<div style="font-size:10px;font-weight:600;color:var(--purple);margin-bottom:3px">Апелляция</div>'
-      +'<div style="font-size:12px;color:var(--dim)">'+existAppeal.reason+'</div>'
-      +(existAppeal.status!=='pending'
-        ?'<div style="margin-top:6px"><span class="okk-bdg '+(existAppeal.status==='approved'?'ok':'fail')+'">'+
-          (existAppeal.status==='approved'?'Одобрена':'Отклонена')+'</span>'
-          +' · Рассмотрел: <b>'+existAppeal.resolved_by+'</b>'
-          +(existAppeal.okk_comment?' · '+existAppeal.okk_comment:'')+'</div>'
-        :'<div style="margin-top:6px"><span class="okk-bdg pend">Ожидает рассмотрения</span></div>')
-      +'</div>';
+  if(rounds){
+    appealSection=appealsForCheck.slice().reverse().map(function(ap,idx){
+      return '<div style="background:rgba(168,122,200,.07);border:1px solid rgba(168,122,200,.2);border-radius:3px;padding:10px;margin-top:8px">'
+        +'<div style="font-size:10px;font-weight:600;color:var(--purple);margin-bottom:3px">Апелляция '+(idx+1)+(ap.desired_score!==null&&ap.desired_score!==undefined?' · желаемый '+ap.desired_score+'%':'')+'</div>'
+        +'<div style="font-size:12px;color:var(--dim)">'+ap.reason+'</div>'
+        +(ap.status!=='pending'
+          ?'<div style="margin-top:6px"><span class="okk-bdg '+(ap.status==='approved'?'ok':'fail')+'">'+
+            (ap.status==='approved'?'Одобрена':'Отклонена')+'</span>'
+            +(ap.status==='approved'&&ap.final_score!==null&&ap.final_score!==undefined?' · итог <b>'+ap.final_score+'%</b>':'')
+            +' · Рассмотрел: <b>'+(ap.resolved_by||'—')+'</b>'
+            +(ap.okk_comment?' · '+ap.okk_comment:'')+'</div>'
+          :'<div style="margin-top:6px"><span class="okk-bdg pend">Ожидает рассмотрения</span></div>')
+        +'</div>';
+    }).join('');
   }
   if(canSubmit){
     appealSection+='<div style="margin-top:8px">'
-      +'<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Подать апелляцию</div>'
+      +'<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Подать апелляцию'+(rounds===1?' · раунд 2':'')+'</div>'
       +'<textarea class="okk-ta" id="okk_appeal_reason" placeholder="Опиши причину апелляции..."></textarea>'+'<div style="display:flex;align-items:center;gap:10px;margin-top:8px">'+'<span style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Желаемый балл после пересмотра (%)</span>'+'<input type="number" id="okk_appeal_desired" min="0" max="100" placeholder="—" style="width:64px;background:var(--bg4);border:1px solid var(--border2);color:var(--purple);padding:4px 8px;font-family:monospace;font-size:13px;border-radius:2px;outline:none">'+'</div>'
       +'<div class="okk-act" style="margin-top:6px">'
       +'<button class="okk-btn okk-btn-p" onclick="okkSubmitAppeal(\''+c.id+'\')">↩ Подать апелляцию</button>'
@@ -4689,13 +4694,19 @@ function okkRenderAppeals(canApprove, isAdmin) {
     var resHtml='';
     if(showActions&&a.status==='pending'){
       var taId='okk_acomment_'+a.id;
+      var prefill=(a.desired_score!==null&&a.desired_score!==undefined)?a.desired_score:pct;
       var rejBtn=document.createElement('button'); rejBtn.className='okk-btn okk-btn-r';
       rejBtn.setAttribute('data-aid',a.id); rejBtn.setAttribute('onclick',"okkResolveAppeal(this.dataset.aid,'rejected')"); rejBtn.textContent='Отклонить';
       var appBtn=document.createElement('button'); appBtn.className='okk-btn okk-btn-g';
       appBtn.setAttribute('data-aid',a.id); appBtn.setAttribute('onclick',"okkResolveAppeal(this.dataset.aid,'approved')");
-      appBtn.textContent = a.desired_score ? 'Одобрить и применить '+a.desired_score+'%' : 'Одобрить';
+      appBtn.textContent='Одобрить';
       resHtml='<div><div style="font-size:9px;color:var(--muted);margin-bottom:4px">Комментарий ОКК</div>'
         +'<textarea class="okk-ta" id="'+taId+'" placeholder="Комментарий к решению..."></textarea></div>'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-top:8px">'
+          +'<span style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Итоговый балл (%)</span>'
+          +'<input type="number" id="okk_final_'+a.id+'" min="0" max="100" value="'+prefill+'" style="width:70px;background:var(--bg4);border:1px solid var(--border2);color:var(--green);padding:4px 8px;font-family:monospace;font-size:13px;border-radius:2px;outline:none">'
+          +'<span style="font-size:10px;color:var(--muted)">по умолчанию — желаемый; измени, если нужно</span>'
+        +'</div>'
         +'<div class="okk-act" style="margin-top:6px">'+rejBtn.outerHTML+appBtn.outerHTML+'</div>';
     } else if(a.resolved_by) {
       resHtml='<div style="background:var(--bg4);border:1px solid var(--border);border-radius:2px;padding:7px 9px;font-size:11px;color:var(--dim);margin-top:6px">'
@@ -4868,7 +4879,9 @@ async function okkSubmitAppeal(checkId){
 
 async function okkResolveAppeal(id,status){
   var comment=(document.getElementById('okk_acomment_'+id)?.value||'').trim();
-  try{await api('PATCH','/api/okk-appeal/'+id,{status:status,okk_comment:comment});await okkLoad();toast(status==='approved'?'Апелляция одобрена \u2713':'Отклонена');}catch(e){toast('Ошибка');}
+  var fscore=null;
+  if(status==='approved'){var fEl=document.getElementById('okk_final_'+id);if(fEl&&fEl.value!=='')fscore=parseInt(fEl.value);}
+  try{await api('PATCH','/api/okk-appeal/'+id,{status:status,okk_comment:comment,final_score:fscore});await okkLoad();toast(status==='approved'?'Апелляция одобрена \u2713':'Отклонена');}catch(e){toast('Ошибка');}
 }
 </script>
 
