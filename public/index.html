@@ -4041,9 +4041,11 @@ function okkRender() {
   if (window._okkViewOnly && window._okkViewType) {
     var vt = window._okkViewType;
     var vlabel = ({krm:'КРМ',km:'КМ',thp:'ТХП'})[vt] || vt.toUpperCase();
-    el.innerHTML = '<div class="okk-ntabs"><button class="okk-nt on">'+vlabel+' — проверенные кейсы</button></div><div id="okkSubContent"></div>';
+    var viewingCase = (_okkTab==='case' && _okkCaseId);
+    el.innerHTML = '<div class="okk-ntabs"><button class="okk-nt'+(viewingCase?'':' on')+'" onclick="okkViewBackToList()">'+(viewingCase?('\u2190 К списку ('+vlabel+')'):(vlabel+' — проверенные кейсы'))+'</button></div><div id="okkSubContent"></div>';
     var sub0 = document.getElementById('okkSubContent');
-    if (sub0) okkRenderCheckList(vt, false, sub0);
+    if (viewingCase) { if (sub0) sub0.innerHTML = okkRenderCase(false); }
+    else { if (sub0) okkRenderCheckList(vt, false, sub0); }
     return;
   }
   var canEdit = (role === 'admin' || role === 'okk_editor' || role === 'ops_editor');
@@ -4596,6 +4598,7 @@ async function okkDeleteCheck(id) {
 }
 
 // ── Просмотр кейса ───────────────────────────────────────────────
+function okkViewBackToList(){ _okkCaseId=null; _okkTab='list'; okkRender(); }
 function okkOpenCase(id) { _okkCaseId=id; _okkTab='case'; okkRender(); }
 
 function okkRenderCase(canAppeal) {
