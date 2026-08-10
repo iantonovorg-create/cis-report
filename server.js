@@ -219,6 +219,7 @@ async function initDB() {
 
   await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS month TEXT DEFAULT ''`).catch(()=>{});
   await pool.query(`ALTER TABLE okk_appeals ADD COLUMN IF NOT EXISTS desired_score INTEGER DEFAULT NULL`).catch(()=>{});
+  await pool.query(`ALTER TABLE okk_appeals ADD COLUMN IF NOT EXISTS final_score INTEGER DEFAULT NULL`).catch(()=>{});
   await pool.query(`ALTER TABLE okk_checks ADD COLUMN IF NOT EXISTS appeal_score INTEGER DEFAULT NULL`).catch(()=>{});
 
   
@@ -902,6 +903,10 @@ app.post('/api/okk-appeal', requireAuth, async (req, res) => {
     const u = req.session.user;
     const {month, check_id, reason} = req.body;
     if (!check_id||!reason) return res.status(400).json({error:'check_id and reason required'});
+    // Лимит: максимум 2 раунда; новую апелляцию можно только если предыдущая отклонена
+    const {rows: prev} = await pool.query('SELECT status FROM okk_appeals WHERE check_id=$1 ORDER BY created_at DESC', [check_id]);
+    if (prev.length >= 2) return res.status(400).json({error:'Достигнут лимит апелляций (максимум 2 раунда)'});
+    if (prev.length && prev[0].status !== 'rejected') return res.status(400).json({error:'По кейсу есть незавершённая или уже одобренная апелляция'});
     const id = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
     const desiredScore = req.body.desired_score !== undefined ? parseInt(req.body.desired_score)||null : null;
     await pool.query(
@@ -920,7 +925,7 @@ app.patch('/api/okk-appeal/:id', requireAuth, async (req, res) => {
   if (!['admin','okk_editor','ops_editor'].includes(_ra)) return res.status(403).json({error:'Forbidden'});
   try {
     const u = req.session.user;
-    const {status, okk_comment} = req.body;
+    const {status, okk_comment, final_score} = req.body;
     if (!['approved','rejected'].includes(status)) return res.status(400).json({error:'Invalid status'});
     await pool.query(
       `UPDATE okk_appeals SET status=$1,okk_comment=$2,resolved_by=$3,resolved_by_email=$4,resolved_at=NOW() WHERE id=$5`,
@@ -930,11 +935,13 @@ app.patch('/api/okk-appeal/:id', requireAuth, async (req, res) => {
     if (rows.length) {
       const newStatus = status==='approved' ? 'appeal_approved' : 'done';
       if (status === 'approved') {
-        // Если ТЛ указал желаемый балл — применяем его
+        // Балл ОКК: если поле заполнено — берём его, иначе желаемый балл ТЛ
         const {rows: aRows} = await pool.query('SELECT desired_score FROM okk_appeals WHERE id=$1', [req.params.id]);
-        const desiredScore = aRows[0]?.desired_score;
-        if (desiredScore !== null && desiredScore !== undefined) {
-          await pool.query('UPDATE okk_checks SET status=$1, appeal_score=$2 WHERE id=$3', [newStatus, desiredScore, rows[0].check_id]);
+        let applied = (final_score !== undefined && final_score !== null && final_score !== '') ? parseInt(final_score) : aRows[0]?.desired_score;
+        if (applied === undefined || applied === null || isNaN(applied)) applied = null;
+        await pool.query('UPDATE okk_appeals SET final_score=$1 WHERE id=$2', [applied, req.params.id]);
+        if (applied !== null) {
+          await pool.query('UPDATE okk_checks SET status=$1, appeal_score=$2 WHERE id=$3', [newStatus, applied, rows[0].check_id]);
         } else {
           await pool.query('UPDATE okk_checks SET status=$1 WHERE id=$2', [newStatus, rows[0].check_id]);
         }
