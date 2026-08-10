@@ -133,6 +133,15 @@ async function initDB() {
     tabs TEXT[] NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`);
+  await pool.query(`ALTER TABLE custom_roles ADD COLUMN IF NOT EXISTS okk_type TEXT DEFAULT ''`).catch(()=>{});
+
+  // Реестр месяцев — чтобы пустой месяц (без сотрудников) не исчезал из списка
+  await pool.query(`CREATE TABLE IF NOT EXISTS months (
+    name TEXT PRIMARY KEY,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  // Бэкофилл: регистрируем все месяцы, где уже есть сотрудники (безопасно, ничего не удаляет)
+  await pool.query(`INSERT INTO months (name) SELECT DISTINCT month FROM employees WHERE month IS NOT NULL AND month<>'' ON CONFLICT (name) DO NOTHING`).catch(()=>{});
 
   await pool.query(`CREATE TABLE IF NOT EXISTS head_tasks (
     id TEXT PRIMARY KEY,
@@ -334,12 +343,13 @@ app.get('/api/presence', requireAuth, async (req, res) => {
 
 app.get('/api/data', requireAuth, async (req, res) => {
   try {
-    const [emp, meet, roles] = await Promise.all([
+    const [emp, meet, roles, mon] = await Promise.all([
       pool.query('SELECT * FROM employees ORDER BY month,block,name'),
       pool.query('SELECT * FROM meetings ORDER BY month,date'),
-      pool.query('SELECT * FROM custom_roles ORDER BY name')
+      pool.query('SELECT * FROM custom_roles ORDER BY name'),
+      pool.query('SELECT name FROM months ORDER BY name')
     ]);
-    res.json({ employees: emp.rows, meetings: meet.rows, customRoles: roles.rows||[] });
+    res.json({ employees: emp.rows, meetings: meet.rows, customRoles: roles.rows||[], months: (mon.rows||[]).map(r=>r.name) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -590,8 +600,49 @@ app.delete('/api/month/:month', requireAuth, requireAdmin, async (req, res) => {
     await pool.query('DELETE FROM head_tasks WHERE month=$1', [month]).catch(()=>{});
     await pool.query('DELETE FROM okk_checks WHERE month=$1', [month]).catch(()=>{});
     await pool.query('DELETE FROM okk_appeals WHERE month=$1', [month]).catch(()=>{});
+    await pool.query('DELETE FROM months WHERE name=$1', [month]).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── API: СОЗДАНИЕ МЕСЯЦА (атомарно, без дублей) ───────────────────────────────
+// mode='copy' — копирует команду из source одним запросом; mode='empty' — просто регистрирует месяц.
+// Идемпотентно: если в целевом месяце уже есть сотрудники, копирование НЕ повторяется (защита от дублей).
+app.post('/api/month/create', requireAuth, requireEditor, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { month, mode, source } = req.body;
+    if (!month) return res.status(400).json({ error: 'month required' });
+    await client.query('BEGIN');
+    // Регистрируем месяц (чтобы пустой не исчезал)
+    await client.query(`INSERT INTO months (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, [month]);
+    // Сколько уже есть в целевом месяце
+    const { rows: ex } = await client.query('SELECT COUNT(*)::int AS c FROM employees WHERE month=$1', [month]);
+    let copied = 0, skipped = false;
+    if (mode === 'copy') {
+      if (ex[0].c > 0) {
+        // В месяце уже есть люди — НЕ дублируем
+        skipped = true;
+      } else if (source) {
+        const ins = await client.query(
+          `INSERT INTO employees (id,month,block,sub,name,role,entry,schedule,plan,fact,vacation,status,birthdate,functions,extra,comment,dismiss,city,tz,phone,tg,salary_base,tax_zone)
+           SELECT substr(md5(random()::text||clock_timestamp()::text||id),1,12), $1,
+                  block, sub, name, role, entry, schedule, plan, '', '', status, birthdate,
+                  functions, extra, comment, dismiss, city, tz, phone, tg, salary_base, tax_zone
+           FROM employees WHERE month=$2`,
+          [month, source]
+        );
+        copied = ins.rowCount;
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true, month, copied, skipped });
+  } catch(e) {
+    await client.query('ROLLBACK').catch(()=>{});
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
 });
 
 // ── API: CUSTOM ROLES ────────────────────────────────────────────────────────
@@ -724,7 +775,14 @@ app.post('/api/ops', requireAuth, requireOpsEditor, async (req, res) => {
 // ── ОКК: Чек-листы ───────────────────────────────────────────────────────────
 app.get('/api/okk-checks', requireAuth, async (req, res) => {
   const role = req.session?.user?.role;
-  if (!['admin','okk_editor','editor','ops_editor'].includes(role)) return res.status(403).json({error:'Forbidden'});
+  const builtin = ['admin','okk_editor','editor','ops_editor'].includes(role);
+  // Роли просмотра ОКК (okk_krm/okk_km/okk_thp) — пускаем на чтение только своего типа
+  let okkType = null;
+  if (!builtin) {
+    const { rows: cr } = await pool.query('SELECT okk_type FROM custom_roles WHERE name=$1', [role]);
+    okkType = (cr[0] && cr[0].okk_type) ? cr[0].okk_type : null;
+    if (!okkType) return res.status(403).json({error:'Forbidden'});
+  }
   try {
     const month = req.query.month || '';
     const trash = req.query.trash === '1';
@@ -734,6 +792,12 @@ app.get('/api/okk-checks', requireAuth, async (req, res) => {
       ({rows} = await pool.query(
         'SELECT * FROM okk_checks WHERE month=$1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC',
         [month]
+      ));
+    } else if (okkType) {
+      // Только свой тип, только проверенные кейсы (не черновики), не удалённые
+      ({rows} = await pool.query(
+        "SELECT * FROM okk_checks WHERE month=$1 AND type=$2 AND deleted_at IS NULL AND status <> 'draft' ORDER BY created_at DESC",
+        [month, okkType]
       ));
     } else {
       ({rows} = await pool.query(
