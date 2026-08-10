@@ -296,7 +296,7 @@ body.viewer-mode .pr-save-btn
     <div class="sec-lbl">OPS — операционный блок</div>
     <div id="opsBlock"></div>
     <button class="btn-add" style="margin-top:8px;margin-left:0" onclick="openAddEmp('OPS')">+ Добавить в OPS</button>
-    <div class="sec-lbl">КРМ · ТХП — рук. Бушманова Татьяна Михайловна</div>
+    <div class="sec-lbl" id="bush-lbl">КРМ · ТХП</div>
     <div class="tl-wrap">
       <div class="tl-hdr" onclick="toggleTL('bush')">
         <div class="ava av-sage" id="bush-ava">ТБ</div>
@@ -318,7 +318,7 @@ body.viewer-mode .pr-save-btn
         <div class="cgrid" id="g-bush"></div>
       </div>
     </div>
-    <div class="sec-lbl">КМ — клиентский опыт · рук. Евстигнеева Наталья Валерьевна</div>
+    <div class="sec-lbl" id="evs-lbl">КМ — клиентский опыт</div>
     <div class="tl-wrap">
       <div class="tl-hdr" onclick="toggleTL('evs')">
         <div class="ava av-plum" id="evs-ava">НЕ</div>
@@ -415,7 +415,7 @@ body.viewer-mode .pr-save-btn
 
 <div class="ov" id="kmOv"><div class="modal"><button class="mclose" onclick="cm('kmOv')">✕</button><h2 id="kmTitle">Встреча</h2><div class="fgrid"><div class="fg full"><label>Сотрудник</label><input id="k_name"></div><div class="fg"><label>Дата встречи</label><input id="k_date" placeholder="дд.мм.гггг"></div><div class="fg"><label>ТЛ</label><input id="k_tl" placeholder="Таня / Наташа"></div><div class="fg full"><label>О чём говорили</label><textarea id="k_topic" rows="3"></textarea></div><div class="fg full"><label>Задачи</label><textarea id="k_tasks" rows="2"></textarea></div><div class="fg"><label>Следующая встреча</label><input id="k_next" placeholder="дд.мм.гггг"></div><div class="fg"><label>Динамика</label><select id="k_dyn"><option value="">—</option><option>Улучшение</option><option>Спад</option><option>Без изменений</option></select></div></div><div class="mbtns"><button class="bcancel" onclick="cm('kmOv')">Отмена</button><button class="bsave" onclick="saveKM()">Сохранить</button></div></div></div>
 
-<div class="ov" id="monthOv"><div class="modal" style="max-width:460px"><button class="mclose" onclick="cm('monthOv')">✕</button><h2>Новый месяц</h2><p class="mnote">Выбери месяц. Данные текущего месяца скопируются как база.</p><div class="mchips" id="mchips"></div><div style="height:1px;background:var(--border);margin:10px 0"></div>
+<div class="ov" id="monthOv"><div class="modal" style="max-width:460px"><button class="mclose" onclick="cm('monthOv')">✕</button><h2>Новый месяц</h2><p class="mnote">Выбери месяц. Данные последнего месяца скопируются как база.</p><div class="mchips" id="mchips"></div><div style="height:1px;background:var(--border);margin:10px 0"></div>
 <div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:8px;text-transform:uppercase">Или выбери вручную:</div>
 <div id="customMonthRow" style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
   <select id="customMonthSel" onchange="pickCustomMonth()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px 11px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none;flex:1">
@@ -430,7 +430,7 @@ body.viewer-mode .pr-save-btn
   <input id="customYearInp" oninput="pickCustomMonth()" type="number" placeholder="2027" min="2024" max="2030"
     style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px 11px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none;width:90px">
   <button class="fb" onclick="pickCustomMonth()" style="white-space:nowrap">Выбрать</button>
-</div><div class="copy-opts"><label class="copy-opt"><input type="radio" name="cmode" value="copy" checked> Скопировать команду из текущего месяца</label><label class="copy-opt"><input type="radio" name="cmode" value="empty"> Начать с пустой команды</label></div><div class="mbtns"><button class="bcancel" onclick="cm('monthOv')">Отмена</button><button class="bsave" onclick="confirmNewMonth()">Создать</button></div></div></div>
+</div><div class="copy-opts"><label class="copy-opt"><input type="radio" name="cmode" value="copy" checked> Скопировать команду из последнего месяца</label><label class="copy-opt"><input type="radio" name="cmode" value="empty"> Начать с пустой команды</label></div><div class="mbtns"><button class="bcancel" onclick="cm('monthOv')">Отмена</button><button class="bsave" onclick="confirmNewMonth()">Создать</button></div></div></div>
 
 <div class="ov" id="roleOv">
   <div class="modal" style="max-width:520px">
@@ -652,6 +652,20 @@ function applyRoleRestrictions(role){
     setTimeout(opsRender,100);
     return;
   }
+  // Роль просмотра ОКК (okk_krm/okk_km/okk_thp) — только вкладка ОКК, только свой тип, только чтение
+  const okkViewRole=(DB.customRoles||[]).find(r=>r.name===role && r.okk_type);
+  if(okkViewRole){
+    window._okkViewType=okkViewRole.okk_type;
+    window._okkViewOnly=true;
+    document.querySelectorAll('.tab').forEach(t=>{if(t.id!=='okkTab')t.style.display='none';});
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+    const okkTv=document.getElementById('okkTab'); if(okkTv){okkTv.style.display='';okkTv.classList.add('on');}
+    document.getElementById('p-okk')?.classList.add('on');
+    const hs=document.getElementById('hdrStats'); if(hs)hs.style.display='none';
+    ['usersBtn','delMonthBtn','headCsTab'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+    setTimeout(function(){if(typeof okkLoad==='function')okkLoad();},100);
+    return;
+  }
   // Custom role
   const customRole=(DB.customRoles||[]).find(r=>r.name===role);
   if(customRole&&customRole.tabs&&customRole.tabs.length>0){
@@ -689,7 +703,7 @@ async function loadData(){
     applyRoleRestrictions(me.role);
     document.body.classList.remove('loading');
     startPresence(me.email);
-    const rawMonths=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];
+    const rawMonths=[...new Set([...DB.employees.map(e=>e.month),...(DB.months||[])].filter(Boolean))];
     // Сортируем месяцы по порядку ALL_MONTHS
     const months=ALL_MONTHS.filter(m=>rawMonths.includes(m));
     // Неизвестные месяцы (вне ALL_MONTHS) добавляем в конец
@@ -893,10 +907,15 @@ function renderVacations(){
 }
 
 function renderHead(){const h=byM(DB.employees).find(e=>e.block==='HEAD');if(!h){document.getElementById('headCard').innerHTML='';return;}document.getElementById('headCard').innerHTML=`<div class="head-card"><div class="ava av-gold">${ini(h.name)}</div><div class="head-info"><div class="head-name">${h.name}</div><div class="head-role">${h.role||'HEAD'}</div><div class="head-meta"><div class="hm">Вход: <b>${h.entry||'—'}</b></div><div class="hm">Стаж: <b>${tenure(h.entry)}</b></div><div class="hm">График: <b>${h.schedule||'—'}</b></div><div class="hm">Город: <b>${h.city||'—'}</b></div><div class="hm">ЧП: <b>${h.tz||'—'}</b></div><div class="hm">TG: <b>${h.tg||'—'}</b></div></div></div><button class="abt ed" onclick="openEditEmp('${h.id}','HEAD')">✎ Редактировать</button></div>`;}
+const TL_LBL_PREFIX={bush:'КРМ · ТХП',evs:'КМ — клиентский опыт'};
 function renderTL(){['TL_BUSH','TL_EVS'].forEach(block=>{
   const key=block==='TL_BUSH'?'bush':'evs';
   const tl=byM(DB.employees).find(e=>e.block===block);
   if(!tl)return;
+  const lblEl=document.getElementById(key+'-lbl');
+  if(lblEl)lblEl.textContent=`${TL_LBL_PREFIX[key]} — рук. ${tl.name}`;
+  const avaEl=document.getElementById(key+'-ava');
+  if(avaEl)avaEl.textContent=ini(tl.name);
   document.getElementById(key+'-info').innerHTML=`
     <div class="tl-name">${tl.name}</div>
     <div class="tl-role">${tl.role||'Team Lead'}</div>
@@ -1167,7 +1186,7 @@ function confirmAddRole() {
 
 function openAddEmp(block){_eId=null;_eBlock=block;document.getElementById('empTitle').textContent='Добавить сотрудника';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value='';});populateRoleList();populateSubList();om('empOv');}
 function openEditEmp(id,block){_eId=id;_eBlock=block;const e=DB.employees.find(x=>x.id===id);if(!e)return;document.getElementById('empTitle').textContent='Редактировать';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value=e[k]||'';});populateRoleList();populateSubList();om('empOv');}
-function openEditTL(block){_eBlock=block;const e=byM(DB.employees).find(x=>x.block===block);_eId=e?e.id:null;document.getElementById('empTitle').textContent=block==='TL_BUSH'?'Редактировать — Бушманова':'Редактировать — Евстигнеева';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value=e?e[k]||'':'';});populateRoleList();populateSubList();om('empOv');}
+function openEditTL(block){_eBlock=block;const e=byM(DB.employees).find(x=>x.block===block);_eId=e?e.id:null;document.getElementById('empTitle').textContent=e&&e.name?('Редактировать — '+e.name):'Редактировать';EF.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value=e?e[k]||'':'';});populateRoleList();populateSubList();om('empOv');}
 async function saveEmp(){const obj={month:curMonth,block:_eBlock};EF.forEach(k=>{obj[k]=(document.getElementById('f_'+k)?.value||'').trim();});if(!obj.name){alert('Введи ФИО');return;}if(_eId)obj.id=_eId;await api('POST','/api/employee',obj);await loadData();cm('empOv');toast('Сохранено ✓');}
 async function moveEmp(id, currentBlock) {
   const targets = {'КРМ/ТХП': 'КМ', 'КМ': 'КРМ/ТХП'};
@@ -1189,21 +1208,33 @@ async function saveKM(){const existing=_kId?DB.meetings.find(x=>x.id===_kId):nul
 async function delKM(id){if(!confirm('Удалить встречу?'))return;await api('DELETE',`/api/meeting/${id}`);await loadData();toast('Удалено');}
 function openNewMonth(){selNewMonth='';const used=[...new Set(DB.employees.map(e=>e.month).filter(Boolean))];document.getElementById('mchips').innerHTML=ALL_MONTHS.map(m=>`<button class="mchip${used.includes(m)?' used':''}" onclick="pickMonth('${m}',this)">${m}${used.includes(m)?' ✓':''}</button>`).join('');document.querySelector('[name=cmode][value=copy]').checked=true;om('monthOv');}
 function pickMonth(m,btn){document.querySelectorAll('.mchip:not(.used)').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');selNewMonth=m;}
+let _creatingMonth=false;
 async function confirmNewMonth(){
+  if(_creatingMonth)return; // защита от повторного клика
   if(!selNewMonth){alert('Выбери месяц');return;}
   const mode=document.querySelector('[name=cmode]:checked').value;
-  if(mode==='copy'){
-    // Check if month already has employees — prevent duplicates
-    const existing=DB.employees.filter(e=>e.month===selNewMonth);
-    if(existing.length>0){
-      if(!confirm(`В месяце ${selNewMonth} уже есть ${existing.length} сотрудников. Перезаписать?`))return;
-      // Delete existing employees for this month first
-      for(const e of existing) await api('DELETE','/api/employee/'+e.id).catch(()=>{});
-    }
-    const empToCopy=byM(DB.employees).map(e=>({...e,id:uid(),month:selNewMonth,fact:'',vacation:''}));
-    for(const e of empToCopy)await api('POST','/api/employee',e);
+  // Источник копирования — ПОСЛЕДНИЙ месяц с командой (по порядку ALL_MONTHS)
+  const usedOrdered=ALL_MONTHS.filter(m=>DB.employees.some(e=>e.month===m));
+  const source=usedOrdered[usedOrdered.length-1]||'';
+  if(mode==='copy'&&!source){alert('Нет ни одного месяца с командой для копирования. Выбери «пустая команда».');return;}
+  if(mode==='copy'&&DB.employees.some(e=>e.month===selNewMonth)){
+    if(!confirm(`В месяце ${selNewMonth} уже есть команда — копирование не выполнится (защита от дублей). Просто открыть этот месяц?`))return;
   }
-  curMonth=selNewMonth;try{localStorage.setItem('cis_last_month',selNewMonth);}catch(e){}opsStore={1:{},2:{},3:{},4:{}};opsCurWeek=0;opsPeriod='';await loadData();cm('monthOv');toast(`Месяц ${selNewMonth} создан`);
+  const btn=document.querySelector('#monthOv .bsave');
+  _creatingMonth=true; if(btn){btn.disabled=true;btn.textContent='Создание…';}
+  try{
+    const r=await api('POST','/api/month/create',{month:selNewMonth,mode,source});
+    curMonth=selNewMonth;try{localStorage.setItem('cis_last_month',selNewMonth);}catch(e){}
+    opsStore={1:{},2:{},3:{},4:{}};opsCurWeek=0;opsPeriod='';
+    await loadData();cm('monthOv');
+    if(mode==='copy'&&r&&r.skipped)toast(`Месяц ${selNewMonth} открыт — команда уже была, дубли не создавались`);
+    else if(mode==='copy')toast(`Месяц ${selNewMonth} создан — скопировано ${(r&&r.copied)||0} из «${source}»`);
+    else toast(`Пустой месяц ${selNewMonth} создан`);
+  }catch(e){
+    toast('Ошибка создания месяца: '+(e.message||''));
+  }finally{
+    _creatingMonth=false; if(btn){btn.disabled=false;btn.textContent='Создать';}
+  }
 }
 function openRolePopup(role){
   const rows=byM(DB.employees).filter(e=>e.role===role);
@@ -3447,7 +3478,7 @@ function renderUsersList() {
         ${(DB.customRoles||[]).map(r=>`<option value="${r.name}" ${u.role===r.name?'selected':''}>${r.name}</option>`).join('')}
         ${isAdmin?'<option value="admin" selected>admin</option>':''}
       </select>
-      ${!isAdmin?`<button onclick="removeUser('${u.email}')" style="background:rgba(200,122,122,.08);color:var(--red);border:1px solid rgba(200,122,122,.2);padding:4px 10px;border-radius:2px;font-family:'Golos Text',sans-serif;font-size:11px;cursor:pointer">✕</button>`:'<div style="width:46px"></div>'}
+      ${!isAdmin?`<button onclick="removeUser('${u.email}')" title="Полностью удалить доступ" style="background:rgba(200,122,122,.08);color:var(--red);border:1px solid rgba(200,122,122,.2);padding:4px 12px;border-radius:2px;font-family:'Golos Text',sans-serif;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0">✕ Удалить доступ</button>`:'<div style="width:46px" title="Админа удалить нельзя"></div>'}
     </div>`;
   }).join('');
 }
@@ -4000,6 +4031,15 @@ function okkRender() {
   var el = document.getElementById('okkContent');
   if (!el) return;
   var role = window._userRole || 'viewer';
+  // Роль просмотра ОКК: только свой тип, только чтение, только проверенные кейсы
+  if (window._okkViewOnly && window._okkViewType) {
+    var vt = window._okkViewType;
+    var vlabel = ({krm:'КРМ',km:'КМ',thp:'ТХП'})[vt] || vt.toUpperCase();
+    el.innerHTML = '<div class="okk-ntabs"><button class="okk-nt on">'+vlabel+' — проверенные кейсы</button></div><div id="okkSubContent"></div>';
+    var sub0 = document.getElementById('okkSubContent');
+    if (sub0) okkRenderCheckList(vt, false, sub0);
+    return;
+  }
   var canEdit = (role === 'admin' || role === 'okk_editor' || role === 'ops_editor');
   var canApprove = (role === 'admin' || role === 'okk_editor' || role === 'ops_editor');
   var canAppeal = (role === 'admin' || role === 'editor');
@@ -4010,7 +4050,7 @@ function okkRender() {
     ['summary','Сводка'],['krm','КРМ'],['km','КМ'],['thp','ТХП'],
     ['case','Просмотр кейса'],['appeals','Апелляции'+(pendCount?' ('+pendCount+')':'')]
   ];
-  if (canEdit || isAdmin) tabs.push(['staff','По сотрудникам']);
+  if (canEdit || isAdmin || role==='editor') tabs.push(['staff','По сотрудникам']);
   tabs.push(['guide','Чек-лист']);
   if (canEdit || isAdmin) tabs.push(['trash','\uD83D\uDDD1 Корзина']);
 
