@@ -279,6 +279,41 @@ body.viewer-mode .pr-save-btn
 .okk-flt-clear{font-size:10px;padding:3px 10px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif}
 .okk-flt-clear:hover{border-color:var(--accent);color:var(--text)}
 </style>
+<style>
+.okkbd-tools{display:flex;gap:6px;margin:4px 0 8px}
+.okkbd-tbtn{font-size:9px;padding:4px 10px;border:1px solid var(--border);background:transparent;color:var(--dim);border-radius:2px;cursor:pointer;font-family:'Golos Text',sans-serif}
+.okkbd-tbtn:hover{border-color:var(--accent);color:var(--text)}
+.okkbd-blk{border:1px solid var(--border);border-radius:4px;margin-bottom:6px;overflow:hidden;background:var(--bg2)}
+.okkbd-blk.lost{border-color:rgba(200,122,122,.35)}
+.okkbd-hd{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;user-select:none}
+.okkbd-hd:hover{background:var(--bg3)}
+.okkbd-chev{width:14px;height:14px;flex-shrink:0;transition:transform .2s;color:var(--dim)}
+.okkbd-blk.open .okkbd-chev{transform:rotate(90deg)}
+.okkbd-title{flex:1;font-size:12px;font-weight:600;color:var(--text)}
+.okkbd-lb{font-size:9px;font-weight:700;font-family:monospace;color:var(--red);background:rgba(200,122,122,.13);border:1px solid rgba(200,122,122,.25);padding:1px 7px;border-radius:10px}
+.okkbd-sc{font-family:monospace;font-weight:700;font-size:11px;padding:2px 8px;border-radius:2px;min-width:54px;text-align:center}
+.okkbd-sc.full{background:rgba(122,200,144,.13);color:var(--green);border:1px solid rgba(122,200,144,.28)}
+.okkbd-sc.part{background:rgba(200,168,122,.13);color:var(--warn);border:1px solid rgba(200,168,122,.28)}
+.okkbd-sc.pen{background:transparent;color:var(--dim);border:1px solid var(--border)}
+.okkbd-body{display:none;padding:2px 12px 10px;border-top:1px solid var(--border)}
+.okkbd-blk.open .okkbd-body{display:block}
+.okkbd-it{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid rgba(54,54,54,.5)}
+.okkbd-it:last-child{border-bottom:none}
+.okkbd-ic{width:17px;height:17px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-top:1px}
+.okkbd-ic.ok{background:rgba(122,200,144,.15);color:var(--green)}
+.okkbd-ic.lost{background:rgba(200,122,122,.18);color:var(--red)}
+.okkbd-main{flex:1;min-width:0}
+.okkbd-lab{font-size:12px;color:var(--text);line-height:1.4}
+.okkbd-it.lost .okkbd-lab{color:#e8b3b3}
+.okkbd-hint{font-size:10.5px;color:var(--dim);margin-top:5px;line-height:1.5;background:var(--bg3);border-radius:3px;padding:6px 9px;border-left:2px solid var(--muted)}
+.okkbd-it.lost .okkbd-hint{border-left-color:var(--red);color:#c7a5a5}
+.okkbd-hint .hl{color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-size:8px;display:block;margin-bottom:3px}
+.okkbd-pts{flex-shrink:0;font-family:monospace;font-size:11px;font-weight:700;padding:2px 7px;border-radius:2px;white-space:nowrap}
+.okkbd-pts.ok{color:var(--green);background:rgba(122,200,144,.1)}
+.okkbd-pts.lost{color:var(--red);background:rgba(200,122,122,.13)}
+.okkbd-pts.pen{color:var(--dim)}
+.okkbd-np{font-size:8px;color:var(--muted);border:1px solid var(--border);border-radius:2px;padding:0 5px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px}
+</style>
 </head>
 <body class="loading">
 <div class="hdr">
@@ -4696,6 +4731,8 @@ async function okkDeleteCheck(id) {
 
 // ── Просмотр кейса ───────────────────────────────────────────────
 function okkViewShow(which){ _okkCaseId=null; _okkTab=(which==='guide')?'guide':'list'; okkRender(); }
+function okkbdAll(open){document.querySelectorAll('.okkbd-blk').forEach(function(b){b.classList.toggle('open',open);});}
+function okkbdLost(){document.querySelectorAll('.okkbd-blk').forEach(function(b){b.classList.toggle('open',b.dataset.lost==='1');});}
 function okkSelfGuideType(t){ _okkGuideType=t; okkRender(); }
 function okkRenderSelfList(emp, checks){
   if(!checks.length) return '<div style="padding:28px;text-align:center;color:var(--muted);font-size:12px">Пока нет проверок по тебе за '+curMonth+'</div>';
@@ -4777,15 +4814,31 @@ function okkRenderCase(canAppeal) {
 
   var blockDetails='';
   if(c.blocks&&c.blocks.length){
-    blockDetails='<div class="okk-cf"><label>Детализация по блокам</label>'
-      +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:2px;overflow:hidden">'
-      +c.blocks.map(function(blk,i){
-        var bPct=blk.max>0?Math.round(blk.score/blk.max*100):0;
-        var bSc=bPct>=80?'hi':bPct>=60?'mid':'lo';
-        return '<div style="display:grid;grid-template-columns:1fr auto auto;gap:4px 10px;padding:7px 10px;'+(i>0?'border-top:1px solid var(--border)':'')+'"><span style="font-size:11px;color:var(--dim)">'+blk.title+'</span>'
-          +'<span style="font-size:10px;color:var(--muted)">'+blk.score+'/'+blk.max+'</span>'
-          +'<span class="okk-sc '+bSc+'" style="font-size:10px">'+bPct+'%</span></div>';
-      }).join('')+'</div></div>';
+    var _f=function(n){return (Math.round(n*10)/10).toString();};
+    blockDetails='<div class="okk-cf"><label>Разбалловка по блокам</label>'
+      +'<div class="okkbd-tools"><button class="okkbd-tbtn" onclick="okkbdAll(true)">Развернуть всё</button><button class="okkbd-tbtn" onclick="okkbdAll(false)">Свернуть всё</button><button class="okkbd-tbtn" onclick="okkbdLost()">Только со снятиями</button></div>'
+      +'<div class="okkbd-wrap">'
+      +c.blocks.map(function(blk){
+        var isPenBlk=(blk.max===0)||(blk.items&&blk.items.some(function(x){return x.opts&&x.opts.length>1&&x.opts[1]<0;}));
+        var lost=isPenBlk?(blk.score<0?Math.abs(blk.score):0):((blk.max||0)-(blk.score||0));
+        var hasLost=lost>0;
+        var scClass=isPenBlk?(blk.score<0?'part':'pen'):(hasLost?'part':'full');
+        var scText=isPenBlk?(blk.score<0?('штраф '+blk.score):'штраф 0'):(_f(blk.score||0)+' / '+_f(blk.max||0));
+        var badge=hasLost?('<span class="okkbd-lb">'+(isPenBlk?blk.score:'\u2212'+_f(lost))+'</span>'):'';
+        var items=(blk.items||[]).map(function(it){
+          var isPen=it.opts&&it.opts.length>1&&it.opts[1]<0;
+          var itLost=isPen?(it.score<0):(it.score<it.w);
+          var ic=itLost?'<div class="okkbd-ic lost">\u2715</div>':'<div class="okkbd-ic ok">\u2713</div>';
+          var pts=isPen
+            ?'<span class="okkbd-pts '+(it.score<0?'lost':'pen')+'">'+(it.score<0?it.score:'0')+'</span>'
+            :'<span class="okkbd-pts '+(itLost?'lost':'ok')+'">'+_f(it.score)+' / '+_f(it.w)+'</span>';
+          var np=it.np?'<span class="okkbd-np" title="Может быть неприменимо">н/п</span>':'';
+          var hint=it.hint?('<div class="okkbd-hint"><span class="hl">'+(itLost?'за что сняли / что ожидалось':'критерий')+'</span>'+it.hint+'</div>'):'';
+          return '<div class="okkbd-it'+(itLost?' lost':'')+'">'+ic+'<div class="okkbd-main"><div class="okkbd-lab">'+it.label+np+'</div>'+hint+'</div>'+pts+'</div>';
+        }).join('');
+        return '<div class="okkbd-blk'+(hasLost?' lost open':'')+'" data-lost="'+(hasLost?1:0)+'"><div class="okkbd-hd" onclick="this.parentNode.classList.toggle(\'open\')"><svg class="okkbd-chev" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="okkbd-title">'+blk.title+'</div>'+badge+'<div class="okkbd-sc '+scClass+'">'+scText+'</div></div><div class="okkbd-body">'+items+'</div></div>';
+      }).join('')
+      +'</div></div>';
   }
 
   return '<div class="okk-case-grid"><div>'+listHtml+'</div><div>'
