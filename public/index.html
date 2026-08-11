@@ -267,7 +267,7 @@ body.viewer-mode .pr-save-btn
   <div class="hdr-mid">
     <label>Период</label>
     <select class="msel" id="msel" onchange="switchMonth(this.value)"></select>
-    <button class="btn-nm" onclick="openNewMonth()">+ Новый месяц</button>
+    <button class="btn-nm" id="newMonthBtn" onclick="openNewMonth()">+ Новый месяц</button>
 <button class="btn-nm" onclick="loadData()" style="border-color:var(--blue);color:var(--blue)" id="reloadBtn">↻ Обновить</button>
   <button class="btn-nm" id="usersBtn" onclick="openUsersModal()" style="display:none;border-color:var(--sage);color:var(--sage)">⚙ Доступы</button>
   <button class="btn-nm" id="delMonthBtn" onclick="openDelMonth()" style="display:none;border-color:var(--red);color:var(--red)">✕ Удалить месяц</button>
@@ -662,7 +662,7 @@ function applyRoleRestrictions(role){
     const okkTv=document.getElementById('okkTab'); if(okkTv){okkTv.style.display='';okkTv.classList.add('on');}
     document.getElementById('p-okk')?.classList.add('on');
     const hs=document.getElementById('hdrStats'); if(hs)hs.style.display='none';
-    ['usersBtn','delMonthBtn','headCsTab'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+    ['usersBtn','delMonthBtn','headCsTab','newMonthBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
     setTimeout(function(){if(typeof okkLoad==='function')okkLoad();},100);
     return;
   }
