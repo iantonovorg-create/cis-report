@@ -259,6 +259,26 @@ body.viewer-mode .ops-bclear,
 body.viewer-mode .pr-save-btn
 { display:none !important }
 </style>
+<style>
+.okk-emp-chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}
+.okk-emp-chip{display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:6px 12px 6px 7px;cursor:pointer;transition:all .15s;user-select:none}
+.okk-emp-chip:hover{border-color:var(--border2);background:var(--bg3)}
+.okk-emp-chip.on{border-color:var(--accent);background:var(--bg3);box-shadow:0 0 0 1px rgba(200,184,154,.25)}
+.okk-emp-ava{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#111;flex-shrink:0;font-family:'Unbounded',sans-serif}
+.okk-emp-meta{display:flex;flex-direction:column;gap:2px;line-height:1}
+.okk-emp-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap}
+.okk-emp-sub{display:flex;align-items:center;gap:7px}
+.okk-emp-cnt{font-size:9px;letter-spacing:.5px;color:var(--dim);text-transform:uppercase}
+.okk-emp-avg{font-size:10px;font-weight:700;font-family:monospace;padding:0 5px;border-radius:2px}
+.okk-emp-avg.avg-hi{color:var(--green);background:rgba(122,200,144,.13)}
+.okk-emp-avg.avg-mid{color:var(--warn);background:rgba(200,168,122,.13)}
+.okk-emp-avg.avg-lo{color:var(--red);background:rgba(200,122,122,.13)}
+.okk-chip-all{background:transparent;border-style:dashed}
+.okk-flt-bar{display:flex;align-items:center;gap:12px;margin:14px 0 8px;font-size:11px;color:var(--dim)}
+.okk-flt-bar b{color:var(--accent)}
+.okk-flt-clear{font-size:10px;padding:3px 10px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:2px;font-family:'Golos Text',sans-serif}
+.okk-flt-clear:hover{border-color:var(--accent);color:var(--text)}
+</style>
 </head>
 <body class="loading">
 <div class="hdr">
@@ -4154,9 +4174,35 @@ function okkRenderSummary() {
 }
 
 // ── Список проверок по типу ──────────────────────────────────────
+var _okkEmpFilter = {krm:null, km:null, thp:null};
+function okkFilterEmp(type,name){
+  _okkEmpFilter[type] = (_okkEmpFilter[type]===name) ? null : name;
+  okkRender();
+}
+var _OKK_AVA=["linear-gradient(135deg,#c8b89a,#9a8060)","linear-gradient(135deg,#9aac8a,#5a8040)","linear-gradient(135deg,#8aaac8,#5a7aa0)","linear-gradient(135deg,#a87ac8,#6a3aa0)"];
+function okkAvaBg(name){var s=0;for(var i=0;i<(name||'').length;i++)s+=name.charCodeAt(i);return _OKK_AVA[s%_OKK_AVA.length];}
 function okkRenderCheckList(type, canEdit, container) {
   var cl = OKK_CL[type];
-  var checks = OKK_CHECKS.filter(function(c){return c.type===type && !c.deleted_at;});
+  var allChecks = OKK_CHECKS.filter(function(c){return c.type===type && !c.deleted_at;});
+  var _sel = _okkEmpFilter[type] || null;
+  // группировка по сотруднику (кол-во + средний балл по действующему правилу)
+  var _byEmp = {};
+  allChecks.forEach(function(c){
+    var ep=(c.appeal_score!==null&&c.appeal_score!==undefined)?c.appeal_score:(c.red_flag?0:(c.max_score>0?Math.round(c.score/c.max_score*100):0));
+    if(!_byEmp[c.employee])_byEmp[c.employee]={n:c.employee,c:0,sum:0};
+    _byEmp[c.employee].c++;_byEmp[c.employee].sum+=ep;
+  });
+  var _emps=Object.keys(_byEmp).map(function(k){var e=_byEmp[k];return {n:e.n,c:e.c,avg:Math.round(e.sum/e.c)};});
+  _emps.sort(function(a,b){return b.c-a.c||(a.n<b.n?-1:1);});
+  var _chipsHtml='';
+  if(allChecks.length){
+    _chipsHtml='<div class="okk-emp-chips"><div class="okk-emp-chip okk-chip-all'+(_sel===null?' on':'')+'" onclick="okkFilterEmp(\''+type+'\',null)"><div class="okk-emp-ava" style="background:var(--muted);color:var(--text)">\u03A3</div><div class="okk-emp-meta"><div class="okk-emp-name">Все сотрудники</div><div class="okk-emp-sub"><span class="okk-emp-cnt">'+_emps.length+' чел · '+allChecks.length+' проверок</span></div></div></div>'
+      +_emps.map(function(e){var ac=e.avg>=80?'avg-hi':(e.avg>=60?'avg-mid':'avg-lo');return '<div class="okk-emp-chip'+(_sel===e.n?' on':'')+'" onclick="okkFilterEmp(\''+type+'\',\''+e.n+'\')"><div class="okk-emp-ava" style="background:'+okkAvaBg(e.n)+'">'+ini(e.n)+'</div><div class="okk-emp-meta"><div class="okk-emp-name">'+e.n+'</div><div class="okk-emp-sub"><span class="okk-emp-cnt">'+e.c+' проверок</span><span class="okk-emp-avg '+ac+'">'+e.avg+'%</span></div></div></div>';}).join('')
+      +'</div>';
+  }
+  var _fltBar='';
+  if(_sel){var _se=_emps.find(function(x){return x.n===_sel;})||{c:0,avg:0};_fltBar='<div class="okk-flt-bar">Показаны проверки: <b>'+_sel+'</b> · '+_se.c+' · средний <b>'+_se.avg+'%</b><button class="okk-flt-clear" onclick="okkFilterEmp(\''+type+'\',null)">\u2715 Сбросить</button></div>';}
+  var checks = _sel ? allChecks.filter(function(c){return c.employee===_sel;}) : allChecks;
 
   var addBtn = '';
   if (canEdit) {
@@ -4202,7 +4248,7 @@ function okkRenderCheckList(type, canEdit, container) {
 
   var formHtml = (_okkEditId || _okkShowForm) ? okkBuildForm(type) : '';
 
-  container.innerHTML = addBtn + formHtml
+  container.innerHTML = addBtn + _chipsHtml + _fltBar + formHtml
     + (checks.length
       ? '<table class="okk-tbl"><thead><tr><th>Сотрудник</th><th>Дата</th><th>Тикет</th><th>Балл</th><th>После апелл.</th><th>\uD83D\uDEA9</th><th>Статус</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
       : (canEdit?'':'<div style="padding:24px;text-align:center;color:var(--muted);font-size:11px">Проверок за этот месяц нет</div>'));
