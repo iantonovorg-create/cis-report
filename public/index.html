@@ -4041,10 +4041,14 @@ function okkRender() {
   if (window._okkViewOnly && window._okkViewType) {
     var vt = window._okkViewType;
     var vlabel = ({krm:'КРМ',km:'КМ',thp:'ТХП'})[vt] || vt.toUpperCase();
-    var viewingCase = (_okkTab==='case' && _okkCaseId);
-    el.innerHTML = '<div class="okk-ntabs"><button class="okk-nt'+(viewingCase?'':' on')+'" onclick="okkViewBackToList()">'+(viewingCase?('\u2190 К списку ('+vlabel+')'):(vlabel+' — проверенные кейсы'))+'</button></div><div id="okkSubContent"></div>';
+    var onGuide = (_okkTab==='guide');
+    el.innerHTML = '<div class="okk-ntabs">'
+      +'<button class="okk-nt'+(onGuide?'':' on')+'" onclick="okkViewShow(\'list\')">'+vlabel+' — проверенные кейсы</button>'
+      +'<button class="okk-nt'+(onGuide?' on':'')+'" onclick="okkViewShow(\'guide\')">Чек-лист '+vlabel+'</button>'
+      +'</div><div id="okkSubContent"></div>';
     var sub0 = document.getElementById('okkSubContent');
-    if (viewingCase) { if (sub0) sub0.innerHTML = okkRenderCase(false); }
+    if (onGuide) { _okkGuideType=vt; if (sub0) sub0.innerHTML = okkRenderGuide(true); }
+    else if (_okkTab==='case' && _okkCaseId) { if (sub0) sub0.innerHTML = okkRenderCase(false); }
     else { if (sub0) okkRenderCheckList(vt, false, sub0); }
     return;
   }
@@ -4598,6 +4602,7 @@ async function okkDeleteCheck(id) {
 }
 
 // ── Просмотр кейса ───────────────────────────────────────────────
+function okkViewShow(which){ _okkCaseId=null; _okkTab=(which==='guide')?'guide':'list'; okkRender(); }
 function okkViewBackToList(){ _okkCaseId=null; _okkTab='list'; okkRender(); }
 function okkOpenCase(id) { _okkCaseId=id; _okkTab='case'; okkRender(); }
 
@@ -4760,17 +4765,20 @@ function okkGuideShowType(type, btn) {
   var sub = document.getElementById('okkSubContent');
   if (sub) sub.innerHTML = okkRenderGuide();
 }
-function okkRenderGuide() {
+function okkRenderGuide(hideSwitcher) {
   var type = _okkGuideType;
   var cl = OKK_CL[type];
-  var typeBtns = ['krm','km','thp'].map(function(t) {
-    var b = document.createElement('button');
-    b.className = 'okk-btn' + (t===type?' okk-btn-p':' okk-btn-m');
-    b.setAttribute('data-t', t);
-    b.setAttribute('onclick', "okkGuideShowType(this.dataset.t,this)");
-    b.textContent = t.toUpperCase();
-    return b.outerHTML;
-  }).join(' ');
+  var typeBtns = '';
+  if (!hideSwitcher) {
+    typeBtns = ['krm','km','thp'].map(function(t) {
+      var b = document.createElement('button');
+      b.className = 'okk-btn' + (t===type?' okk-btn-p':' okk-btn-m');
+      b.setAttribute('data-t', t);
+      b.setAttribute('onclick', "okkGuideShowType(this.dataset.t,this)");
+      b.textContent = t.toUpperCase();
+      return b.outerHTML;
+    }).join(' ');
+  }
 
   var blocksHtml = '';
   var mainBlocks = cl.subs || cl.blocks || [];
@@ -4818,7 +4826,7 @@ function okkRenderGuide() {
     +'<div class="okk-rf-desc">'+cl.rf+'</div></div>'
     +'<div class="okk-rf-pen">-100 б., кейс аннулируется</div></div>';
 
-  return '<div style="display:flex;gap:8px;margin-bottom:16px">'+typeBtns+'</div>'
+  return (typeBtns?'<div style="display:flex;gap:8px;margin-bottom:16px">'+typeBtns+'</div>':'')
     +'<div class="sec-lbl">'+cl.label+' — макс. '+cl.max+' баллов, порог прохождения 85%</div>'
     +blocksHtml+penaltyHtml+rfHtml
     +'<div style="font-size:10px;color:var(--muted);font-style:italic;margin-top:12px">Справочный материал. Заполнение проверок доступно только ОКК и Head CS.</div>';
