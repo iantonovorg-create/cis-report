@@ -672,6 +672,18 @@ function applyRoleRestrictions(role){
     setTimeout(opsRender,100);
     return;
   }
+  // Персональная роль «свои результаты» (okk_self) — только вкладка ОКК, только свои проверки, только чтение
+  if (role === 'okk_self') {
+    window._okkSelfOnly = true;
+    document.querySelectorAll('.tab').forEach(t=>{if(t.id!=='okkTab')t.style.display='none';});
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+    const okkTs=document.getElementById('okkTab'); if(okkTs){okkTs.style.display='';okkTs.classList.add('on');}
+    document.getElementById('p-okk')?.classList.add('on');
+    const hs2=document.getElementById('hdrStats'); if(hs2)hs2.style.display='none';
+    ['usersBtn','delMonthBtn','headCsTab','newMonthBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+    setTimeout(function(){if(typeof okkLoad==='function')okkLoad();},100);
+    return;
+  }
   // Роль просмотра ОКК (okk_krm/okk_km/okk_thp) — только вкладка ОКК, только свой тип, только чтение
   const okkViewRole=(DB.customRoles||[]).find(r=>r.name===role && r.okk_type);
   if(okkViewRole){
@@ -720,6 +732,7 @@ async function loadData(){
     const me=await api('GET','/auth/me');
     if(!me||!me.role){ window.location.href='/'; return; }
     window._userRole=me.role;
+    window._okkSelfEmployee=me.okk_employee||'';
     applyRoleRestrictions(me.role);
     document.body.classList.remove('loading');
     startPresence(me.email);
@@ -3504,6 +3517,10 @@ function renderUsersList() {
         ${(DB.customRoles||[]).map(r=>`<option value="${r.name}" ${u.role===r.name?'selected':''}>${r.name}</option>`).join('')}
         ${isAdmin?'<option value="admin" selected>admin</option>':''}
       </select>
+      ${u.role==='okk_self'?`<select onchange="setUserEmp('${u.email}',this.value)" title="Чьи результаты показывать" style="background:var(--bg2);border:1px solid ${u.okk_employee?'var(--sage)':'var(--red)'};color:var(--text);padding:4px 8px;font-family:'Golos Text',sans-serif;font-size:11px;border-radius:2px;outline:none;cursor:pointer;max-width:180px">
+        <option value="">— выбери сотрудника —</option>
+        ${[...new Set((DB.employees||[]).map(e=>e.name).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru')).map(n=>`<option value="${n.replace(/"/g,'&quot;')}" ${u.okk_employee===n?'selected':''}>${n}</option>`).join('')}
+      </select>`:''}
       ${!isAdmin?`<button onclick="removeUser('${u.email}')" title="Полностью удалить доступ" style="background:rgba(200,122,122,.08);color:var(--red);border:1px solid rgba(200,122,122,.2);padding:4px 12px;border-radius:2px;font-family:'Golos Text',sans-serif;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0">✕ Удалить доступ</button>`:'<div style="width:46px" title="Админа удалить нельзя"></div>'}
     </div>`;
   }).join('');
@@ -3528,6 +3545,14 @@ async function changeRole(email, role) {
     await loadUsers();
     toast('Роль обновлена ✓');
   } catch(e) { toast('Ошибка обновления роли'); }
+}
+
+async function setUserEmp(email, emp) {
+  try {
+    await api('POST', '/api/users', { email, role: 'okk_self', okk_employee: emp });
+    await loadUsers();
+    toast(emp ? 'Сотрудник привязан ✓' : 'Привязка снята');
+  } catch(e) { toast('Ошибка привязки'); }
 }
 
 async function removeUser(email) {
@@ -4057,6 +4082,28 @@ function okkRender() {
   var el = document.getElementById('okkContent');
   if (!el) return;
   var role = window._userRole || 'viewer';
+  // Персональная роль okk_self — только свои проверки (все типы) + чек-лист своего типа, только чтение
+  if (window._okkSelfOnly) {
+    var semp = window._okkSelfEmployee || '';
+    var myChecks = OKK_CHECKS.filter(function(c){return !c.deleted_at;});
+    var myTypes = []; myChecks.forEach(function(c){ if(myTypes.indexOf(c.type)<0) myTypes.push(c.type); });
+    var sOnGuide = (_okkTab==='guide');
+    el.innerHTML = '<div class="okk-ntabs">'
+      +'<button class="okk-nt'+(sOnGuide?'':' on')+'" onclick="okkViewShow(\'list\')">Мои проверки</button>'
+      +(myTypes.length?'<button class="okk-nt'+(sOnGuide?' on':'')+'" onclick="okkViewShow(\'guide\')">Чек-лист</button>':'')
+      +'</div><div id="okkSubContent"></div>';
+    var ssub = document.getElementById('okkSubContent');
+    if (sOnGuide && myTypes.length) {
+      if (myTypes.indexOf(_okkGuideType)<0) _okkGuideType=myTypes[0];
+      var sw = myTypes.length>1 ? ('<div style="display:flex;gap:8px;margin-bottom:14px">'+myTypes.map(function(t){return '<button class="okk-btn'+(t===_okkGuideType?' okk-btn-p':' okk-btn-m')+'" onclick="okkSelfGuideType(\''+t+'\')">'+t.toUpperCase()+'</button>';}).join('')+'</div>') : '';
+      if (ssub) ssub.innerHTML = sw + okkRenderGuide(true);
+    } else if (_okkTab==='case' && _okkCaseId) {
+      if (ssub) ssub.innerHTML = okkRenderCase(false);
+    } else {
+      if (ssub) ssub.innerHTML = okkRenderSelfList(semp, myChecks);
+    }
+    return;
+  }
   // Роль просмотра ОКК: только свой тип, только чтение, только проверенные кейсы
   if (window._okkViewOnly && window._okkViewType) {
     var vt = window._okkViewType;
@@ -4649,6 +4696,32 @@ async function okkDeleteCheck(id) {
 
 // ── Просмотр кейса ───────────────────────────────────────────────
 function okkViewShow(which){ _okkCaseId=null; _okkTab=(which==='guide')?'guide':'list'; okkRender(); }
+function okkSelfGuideType(t){ _okkGuideType=t; okkRender(); }
+function okkRenderSelfList(emp, checks){
+  if(!checks.length) return '<div style="padding:28px;text-align:center;color:var(--muted);font-size:12px">Пока нет проверок по тебе за '+curMonth+'</div>';
+  var sum=0; checks.forEach(function(c){var ep=(c.appeal_score!==null&&c.appeal_score!==undefined)?c.appeal_score:(c.red_flag?0:(c.max_score>0?Math.round(c.score/c.max_score*100):0));sum+=ep;});
+  var avg=Math.round(sum/checks.length);
+  var acls=avg>=80?'hi':avg>=60?'mid':'lo';
+  var rows=checks.slice().sort(function(a,b){return (a.created_at<b.created_at)?1:-1;}).map(function(c){
+    var origPct=c.max_score>0?Math.round(c.score/c.max_score*100):0;
+    var pct=(c.appeal_score!==null&&c.appeal_score!==undefined)?c.appeal_score:(c.red_flag?0:origPct);
+    var sc=pct>=80?'hi':pct>=60?'mid':'lo';
+    var scoreCell=(c.appeal_score!==null&&c.appeal_score!==undefined)
+      ?'<div style="display:inline-flex;align-items:center;gap:4px"><span class="okk-sc '+(origPct>=80?'hi':origPct>=60?'mid':'lo')+'" style="text-decoration:line-through;opacity:.5">'+origPct+'%</span><span style="font-size:10px;color:var(--muted)">\u2192</span><span class="okk-sc ap">'+pct+'%</span></div>'
+      :'<span class="okk-sc '+sc+'">'+pct+'%</span>';
+    var st={draft:'draft',appeal:'appl',appeal_approved:'ok',done:'ok',completed:'ok'}[c.status]||'ok';
+    var stL={draft:'Черновик',appeal:'Апелляция',appeal_approved:'Апел. одобрена',done:'Завершена',completed:'Завершена'}[c.status]||'Завершена';
+    return '<tr><td><span class="okk-tag '+c.type+'">'+c.type.toUpperCase()+'</span></td>'
+      +'<td style="white-space:nowrap">'+c.check_date+'</td><td>'+(c.reviewer||'—')+'</td><td>'+scoreCell+'</td>'
+      +'<td>'+(c.red_flag?'<span class="okk-bdg fail">\uD83D\uDEA9</span>':'—')+'</td>'
+      +'<td><span class="okk-bdg '+st+'">'+stL+'</span></td>'
+      +'<td style="text-align:right"><button class="abt" style="padding:2px 8px;font-size:9px" onclick="okkOpenCase(\''+c.id+'\')">\uD83D\uDC41</button></td></tr>';
+  }).join('');
+  return '<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap">'
+    +'<div style="font-family:\'Unbounded\',sans-serif;font-size:14px;color:var(--gold)">'+emp+'</div>'
+    +'<div style="font-size:11px;color:var(--dim)">'+checks.length+' проверок · средний <span class="okk-sc '+acls+'">'+avg+'%</span></div></div>'
+    +'<table class="okk-tbl"><thead><tr><th>Блок</th><th>Дата</th><th>Проверял</th><th>Балл</th><th>\uD83D\uDEA9</th><th>Статус</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
 function okkViewBackToList(){ _okkCaseId=null; _okkTab='list'; okkRender(); }
 function okkOpenCase(id) { _okkCaseId=id; _okkTab='case'; okkRender(); }
 
