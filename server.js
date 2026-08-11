@@ -145,6 +145,7 @@ async function initDB() {
   )`);
   // Бэкофилл: регистрируем все месяцы, где уже есть сотрудники (безопасно, ничего не удаляет)
   await pool.query(`INSERT INTO months (name) SELECT DISTINCT month FROM employees WHERE month IS NOT NULL AND month<>'' ON CONFLICT (name) DO NOTHING`).catch(()=>{});
+  await pool.query(`ALTER TABLE access_users ADD COLUMN IF NOT EXISTS okk_employee TEXT DEFAULT ''`).catch(()=>{});
 
   await pool.query(`CREATE TABLE IF NOT EXISTS head_tasks (
     id TEXT PRIMARY KEY,
@@ -313,7 +314,12 @@ app.post('/auth/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/auth/me', requireAuth, (req, res) => res.json(req.session.user));
+app.get('/auth/me', requireAuth, async (req, res) => {
+  const u = req.session.user;
+  let okk_employee = '';
+  try { const {rows}=await pool.query('SELECT okk_employee FROM access_users WHERE email=$1',[u.email]); okk_employee=(rows[0]&&rows[0].okk_employee)||''; } catch(e){}
+  res.json(Object.assign({}, u, {okk_employee}));
+});
 
 // ── APP ──────────────────────────────────────────────────────────────────────
 app.get('/app', requireAuth, (req, res) => {
@@ -405,11 +411,12 @@ app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
 
 app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { email, role } = req.body;
+    const { email, role, okk_employee } = req.body;
     if (!email || !role) return res.status(400).json({ error: 'нужны email и role' });
     await pool.query(
-      `INSERT INTO access_users (email,role) VALUES ($1,$2) ON CONFLICT (email) DO UPDATE SET role=$2`,
-      [email.toLowerCase().trim(), role]);
+      `INSERT INTO access_users (email,role,okk_employee) VALUES ($1,$2,$3)
+       ON CONFLICT (email) DO UPDATE SET role=$2, okk_employee=COALESCE($3, access_users.okk_employee)`,
+      [email.toLowerCase().trim(), role, (okk_employee!==undefined ? okk_employee : null)]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -780,12 +787,18 @@ app.post('/api/ops', requireAuth, requireOpsEditor, async (req, res) => {
 app.get('/api/okk-checks', requireAuth, async (req, res) => {
   const role = req.session?.user?.role;
   const builtin = ['admin','okk_editor','editor','ops_editor'].includes(role);
-  // Роли просмотра ОКК (okk_krm/okk_km/okk_thp) — пускаем на чтение только своего типа
-  let okkType = null;
+  // Роли просмотра ОКК (okk_krm/okk_km/okk_thp) — свой тип; okk_self — только свой сотрудник
+  let okkType = null, selfEmp = null;
   if (!builtin) {
-    const { rows: cr } = await pool.query('SELECT okk_type FROM custom_roles WHERE name=$1', [role]);
-    okkType = (cr[0] && cr[0].okk_type) ? cr[0].okk_type : null;
-    if (!okkType) return res.status(403).json({error:'Forbidden'});
+    if (role === 'okk_self') {
+      const { rows: ur } = await pool.query('SELECT okk_employee FROM access_users WHERE email=$1', [req.session.user.email]);
+      selfEmp = (ur[0] && ur[0].okk_employee) ? ur[0].okk_employee : '';
+      if (!selfEmp) return res.status(403).json({error:'Сотрудник не привязан к доступу'});
+    } else {
+      const { rows: cr } = await pool.query('SELECT okk_type FROM custom_roles WHERE name=$1', [role]);
+      okkType = (cr[0] && cr[0].okk_type) ? cr[0].okk_type : null;
+      if (!okkType) return res.status(403).json({error:'Forbidden'});
+    }
   }
   try {
     const month = req.query.month || '';
@@ -796,6 +809,12 @@ app.get('/api/okk-checks', requireAuth, async (req, res) => {
       ({rows} = await pool.query(
         'SELECT * FROM okk_checks WHERE month=$1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC',
         [month]
+      ));
+    } else if (selfEmp) {
+      // Только свои проверки (все типы), только проверенные, не удалённые
+      ({rows} = await pool.query(
+        "SELECT * FROM okk_checks WHERE month=$1 AND employee=$2 AND deleted_at IS NULL AND status <> 'draft' ORDER BY created_at DESC",
+        [month, selfEmp]
       ));
     } else if (okkType) {
       // Только свой тип, только проверенные кейсы (не черновики), не удалённые
