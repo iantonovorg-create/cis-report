@@ -353,13 +353,20 @@ app.get('/api/presence', requireAuth, async (req, res) => {
 
 app.get('/api/data', requireAuth, async (req, res) => {
   try {
+    const role = req.session?.user?.role;
+    const canSeeHR = ['admin','editor'].includes(role); // оклад/телефон — только полноправным
     const [emp, meet, roles, mon] = await Promise.all([
       pool.query('SELECT * FROM employees ORDER BY month,block,name'),
       pool.query('SELECT * FROM meetings ORDER BY month,date'),
       pool.query('SELECT * FROM custom_roles ORDER BY name'),
       pool.query('SELECT name FROM months ORDER BY name')
     ]);
-    res.json({ employees: emp.rows, meetings: meet.rows, customRoles: roles.rows||[], months: (mon.rows||[]).map(r=>r.name) });
+    let employees = emp.rows;
+    if (!canSeeHR) {
+      // Чувствительные поля не уходят в браузер ограниченным ролям (данные в БД не меняются)
+      employees = emp.rows.map(function(e){ return Object.assign({}, e, { salary_base: 0, phone: '' }); });
+    }
+    res.json({ employees, meetings: meet.rows, customRoles: roles.rows||[], months: (mon.rows||[]).map(r=>r.name) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -525,6 +532,8 @@ app.delete('/api/task/:id/permanent', requireAuth, requireAdmin, async (req, res
 
 // ── API: PAYROLL ─────────────────────────────────────────────────────────────
 app.get('/api/payroll', requireAuth, async (req, res) => {
+  const role = req.session?.user?.role;
+  if (!['admin','editor'].includes(role)) return res.status(403).json({ error: 'Forbidden' });
   try {
     const { rows } = await pool.query('SELECT * FROM payroll ORDER BY block, sub, name');
     res.json(rows);
