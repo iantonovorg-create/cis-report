@@ -1562,9 +1562,11 @@ let PAYROLL = [];
 
 async function loadPayroll() {
   try {
-    PAYROLL = await (await fetch('/api/payroll')).json();
+    const r = await fetch('/api/payroll');
+    const d = await r.json();
+    PAYROLL = Array.isArray(d) ? d : [];
     renderPayroll();
-  } catch(e) { console.error(e); }
+  } catch(e) { PAYROLL=[]; console.error(e); }
 }
 
 function calcTotal(p) {
