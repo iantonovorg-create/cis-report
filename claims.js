@@ -137,8 +137,25 @@ function parseRefunds(rows) {
 }
 
 let cache = null, cacheAt = 0, inflight = null;
+
+// Вариант 1 (основной): Apps Script web app, развёрнутый от имени сотрудника с доступом к таблице.
+// CLAIMS_SCRIPT_URL = https://script.google.com/macros/s/.../exec?key=СЕКРЕТ
+async function fetchViaScript(url) {
+  const fetchFn = typeof fetch === 'function' ? fetch : require('node-fetch');
+  const r = await fetchFn(url, { redirect: 'follow' });
+  const text = await r.text();
+  let j;
+  try { j = JSON.parse(text); } catch (e) {
+    throw new Error('Apps Script вернул не JSON (проверьте, что веб-приложение развёрнуто с доступом «Все» / Anyone).');
+  }
+  if (j.error) throw new Error('Apps Script: ' + j.error);
+  return { tab: j.tab, ...parseRefunds(j.values || []) };
+}
+
 async function fetchSheet() {
-  if (!process.env.GOOGLE_CREDENTIALS) throw new Error('На сервере не задан GOOGLE_CREDENTIALS (сервисный аккаунт Google).');
+  if (process.env.CLAIMS_SCRIPT_URL) return fetchViaScript(process.env.CLAIMS_SCRIPT_URL);
+  // Вариант 2: сервисный аккаунт Google
+  if (!process.env.GOOGLE_CREDENTIALS) throw new Error('Источник не настроен: добавьте в Render переменную CLAIMS_SCRIPT_URL (ссылка на Apps Script).');
   const { google } = require('googleapis');
   const creds = JSON.parse(process.env.GOOGLE_CREDENTIALS);
   const auth = new google.auth.GoogleAuth({ credentials: creds, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
