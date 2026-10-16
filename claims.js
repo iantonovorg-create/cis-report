@@ -161,7 +161,8 @@ async function fetchViaScript(url) {
 }
 
 async function fetchSheet() {
-  if (process.env.CLAIMS_SCRIPT_URL) return fetchViaScript(process.env.CLAIMS_SCRIPT_URL);
+  const scriptUrl = (process.env.CLAIMS_SCRIPT_URL || '').trim().replace(/^["'«]+|["'»]+$/g, '').replace(/\s+/g, '');
+  if (scriptUrl) return fetchViaScript(scriptUrl);
   // Вариант 2: сервисный аккаунт Google
   if (!process.env.GOOGLE_CREDENTIALS) throw new Error('Источник не настроен: добавьте в Render переменную CLAIMS_SCRIPT_URL (ссылка на Apps Script).');
   const { google } = require('googleapis');
