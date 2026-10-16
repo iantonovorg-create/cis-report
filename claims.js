@@ -146,7 +146,15 @@ async function fetchViaScript(url) {
   const text = await r.text();
   let j;
   try { j = JSON.parse(text); } catch (e) {
-    throw new Error('Apps Script вернул не JSON (проверьте, что веб-приложение развёрнуто с доступом «Все» / Anyone).');
+    const title = ((text.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || '').trim();
+    const body = text.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+    let hint = 'неизвестный ответ';
+    if (/accounts\.google\.com|ServiceLogin|Вход|Sign in/i.test(text)) hint = 'Google просит войти — у веб-приложения доступ не «Все» (Anyone)';
+    else if (/не найден|not found|Script function not found/i.test(text)) hint = 'не найдена функция doGet — развёрнут не тот проект или старая версия';
+    else if (/Exceeded maximum execution time|превышено/i.test(text)) hint = 'скрипт не успел прочитать таблицу за отведённое время';
+    else if (/Ошибка|Error|Exception|authoriz|разреш/i.test(text)) hint = 'ошибка внутри скрипта (часто: не выдано разрешение на таблицу — запустите test в редакторе)';
+    console.error('Claims Apps Script non-JSON', r.status, r.url, title, body);
+    throw new Error(`Apps Script вернул не данные: ${hint}. [HTTP ${r.status}${title ? ', «' + title + '»' : ''}] ${body}`);
   }
   if (j.error) throw new Error('Apps Script: ' + j.error);
   return { tab: j.tab, ...parseRefunds(j.values || []) };
