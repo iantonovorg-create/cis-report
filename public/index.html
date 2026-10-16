@@ -5193,8 +5193,8 @@ async function okkResolveAppeal(id,status){
     var req=d.requests.filter(inF), cls=d.claims.filter(inF);
     var formal=cls.filter(function(c){return c.type===F;}), thr=cls.length-formal.length;
     var refAll=sum(req.filter(function(r){return r.refunded;}),function(r){return r.refund_rub;});
-    var refCl=sum(formal.filter(function(c){return done(c.final_status);}),function(c){return c.refund_rub;});
-    var pend=formal.filter(function(c){return !done(c.final_status);});
+    var refCl=sum(formal,function(c){return c.refund_fact;});
+    var pend=formal.filter(function(c){return !done(c.final_status)&&c.final_status!=='Клиент удержан';});
     var trig={}; formal.forEach(function(c){trig[c.trigger]=(trig[c.trigger]||0)+1;});
     var top=Object.keys(trig).sort(function(a,b){return trig[b]-trig[a];})[0];
     var share=req.length?formal.length/req.length:null, shareSum=refAll?refCl/refAll:null;
@@ -5210,7 +5210,7 @@ async function okkResolveAppeal(id,status){
         k('Запросов на возврат',int(req.length),'все заявки в реестре КРМ')+
         k('Досудебных претензий',int(formal.length),'флаг «Досудебная претензия»',true)+
         k('Доля от запросов',pct(share),'досудебки / все запросы')+
-        k('Возвращено по досудебкам',rub(refCl)+' ₽',pend.length?'ещё '+pend.length+' в работе на '+rub(sum(pend,function(c){return c.refund_rub;}))+' ₽':'статус «Завершено»')+
+        k('Возвращено по досудебкам',rub(refCl)+' ₽',pend.length?'ещё '+pend.length+' не проведено, к возврату '+rub(sum(pend,function(c){return c.refund_rub;}))+' ₽':'статус «Завершено»')+
         k('Доля в сумме возвратов',pct(shareSum),'от '+rub(refAll)+' ₽ проведённых',true)+
         k('Угрозы без претензии',int(thr),'суд / претензия упомянуты в диалоге')+
       '</div>'+
@@ -5222,7 +5222,7 @@ async function okkResolveAppeal(id,status){
       '</div>'+
       '<div class="sec-lbl">Причины</div>'+
       '<div class="cl-grid">'+
-        hcard('Что привело к претензии','Триггер — по комментарию КРМ.',formal,'trigger')+
+        hcard('Что привело к претензии','Триггер — по комментарию КРМ. Сумма — фактически возвращённое.',formal,'trigger')+
         hcard('Исходная причина возврата','«Основная причина» из реестра.',formal,'main_reason')+
         hcard('Когда пришла претензия','Период обучения на момент запроса.',formal,'period')+
         hcard('Способ оплаты','Как клиент платил за курс.',formal,'payment')+
@@ -5233,23 +5233,23 @@ async function okkResolveAppeal(id,status){
         '<input class="cl-q" id="clQ" type="search" placeholder="Поиск по причине, сути, статусу, КРМ…" value="'+esc(CL.q)+'"></div>'+
         '<div class="cl-tw"><table class="cl-t"><thead><tr>'+
           th('created','Создан')+th('work_month','Месяц работы')+th('type','Тип')+th('trigger','Триггер')+th('cause','Причина кратко')+th('essence','Суть и итог')+
-          th('purchase_rub','Покупка, ₽')+th('refund_rub','Возврат, ₽')+th('pct','% от покупки')+th('final_status','Статус БО')+th('refund_date','Дата возврата')+th('krm','КРМ')+th('bo_request','БО')+
+          th('purchase_rub','Покупка, ₽')+th('refund_fact','Возвращено факт, ₽')+th('pct','% от покупки')+th('final_status','Статус БО')+th('refund_date','Дата возврата')+th('krm','КРМ')+th('bo_request','БО')+
         '</tr></thead><tbody id="clTb"></tbody></table></div></div>'+
-      '<div class="cl-foot">Запрос — строка реестра возвратов. Досудебка — флаг «Досудебная претензия» в «Причина из списка»; повторные строки того же клиента считаются одним случаем. Угроза без претензии — суд или претензия упомянуты в комментарии КРМ без флага. Триггер и краткая причина определяются автоматически по тексту «Причина своими словами». В долю суммы идут только проведённые возвраты (статусы «Завершено», «Частично сохранено»). Данные кэшируются на 10 минут.</div>';
+      '<div class="cl-foot">Запрос — строка реестра возвратов. Досудебка — флаг «Досудебная претензия» в «Причина из списка»; повторные строки того же клиента считаются одним случаем. Угроза без претензии — суд или претензия упомянуты в комментарии КРМ без флага. Триггер и краткая причина определяются автоматически по тексту «Причина своими словами». Все суммы возвратов — только факт: «Итоговая сумма возврата, RUB» по статусам БО «Завершено» и «Частично сохранено»; по остальным статусам возврат не проведён и в суммы не входит. Данные кэшируются на 10 минут.</div>';
 
     var ts=document.getElementById('clType'); ts.value=CL.type;
     ts.addEventListener('change',function(e){CL.type=e.target.value;drawTable();});
     var q=document.getElementById('clQ'); q.addEventListener('input',function(e){CL.q=e.target.value;drawTable();});
-    body.querySelectorAll('.cl-t th').forEach(function(t){t.addEventListener('click',function(){var key=t.dataset.k;CL.sortDir=CL.sortK===key?-CL.sortDir:(['purchase_rub','refund_rub','pct','created','refund_date'].indexOf(key)>=0?-1:1);CL.sortK=key;drawTable();});});
+    body.querySelectorAll('.cl-t th').forEach(function(t){t.addEventListener('click',function(){var key=t.dataset.k;CL.sortDir=CL.sortK===key?-CL.sortDir:(['purchase_rub','refund_fact','pct','created','refund_date'].indexOf(key)>=0?-1:1);CL.sortK=key;drawTable();});});
     drawTable(); drawCharts();
   }
 
   function th(key,t){return '<th data-k="'+key+'">'+t+(CL.sortK===key?(CL.sortDir>0?' ↑':' ↓'):'')+'</th>';}
   function hcard(title,note,rows,dim){
-    var g={}; rows.forEach(function(c){var k=c[dim]||'—';(g[k]=g[k]||{n:0,s:0});g[k].n++;g[k].s+=Number(c.refund_rub)||0;});
+    var g={}; rows.forEach(function(c){var k=c[dim]||'—';(g[k]=g[k]||{n:0,s:0});g[k].n++;g[k].s+=Number(c.refund_fact)||0;});
     var keys=Object.keys(g).sort(function(a,b){return g[b].n-g[a].n||g[b].s-g[a].s;});
     var max=keys.length?g[keys[0]].n:1;
-    var inner=keys.length?keys.map(function(k){return '<div class="cl-hr"><div>'+esc(lbl(k))+'</div><div class="w"><div class="b" style="width:calc((100% - 120px) * '+(g[k].n/max)+')"></div><div class="v"><b>'+g[k].n+'</b> · '+pct(g[k].n/rows.length)+' · '+rub(g[k].s)+' ₽</div></div></div>';}).join(''):'<div class="nt">Нет досудебок в выбранном периоде</div>';
+    var inner=keys.length?keys.map(function(k){return '<div class="cl-hr"><div>'+esc(lbl(k))+'</div><div class="w"><div class="b" style="width:calc((100% - 120px) * '+(g[k].n/max)+')"></div><div class="v"><b>'+g[k].n+'</b> · '+pct(g[k].n/rows.length)+' · '+(g[k].s?rub(g[k].s)+' ₽ возвращено':'не возвращали')+'</div></div></div>';}).join(''):'<div class="nt">Нет досудебок в выбранном периоде</div>';
     return '<div class="cl-card"><h3>'+title+'</h3><div class="nt">'+note+'</div><div class="cl-hb">'+inner+'</div></div>';
   }
 
@@ -5257,7 +5257,7 @@ async function okkResolveAppeal(id,status){
     var d=CL.data, tb=document.getElementById('clTb'); if(!tb) return;
     var q=CL.q.trim().toLowerCase();
     var rows=d.claims.filter(inF).filter(function(c){return CL.type==='all'||(CL.type==='f')===(c.type===F);})
-      .map(function(c){return Object.assign({},c,{pct:c.purchase_rub?(Number(c.refund_rub)||0)/c.purchase_rub:null});})
+      .map(function(c){return Object.assign({},c,{pct:c.purchase_rub&&c.refund_fact?c.refund_fact/c.purchase_rub:null});})
       .filter(function(c){return !q||[c.type,c.trigger,c.cause,c.essence,c.final_status,c.krm,c.krm_status].join(' ').toLowerCase().indexOf(q)>=0;});
     var k=CL.sortK,dir=CL.sortDir;
     rows.sort(function(a,b){var x=a[k],y=b[k];if(x==null||x==='')return 1;if(y==null||y==='')return -1;return (typeof x==='number'?x-y:String(x).localeCompare(String(y),'ru'))*dir;});
@@ -5266,7 +5266,7 @@ async function okkResolveAppeal(id,status){
       var f=c.type===F;
       return '<tr><td>'+dfmt(c.created)+'</td><td>'+esc(ml(c.work_month))+'</td><td><span class="cl-tag '+(f?'f':'t')+'">'+(f?'Досудебка':'Угроза')+'</span></td>'+
         '<td>'+esc(c.trigger)+'</td><td class="c">'+esc(c.cause)+'</td><td class="e">'+esc(c.essence)+'</td>'+
-        '<td class="n">'+int(c.purchase_rub)+'</td><td class="n">'+int(c.refund_rub)+'</td><td class="n">'+pct(c.pct)+'</td>'+
+        '<td class="n">'+int(c.purchase_rub)+'</td><td class="n">'+(c.refund_fact?int(c.refund_fact):(done(c.final_status)||c.final_status==='Клиент удержан'?'0':'<span style="color:var(--dim)">— <small>(к возврату '+int(c.refund_rub)+', не проведён)</small></span>'))+'</td><td class="n">'+pct(c.pct)+'</td>'+
         '<td>'+esc(c.final_status||'—')+'</td><td>'+dfmt(c.refund_date)+'</td><td style="white-space:nowrap">'+esc(c.krm||'—')+'</td>'+
         '<td>'+(c.bo_request&&/^https:\/\/bo\.kodland\.org\//.test(c.bo_request)?'<a href="'+esc(c.bo_request)+'" target="_blank" rel="noopener">↗</a>':'—')+'</td></tr>';
     }).join(''):'<tr><td colspan="13" style="text-align:center;color:var(--dim);padding:24px">Нет случаев по фильтрам</td></tr>';
@@ -5282,7 +5282,7 @@ async function okkResolveAppeal(id,status){
       return ms.map(function(m){
         var f=function(r){return r[axisKey]===m&&(otherVal==='all'||r[otherKey]===otherVal);};
         var q=d.requests.filter(f), c=d.claims.filter(function(x){return f(x)&&x.type===F;});
-        var ra=sum(q.filter(function(r){return r.refunded;}),function(r){return r.refund_rub;}), rc=sum(c.filter(function(x){return done(x.final_status);}),function(x){return x.refund_rub;});
+        var ra=sum(q.filter(function(r){return r.refunded;}),function(r){return r.refund_rub;}), rc=sum(c,function(x){return x.refund_fact;});
         return {m:m,req:q.length,cl:c.length,share:q.length?c.length/q.length:0,ra:ra,rc:rc};
       });
     }

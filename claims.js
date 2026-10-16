@@ -128,7 +128,7 @@ function parseRefunds(rows) {
       type, trigger: ov ? ov[0] : classify(arr.map((x) => x.list).join(', '), allText), cause, essence,
       main_reason: keep.req.main_reason, period: keep.req.period, krm_status: g(keep.r, 'krmStatus'), final_status: keep.req.final_status,
       refund_date: parseDate(g(keep.r, 'refundDate')), purchase_rub: num(g(keep.r, 'purchase')), requested_rub: num(g(keep.r, 'requested')),
-      refund_rub: num(g(keep.r, 'refund')), refund_cur: g(keep.r, 'refundCur'), currency: g(keep.r, 'currency'), payment: keep.req.payment,
+      refund_rub: num(g(keep.r, 'refund')), refund_fact: keep.req.refunded ? (num(g(keep.r, 'refund')) || 0) : 0, refund_cur: g(keep.r, 'refundCur'), currency: g(keep.r, 'currency'), payment: keep.req.payment,
       krm: g(keep.r, 'krm'), bo_request: keep.link, duplicates: arr.length - 1,
     });
   }
