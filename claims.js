@@ -83,6 +83,7 @@ function parseRefunds(rows) {
     requested: col('Запрошенная сумма, RUB'), payment: col('Способ оплаты'), refundCur: col('Итоговая сумма возврата, CUR'),
     currency: col('Валюта'), refund: col('Итоговая сумма возврата, RUB'),
   };
+  const KPI_COL = col('Сумма удержания в KPI, RUB'); // необязательная колонка
   const missing = Object.entries(C).filter(([, i]) => i < 0).map(([k]) => k);
   if (missing.length) throw new Error('В таблице не найдены колонки: ' + missing.join(', '));
   const g = (r, k) => (r[C[k]] == null ? '' : String(r[C[k]]).trim());
@@ -94,13 +95,19 @@ function parseRefunds(rows) {
     const link = g(r, 'link');
     const id = (link.match(/id=([0-9a-f-]+)/i) || [])[1] || 'row' + (i + 2);
     const status = g(r, 'status');
+    const list = g(r, 'list'), text = g(r, 'text');
+    const refunded = status === 'Завершено' || status === 'Частично сохранено';
     const req = {
       id, created, created_month: created.slice(0, 7), work_month: wm, final_status: status, main_reason: g(r, 'main'),
       period: g(r, 'period'), payment: g(r, 'payment'), refund_rub: num(g(r, 'refund')) || 0,
-      refunded: status === 'Завершено' || status === 'Частично сохранено', claim_type: '',
+      refunded, refund_fact: refunded ? (num(g(r, 'refund')) || 0) : 0, claim_type: '', segment: 'regular',
+      kpi_rub: KPI_COL >= 0 ? (num(r[KPI_COL]) || 0) : 0, krm: g(r, 'krm'), krm_status: g(r, 'krmStatus'),
+      refund_date: parseDate(g(r, 'refundDate')), purchase_rub: num(g(r, 'purchase')), currency: g(r, 'currency'),
+      bo_request: link, reason: list,
+      cause: short(section(text, 'Причина запроса возврата') || list || '', 110),
+      essence: short([section(text, 'Примененные инструменты'), section(text, 'Итог работы') && ('Итог: ' + section(text, 'Итог работы'))].filter(Boolean).join(' ') || text, 220),
     };
     requests.push(req);
-    const list = g(r, 'list'), text = g(r, 'text');
     const formal = /досудебн\S* претенз/i.test(list);
     const threat = !formal && RX_THREAT.test(text);
     if (formal || threat) cand.push({ req, r, list, text, formal, link });
@@ -116,16 +123,19 @@ function parseRefunds(rows) {
   for (const arr of byClient.values()) {
     arr.sort((a, b) => (b.req.refunded - a.req.refunded) || b.req.created.localeCompare(a.req.created));
     const keep = arr[0];
-    arr.slice(1).forEach((d) => { d.req.claim_type = 'Дубль'; });
+    arr.slice(1).forEach((d) => { d.req.claim_type = 'Дубль'; if (d.formal) d.req.segment = 'dup'; });
     const allText = arr.map((x) => x.text).join('\n');
     const ov = OVERRIDES[keep.req.id];
     const cause = ov ? ov[1] : short(section(allText, 'Причина запроса возврата') || keep.list || 'не указана', 110);
     const essence = ov ? ov[2] : short([section(allText, 'Примененные инструменты'), section(allText, 'Итог работы') && ('Итог: ' + section(allText, 'Итог работы'))].filter(Boolean).join(' ') || allText, 220);
     const type = keep.formal ? 'Досудебная претензия' : 'Угроза без претензии';
     keep.req.claim_type = type;
+    const trigger = ov ? ov[0] : classify(arr.map((x) => x.list).join(', '), allText);
+    if (keep.formal) { keep.req.segment = 'claim'; keep.req.reason = trigger; keep.req.trigger = trigger; }
+    keep.req.cause = cause; keep.req.essence = essence;
     claims.push({
       id: keep.req.id, created: keep.req.created, created_month: keep.req.created_month, work_month: keep.req.work_month,
-      type, trigger: ov ? ov[0] : classify(arr.map((x) => x.list).join(', '), allText), cause, essence,
+      type, trigger, cause, essence,
       main_reason: keep.req.main_reason, period: keep.req.period, krm_status: g(keep.r, 'krmStatus'), final_status: keep.req.final_status,
       refund_date: parseDate(g(keep.r, 'refundDate')), purchase_rub: num(g(keep.r, 'purchase')), requested_rub: num(g(keep.r, 'requested')),
       refund_rub: num(g(keep.r, 'refund')), refund_fact: keep.req.refunded ? (num(g(keep.r, 'refund')) || 0) : 0, refund_cur: g(keep.r, 'refundCur'), currency: g(keep.r, 'currency'), payment: keep.req.payment,
