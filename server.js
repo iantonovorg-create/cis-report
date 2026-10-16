@@ -1014,6 +1014,25 @@ async function syncOkkToSheets(check) {
   } catch(e) { console.error('GSheets OKK error:', e.message); }
 }
 
+// ── ДОСУДЕБНЫЕ ПРЕТЕНЗИИ (чтение таблицы «возвраты | CIS») ───────────────────
+const claimsSrc = require('./claims');
+async function canSeeClaims(role) {
+  if (['admin', 'editor', 'viewer'].includes(role)) return true;
+  try {
+    const { rows } = await pool.query('SELECT tabs FROM custom_roles WHERE name=$1', [role]);
+    return !!(rows[0] && (rows[0].tabs || []).includes('claims'));
+  } catch (e) { return false; }
+}
+app.get('/api/claims', requireAuth, async (req, res) => {
+  if (!(await canSeeClaims(req.session?.user?.role))) return res.status(403).json({ error: 'forbidden' });
+  try {
+    const data = await claimsSrc.getClaims(req.query.force === '1');
+    res.json(Object.assign({ sheet_url: `https://docs.google.com/spreadsheets/d/${claimsSrc.SHEET_ID}/edit#gid=${claimsSrc.SHEET_GID}` }, data));
+  } catch (e) {
+    console.error('Claims sheet error:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
 
 app.get('*', (req, res) => res.redirect('/'));
 

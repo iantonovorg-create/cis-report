@@ -335,6 +335,7 @@ body.viewer-mode .pr-save-btn
   <button class="tab" onclick="showTab('tasks',this)">Задачи</button>
   <button class="tab" onclick="showTab('ops',this)">Опер. показатели</button>
   <button class="tab" onclick="showTab('reviews',this)">Отзывы</button>
+  <button class="tab" id="claimsTab" onclick="showTab('claims',this)">Досудебки</button>
   <button class="tab" onclick="showTab('payroll',this)" style="display:none">ЗП Ведомость</button>
   
   <button class="tab" id="okkTab" onclick="showTab('okk',this)" style="display:none">ОКК</button>
@@ -454,6 +455,7 @@ body.viewer-mode .pr-save-btn
   <div id="reviewsSummary" style="margin-bottom:20px"></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px" id="reviewsPlatforms"></div>
 </div>
+<div class="panel" id="p-claims"></div>
   <div class="footer">
   <span>CIS Client Service · <span id="footM">—</span></span>
   <span id="footUpd"></span>
@@ -669,7 +671,7 @@ async function api(method,url,body){
 function applyRoleRestrictions(role){
   const TAB_MAP = {
     'team':'Команда','km':'Работа с КМ','tasks':'Задачи',
-    'ops':'Опер','reviews':'Отзывы','payroll':'ЗП Ведомость','okk':'ОКК'
+    'ops':'Опер','reviews':'Отзывы','payroll':'ЗП Ведомость','okk':'ОКК','claims':'Досудебки'
   };
   if(role==='admin'){
     const hTab=document.getElementById('headCsTab');
@@ -747,6 +749,7 @@ function applyRoleRestrictions(role){
     if(firstPanel)firstPanel.classList.add('on');
     document.getElementById('hdrStats')?.style&&(document.getElementById('hdrStats').style.display='none');
     if(allowed.includes('ops'))setTimeout(opsRender,100);
+    if(allowed[0]==='claims')setTimeout(function(){if(typeof claimsLoad==='function')claimsLoad();},100);
     return;
   }
   // editor (ТЛ, OPS) — видит ОКК вкладку, может подавать апелляции
@@ -1022,6 +1025,7 @@ function showTab(name,btn){
   if(name==='okk'){ if(typeof okkLoad==='function') okkLoad(); }
   if(name==='ops') opsRender();
   if(name==='headcs') headCsRender();
+  if(name==='claims'){ if(typeof claimsLoad==='function') claimsLoad(); }
 }
 function switchMonth(m){curMonth=m;try{localStorage.setItem('cis_last_month',m);}catch(e){}renderAll();loadTasks();loadReviews();kmFilter='cur';renderKM();opsStore={1:{},2:{},3:{},4:{}};opsCurWeek=0;opsPeriod='';HC_TASKS=[];OKK_CHECKS=[];OKK_APPEALS=[];OKK_EMPLOYEES=[];if(typeof okkLoad==='function'&&document.getElementById('p-okk')?.classList.contains('on'))okkLoad();}
 function parseKD(s){const m=s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
@@ -3743,6 +3747,7 @@ async function deleteCustomRole(name) {
 <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" class="cr-tab-check" value="ops" style="accent-color:var(--accent)"> Опер. показатели</label>
 <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" class="cr-tab-check" value="reviews" style="accent-color:var(--accent)"> Отзывы</label>
 <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" class="cr-tab-check" value="payroll" style="accent-color:var(--accent)"> ЗП Ведомость</label>
+<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" class="cr-tab-check" value="claims" style="accent-color:var(--accent)"> Досудебки</label>
         </div>
       </div>
     </div>
@@ -5065,6 +5070,250 @@ async function okkResolveAppeal(id,status){
   if(status==='approved'){var fEl=document.getElementById('okk_final_'+id);if(fEl&&fEl.value!=='')fscore=parseInt(fEl.value);}
   try{await api('PATCH','/api/okk-appeal/'+id,{status:status,okk_comment:comment,final_score:fscore});await okkLoad();toast(status==='approved'?'Апелляция одобрена \u2713':'Отклонена');}catch(e){toast('Ошибка');}
 }
+</script>
+
+
+<!-- ── ДОСУДЕБКИ ─────────────────────────────────────────────────────────── -->
+<style>
+#p-claims{padding:24px 32px;max-width:1700px}
+#p-claims .cl-top{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+#p-claims .cl-h{font-family:'Unbounded',sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;color:var(--text)}
+#p-claims .cl-src{font-size:11px;color:var(--dim);margin-top:6px}
+#p-claims .cl-src a{color:var(--blue);text-decoration:none}
+#p-claims .cl-f{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+#p-claims .cl-f label{display:flex;flex-direction:column;gap:5px;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
+#p-claims .cl-f select{background:var(--bg3);border:1px solid var(--border2);color:var(--accent);padding:7px 12px;font-family:'Golos Text',sans-serif;font-size:12px;font-weight:600;border-radius:2px;outline:none;min-width:170px;cursor:pointer}
+#p-claims .cl-take{background:var(--bg2);border:1px solid var(--border);border-left:2px solid var(--red);padding:12px 16px;font-size:13px;line-height:1.55;margin-bottom:16px;color:var(--text)}
+#p-claims .cl-take b{color:var(--gold);font-weight:600}
+#p-claims .cl-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:6px}
+#p-claims .cl-k{background:var(--bg2);border:1px solid var(--border);padding:14px 16px}
+#p-claims .cl-k .l{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
+#p-claims .cl-k .n{font-family:'Unbounded',sans-serif;font-size:22px;font-weight:600;margin-top:8px;font-variant-numeric:tabular-nums}
+#p-claims .cl-k .s{font-size:10px;color:var(--dim);margin-top:6px}
+#p-claims .cl-k.hot .n{color:var(--red)}
+#p-claims .cl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px}
+#p-claims .cl-card{background:var(--bg2);border:1px solid var(--border);padding:16px 18px}
+#p-claims .cl-card h3{font-family:'Unbounded',sans-serif;font-size:10px;letter-spacing:1.5px;font-weight:600;color:var(--text);text-transform:uppercase}
+#p-claims .cl-card .nt{font-size:11px;color:var(--dim);margin:6px 0 12px;line-height:1.4}
+#p-claims .cl-cv{position:relative;height:230px}
+#p-claims .cl-hb{display:flex;flex-direction:column;gap:9px}
+#p-claims .cl-hr{display:grid;grid-template-columns:minmax(120px,40%) 1fr;gap:10px;align-items:center;font-size:12px}
+#p-claims .cl-hr .w{display:flex;align-items:center;gap:8px;min-width:0}
+#p-claims .cl-hr .b{height:12px;background:var(--red);opacity:.85;border-radius:2px;min-width:2px}
+#p-claims .cl-hr .v{font-size:11px;color:var(--dim);white-space:nowrap;font-variant-numeric:tabular-nums}
+#p-claims .cl-hr .v b{color:var(--text)}
+#p-claims .cl-tt{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+#p-claims .cl-q{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:7px 12px;font-family:'Golos Text',sans-serif;font-size:12px;border-radius:2px;outline:none;min-width:260px}
+#p-claims .cl-tw{max-height:620px;overflow:auto;border:1px solid var(--border)}
+#p-claims table.cl-t{width:100%;border-collapse:collapse;font-size:12px}
+#p-claims .cl-t th{position:sticky;top:0;background:var(--bg3);border-bottom:1px solid var(--border);padding:9px 10px;text-align:left;font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;white-space:nowrap;cursor:pointer;user-select:none;z-index:1}
+#p-claims .cl-t th:hover{color:var(--accent)}
+#p-claims .cl-t td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.4}
+#p-claims .cl-t td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+#p-claims .cl-t td.c{font-weight:500;min-width:170px}
+#p-claims .cl-t td.e{color:var(--dim);min-width:260px}
+#p-claims .cl-t tr:hover td{background:rgba(200,184,154,.04)}
+#p-claims .cl-t a{color:var(--blue);text-decoration:none}
+#p-claims .cl-tag{display:inline-block;font-size:10px;padding:2px 7px;border:1px solid currentColor;border-radius:10px;white-space:nowrap}
+#p-claims .cl-tag.f{color:var(--red)}#p-claims .cl-tag.t{color:var(--warn)}
+#p-claims .cl-msg{padding:40px;text-align:center;color:var(--dim);font-size:13px;border:1px dashed var(--border2)}
+#p-claims .cl-msg.err{color:var(--red)}
+#p-claims .cl-foot{font-size:10px;color:var(--dim);line-height:1.6;margin-top:14px}
+</style>
+<script>
+(function(){
+  var CL = { data:null, loading:false, cm:'all', wm:'all', type:'all', q:'', sortK:'created', sortDir:-1, charts:{} };
+  window.CL_STATE = CL;
+  var MON = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+  var LBL = {
+    personal_issues:'Личные обстоятельства', program_or_format_issue:'Программа / формат', refuse_to_disclose:'Не озвучили',
+    service_dissatisfaction:'Недовольство сервисом', payment_problems:'Проблемы с оплатой',
+    'After the first module':'После 1-го модуля','Prior to the first lesson':'До 1-го урока','During the first module':'Во время 1-го модуля',
+    'Bank installment':'Банковская рассрочка','Internal installment':'Внутренняя рассрочка (ВР)','Full':'Полная оплата','Downpayment | Reservation':'Предоплата'
+  };
+  var F = 'Досудебная претензия';
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function ml(m){return m&&m.length===7?MON[+m.slice(5)-1]+' '+m.slice(0,4):m;}
+  function lbl(x){return LBL[x]||x||'—';}
+  function int(v){return v==null?'—':Math.round(v).toLocaleString('ru-RU');}
+  function pct(v){return v==null||!isFinite(v)?'—':(v*100).toLocaleString('ru-RU',{maximumFractionDigits:1})+'%';}
+  function rub(v){if(v==null)return '—';var a=Math.abs(v);if(a>=999500)return (v/1e6).toLocaleString('ru-RU',{maximumFractionDigits:2})+' млн';if(a>=1e4)return (v/1e3).toLocaleString('ru-RU',{maximumFractionDigits:0})+' тыс.';return int(v);}
+  function dfmt(d){return d?d.slice(8,10)+'.'+d.slice(5,7)+'.'+d.slice(0,4):'—';}
+  function done(s){return s==='Завершено'||s==='Частично сохранено';}
+  function inF(r){return (CL.cm==='all'||r.created_month===CL.cm)&&(CL.wm==='all'||r.work_month===CL.wm);}
+  function uniq(a){return a.filter(function(x,i){return a.indexOf(x)===i;}).sort();}
+  function sum(a,f){return a.reduce(function(s,x){return s+(Number(f(x))||0);},0);}
+  function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+  window.claimsLoad = function(force){
+    var root=document.getElementById('p-claims'); if(!root) return;
+    if(!root.dataset.built){ claimsShell(root); root.dataset.built='1'; }
+    if(CL.data && !force){ claimsRender(); return; }
+    if(CL.loading) return;
+    CL.loading=true;
+    var body=document.getElementById('clBody');
+    if(!CL.data) body.innerHTML='<div class="cl-msg">Загружаю данные из таблицы возвратов…</div>';
+    var btn=document.getElementById('clRefresh'); if(btn){btn.disabled=true;btn.textContent='↻ Загрузка…';}
+    fetch('/api/claims'+(force?'?force=1':''),{credentials:'same-origin'}).then(function(r){
+      if(r.status===401){window.location.href='/';throw new Error('Unauthorized');}
+      return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; });
+    }).then(function(j){ CL.data=j; claimsRender(); })
+    .catch(function(e){
+      if(!CL.data) body.innerHTML='<div class="cl-msg err">Не удалось получить данные: '+esc(e.message)+'</div>';
+      else alert('Не удалось обновить: '+e.message);
+    }).finally(function(){ CL.loading=false; if(btn){btn.disabled=false;btn.textContent='↻ Обновить из таблицы';} });
+  };
+
+  function claimsShell(root){
+    root.innerHTML=
+      '<div class="cl-top"><div><div class="cl-h">Досудебные претензии</div><div class="cl-src" id="clSrc">Источник: таблица «возвраты | CIS»</div></div>'+
+      '<div class="cl-f">'+
+        '<label>Дата создания запроса<select id="clCm"></select></label>'+
+        '<label>Месяц, в котором ведётся работа<select id="clWm"></select></label>'+
+        '<button class="btn-nm" id="clReset" type="button">Сбросить</button>'+
+        '<button class="btn-nm" id="clRefresh" type="button" style="border-color:var(--blue);color:var(--blue)">↻ Обновить из таблицы</button>'+
+      '</div></div><div id="clBody"></div>';
+    root.querySelector('#clCm').addEventListener('change',function(e){CL.cm=e.target.value;claimsRender();});
+    root.querySelector('#clWm').addEventListener('change',function(e){CL.wm=e.target.value;claimsRender();});
+    root.querySelector('#clReset').addEventListener('click',function(){CL.cm='all';CL.wm='all';CL.type='all';CL.q='';claimsRender();});
+    root.querySelector('#clRefresh').addEventListener('click',function(){claimsLoad(true);});
+  }
+
+  function claimsRender(){
+    var d=CL.data; if(!d) return;
+    var root=document.getElementById('p-claims'), body=document.getElementById('clBody');
+    var src=document.getElementById('clSrc');
+    var upd=d.updated_at?new Date(d.updated_at):null;
+    src.innerHTML='Источник: <a href="'+esc(d.sheet_url)+'" target="_blank" rel="noopener">таблица «возвраты | CIS»'+(d.tab?' → '+esc(d.tab):'')+'</a>'+(upd?' · обновлено '+upd.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'');
+    var fill=function(sel,vals,cur){sel.innerHTML='<option value="all">Все месяцы</option>'+vals.map(function(m){return '<option value="'+esc(m)+'">'+esc(ml(m))+'</option>';}).join('');sel.value=cur;if(sel.value!==cur){sel.value='all';}};
+    fill(root.querySelector('#clCm'),uniq(d.requests.map(function(r){return r.created_month;})),CL.cm);
+    fill(root.querySelector('#clWm'),uniq(d.requests.map(function(r){return r.work_month;})),CL.wm);
+    CL.cm=root.querySelector('#clCm').value; CL.wm=root.querySelector('#clWm').value;
+
+    var req=d.requests.filter(inF), cls=d.claims.filter(inF);
+    var formal=cls.filter(function(c){return c.type===F;}), thr=cls.length-formal.length;
+    var refAll=sum(req.filter(function(r){return r.refunded;}),function(r){return r.refund_rub;});
+    var refCl=sum(formal.filter(function(c){return done(c.final_status);}),function(c){return c.refund_rub;});
+    var pend=formal.filter(function(c){return !done(c.final_status);});
+    var trig={}; formal.forEach(function(c){trig[c.trigger]=(trig[c.trigger]||0)+1;});
+    var top=Object.keys(trig).sort(function(a,b){return trig[b]-trig[a];})[0];
+    var share=req.length?formal.length/req.length:null, shareSum=refAll?refCl/refAll:null;
+
+    var take = formal.length
+      ? '<b>'+formal.length+'</b> досудеб'+(formal.length%10===1&&formal.length%100!==11?'ка':'ок')+' — <b>'+pct(share)+'</b> от '+int(req.length)+' запросов на возврат, но <b>'+pct(shareSum)+'</b> суммы проведённых возвратов ('+rub(refCl)+' из '+rub(refAll)+' ₽). Главный триггер — <b>'+esc(top)+'</b> ('+trig[top]+' из '+formal.length+').'
+      : 'В выбранном периоде досудебных претензий нет. Запросов на возврат: <b>'+int(req.length)+'</b>.';
+
+    var k=function(l,n,s,hot){return '<div class="cl-k'+(hot?' hot':'')+'"><div class="l">'+l+'</div><div class="n">'+n+'</div><div class="s">'+s+'</div></div>';};
+    body.innerHTML=
+      '<div class="cl-take">'+take+'</div>'+
+      '<div class="cl-kpis">'+
+        k('Запросов на возврат',int(req.length),'все заявки в реестре КРМ')+
+        k('Досудебных претензий',int(formal.length),'флаг «Досудебная претензия»',true)+
+        k('Доля от запросов',pct(share),'досудебки / все запросы')+
+        k('Возвращено по досудебкам',rub(refCl)+' ₽',pend.length?'ещё '+pend.length+' в работе на '+rub(sum(pend,function(c){return c.refund_rub;}))+' ₽':'статус «Завершено»')+
+        k('Доля в сумме возвратов',pct(shareSum),'от '+rub(refAll)+' ₽ проведённых',true)+
+        k('Угрозы без претензии',int(thr),'суд / претензия упомянуты в диалоге')+
+      '</div>'+
+      '<div class="sec-lbl">По месяцам</div>'+
+      '<div class="cl-grid">'+
+        '<div class="cl-card"><h3>По дате создания запроса</h3><div class="nt">Досудебки и их доля среди запросов, пришедших в месяц. Учитывает фильтр месяца работы.</div><div class="cl-cv"><canvas id="clChC"></canvas></div></div>'+
+        '<div class="cl-card"><h3>По месяцу работы</h3><div class="nt">Досудебки и их доля среди запросов, которые ведутся в месяце. Учитывает фильтр даты создания.</div><div class="cl-cv"><canvas id="clChW"></canvas></div></div>'+
+        '<div class="cl-card"><h3>Сумма возвратов по месяцу работы</h3><div class="nt">Проведённые возвраты, ₽: досудебки против остальных.</div><div class="cl-cv"><canvas id="clChS"></canvas></div></div>'+
+      '</div>'+
+      '<div class="sec-lbl">Причины</div>'+
+      '<div class="cl-grid">'+
+        hcard('Что привело к претензии','Триггер — по комментарию КРМ.',formal,'trigger')+
+        hcard('Исходная причина возврата','«Основная причина» из реестра.',formal,'main_reason')+
+        hcard('Когда пришла претензия','Период обучения на момент запроса.',formal,'period')+
+        hcard('Способ оплаты','Как клиент платил за курс.',formal,'payment')+
+      '</div>'+
+      '<div class="sec-lbl">Все случаи</div>'+
+      '<div class="cl-card"><div class="cl-tt"><div class="cl-f">'+
+        '<label>Тип<select id="clType"><option value="all">Все</option><option value="f">Только досудебки</option><option value="t">Только угрозы</option></select></label></div>'+
+        '<input class="cl-q" id="clQ" type="search" placeholder="Поиск по причине, сути, статусу, КРМ…" value="'+esc(CL.q)+'"></div>'+
+        '<div class="cl-tw"><table class="cl-t"><thead><tr>'+
+          th('created','Создан')+th('work_month','Месяц работы')+th('type','Тип')+th('trigger','Триггер')+th('cause','Причина кратко')+th('essence','Суть и итог')+
+          th('purchase_rub','Покупка, ₽')+th('refund_rub','Возврат, ₽')+th('pct','% от покупки')+th('final_status','Статус БО')+th('refund_date','Дата возврата')+th('krm','КРМ')+th('bo_request','БО')+
+        '</tr></thead><tbody id="clTb"></tbody></table></div></div>'+
+      '<div class="cl-foot">Запрос — строка реестра возвратов. Досудебка — флаг «Досудебная претензия» в «Причина из списка»; повторные строки того же клиента считаются одним случаем. Угроза без претензии — суд или претензия упомянуты в комментарии КРМ без флага. Триггер и краткая причина определяются автоматически по тексту «Причина своими словами». В долю суммы идут только проведённые возвраты (статусы «Завершено», «Частично сохранено»). Данные кэшируются на 10 минут.</div>';
+
+    var ts=document.getElementById('clType'); ts.value=CL.type;
+    ts.addEventListener('change',function(e){CL.type=e.target.value;drawTable();});
+    var q=document.getElementById('clQ'); q.addEventListener('input',function(e){CL.q=e.target.value;drawTable();});
+    body.querySelectorAll('.cl-t th').forEach(function(t){t.addEventListener('click',function(){var key=t.dataset.k;CL.sortDir=CL.sortK===key?-CL.sortDir:(['purchase_rub','refund_rub','pct','created','refund_date'].indexOf(key)>=0?-1:1);CL.sortK=key;drawTable();});});
+    drawTable(); drawCharts();
+  }
+
+  function th(key,t){return '<th data-k="'+key+'">'+t+(CL.sortK===key?(CL.sortDir>0?' ↑':' ↓'):'')+'</th>';}
+  function hcard(title,note,rows,dim){
+    var g={}; rows.forEach(function(c){var k=c[dim]||'—';(g[k]=g[k]||{n:0,s:0});g[k].n++;g[k].s+=Number(c.refund_rub)||0;});
+    var keys=Object.keys(g).sort(function(a,b){return g[b].n-g[a].n||g[b].s-g[a].s;});
+    var max=keys.length?g[keys[0]].n:1;
+    var inner=keys.length?keys.map(function(k){return '<div class="cl-hr"><div>'+esc(lbl(k))+'</div><div class="w"><div class="b" style="width:calc((100% - 120px) * '+(g[k].n/max)+')"></div><div class="v"><b>'+g[k].n+'</b> · '+pct(g[k].n/rows.length)+' · '+rub(g[k].s)+' ₽</div></div></div>';}).join(''):'<div class="nt">Нет досудебок в выбранном периоде</div>';
+    return '<div class="cl-card"><h3>'+title+'</h3><div class="nt">'+note+'</div><div class="cl-hb">'+inner+'</div></div>';
+  }
+
+  function drawTable(){
+    var d=CL.data, tb=document.getElementById('clTb'); if(!tb) return;
+    var q=CL.q.trim().toLowerCase();
+    var rows=d.claims.filter(inF).filter(function(c){return CL.type==='all'||(CL.type==='f')===(c.type===F);})
+      .map(function(c){return Object.assign({},c,{pct:c.purchase_rub?(Number(c.refund_rub)||0)/c.purchase_rub:null});})
+      .filter(function(c){return !q||[c.type,c.trigger,c.cause,c.essence,c.final_status,c.krm,c.krm_status].join(' ').toLowerCase().indexOf(q)>=0;});
+    var k=CL.sortK,dir=CL.sortDir;
+    rows.sort(function(a,b){var x=a[k],y=b[k];if(x==null||x==='')return 1;if(y==null||y==='')return -1;return (typeof x==='number'?x-y:String(x).localeCompare(String(y),'ru'))*dir;});
+    document.querySelectorAll('#p-claims .cl-t th').forEach(function(t){var kk=t.dataset.k;t.textContent=t.textContent.replace(/ [↑↓]$/,'')+(kk===k?(dir>0?' ↑':' ↓'):'');});
+    tb.innerHTML=rows.length?rows.map(function(c){
+      var f=c.type===F;
+      return '<tr><td>'+dfmt(c.created)+'</td><td>'+esc(ml(c.work_month))+'</td><td><span class="cl-tag '+(f?'f':'t')+'">'+(f?'Досудебка':'Угроза')+'</span></td>'+
+        '<td>'+esc(c.trigger)+'</td><td class="c">'+esc(c.cause)+'</td><td class="e">'+esc(c.essence)+'</td>'+
+        '<td class="n">'+int(c.purchase_rub)+'</td><td class="n">'+int(c.refund_rub)+'</td><td class="n">'+pct(c.pct)+'</td>'+
+        '<td>'+esc(c.final_status||'—')+'</td><td>'+dfmt(c.refund_date)+'</td><td style="white-space:nowrap">'+esc(c.krm||'—')+'</td>'+
+        '<td>'+(c.bo_request&&/^https:\/\/bo\.kodland\.org\//.test(c.bo_request)?'<a href="'+esc(c.bo_request)+'" target="_blank" rel="noopener">↗</a>':'—')+'</td></tr>';
+    }).join(''):'<tr><td colspan="13" style="text-align:center;color:var(--dim);padding:24px">Нет случаев по фильтрам</td></tr>';
+  }
+
+  function drawCharts(){
+    if(typeof Chart==='undefined') return;
+    var d=CL.data;
+    Object.keys(CL.charts).forEach(function(k){CL.charts[k].destroy();}); CL.charts={};
+    var red=css('--red')||'#c87a7a', muted=css('--border2')||'#484848', dim=css('--dim')||'#888', grid=css('--border')||'#363636', gold=css('--gold')||'#d4c4a8', txt=css('--text')||'#e4e2df';
+    function agg(axisKey,otherKey,otherVal){
+      var ms=uniq(d.requests.map(function(r){return r[axisKey];}));
+      return ms.map(function(m){
+        var f=function(r){return r[axisKey]===m&&(otherVal==='all'||r[otherKey]===otherVal);};
+        var q=d.requests.filter(f), c=d.claims.filter(function(x){return f(x)&&x.type===F;});
+        var ra=sum(q.filter(function(r){return r.refunded;}),function(r){return r.refund_rub;}), rc=sum(c.filter(function(x){return done(x.final_status);}),function(x){return x.refund_rub;});
+        return {m:m,req:q.length,cl:c.length,share:q.length?c.length/q.length:0,ra:ra,rc:rc};
+      });
+    }
+    var base={responsive:true,maintainAspectRatio:false,animation:{duration:300},
+      plugins:{legend:{labels:{color:dim,font:{family:'Golos Text',size:11},boxWidth:10}},tooltip:{backgroundColor:'#111',borderColor:grid,borderWidth:1,titleColor:gold,bodyColor:txt,titleFont:{family:'Golos Text'},bodyFont:{family:'Golos Text'}}},
+      scales:{x:{ticks:{color:dim,font:{family:'Golos Text',size:11}},grid:{display:false}}}};
+    function countChart(id,rows,sel){
+      var el=document.getElementById(id); if(!el) return;
+      CL.charts[id]=new Chart(el,{data:{labels:rows.map(function(r){return ml(r.m);}),datasets:[
+        {type:'bar',label:'Досудебки, шт',data:rows.map(function(r){return r.cl;}),backgroundColor:rows.map(function(r){return sel==='all'||sel===r.m?red:muted;}),borderRadius:3,maxBarThickness:42,yAxisID:'y',order:2},
+        {type:'line',label:'Доля от запросов, %',data:rows.map(function(r){return +(r.share*100).toFixed(2);}),borderColor:gold,backgroundColor:gold,pointRadius:4,borderWidth:2,tension:0,yAxisID:'y1',order:1}
+      ]},options:Object.assign({},base,{
+        plugins:Object.assign({},base.plugins,{tooltip:Object.assign({},base.plugins.tooltip,{callbacks:{afterBody:function(it){var r=rows[it[0].dataIndex];return ['Запросов: '+int(r.req),'Возврат по досудебкам: '+int(r.rc)+' ₽'];},label:function(c){return c.dataset.yAxisID==='y1'?' Доля: '+pct(rows[c.dataIndex].share):' Досудебок: '+c.raw;}}})}),
+        scales:{x:base.scales.x,
+          y:{beginAtZero:true,ticks:{color:dim,precision:0,font:{size:10}},grid:{color:grid},title:{display:true,text:'шт',color:dim,font:{size:10}}},
+          y1:{beginAtZero:true,position:'right',ticks:{color:dim,font:{size:10},callback:function(v){return v+'%';}},grid:{display:false}}}
+      })});
+    }
+    countChart('clChC',agg('created_month','work_month',CL.wm),CL.cm);
+    var wr=agg('work_month','created_month',CL.cm);
+    countChart('clChW',wr,CL.wm);
+    var es=document.getElementById('clChS');
+    if(es) CL.charts.clChS=new Chart(es,{type:'bar',data:{labels:wr.map(function(r){return ml(r.m);}),datasets:[
+        {label:'Досудебки',data:wr.map(function(r){return Math.round(r.rc);}),backgroundColor:red,borderRadius:3,maxBarThickness:42,stack:'s'},
+        {label:'Остальные возвраты',data:wr.map(function(r){return Math.round(r.ra-r.rc);}),backgroundColor:muted,borderRadius:3,maxBarThickness:42,stack:'s'}
+      ]},options:Object.assign({},base,{
+        plugins:Object.assign({},base.plugins,{tooltip:Object.assign({},base.plugins.tooltip,{callbacks:{label:function(c){return ' '+c.dataset.label+': '+int(c.raw)+' ₽';},afterBody:function(it){var r=wr[it[0].dataIndex];return ['Доля досудебок: '+pct(r.ra?r.rc/r.ra:null)];}}})}),
+        scales:{x:Object.assign({},base.scales.x,{stacked:true}),y:{stacked:true,beginAtZero:true,ticks:{color:dim,font:{size:10},callback:function(v){return rub(v);}},grid:{color:grid}}}
+      })});
+  }
+})();
 </script>
 
 </body>
