@@ -112,7 +112,7 @@ function parseRefunds(rows) {
       period: g(r, 'period'), payment: g(r, 'payment'), refund_rub: num(g(r, 'refund')) || 0,
       refunded, refund_fact: refunded ? (num(g(r, 'refund')) || 0) : 0, claim_type: '', segment: 'regular',
       kpi_rub: KPI_COL >= 0 ? (num(r[KPI_COL]) || 0) : 0, krm: g(r, 'krm'), krm_status: g(r, 'krmStatus'),
-      refund_date: parseDate(g(r, 'refundDate')), refund_month: refunded ? ((parseDate(g(r, 'refundDate')) || '').slice(0, 7) || 'без даты') : '', purchase_rub: num(g(r, 'purchase')), currency: g(r, 'currency'),
+      refund_date: parseDate(g(r, 'refundDate')), refund_month: refunded ? ((parseDate(g(r, 'refundDate')) || '').slice(0, 7) || 'без даты') : '', purchase_rub: num(g(r, 'purchase')), requested_rub: num(g(r, 'requested')) || 0, currency: g(r, 'currency'),
       bo_request: link, reason: list,
       cause: short(section(text, 'Причина запроса возврата') || list || '', 110),
       essence: short([section(text, 'Примененные инструменты'), section(text, 'Итог работы') && ('Итог: ' + section(text, 'Итог работы'))].filter(Boolean).join(' ') || text, 220),

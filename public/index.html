@@ -5108,6 +5108,10 @@ async function okkResolveAppeal(id,status){
 #p-claims table.cl-t{width:100%;min-width:1750px;border-collapse:collapse;font-size:12px}
 #p-claims .cl-t td:nth-child(-n+3),#p-claims .cl-t td:nth-child(n+10){white-space:nowrap}
 #p-claims .cl-t td:nth-child(4){min-width:150px}
+#p-claims table.cl-t.cl-srt{min-width:0}
+#p-claims .cl-srt td,#p-claims .cl-srt th{padding:9px 8px}
+#p-claims .cl-srt th{cursor:default}
+#p-claims .cl-srt td:nth-child(4){min-width:0}
 #p-claims .cl-t th{position:sticky;top:0;background:var(--bg3);border-bottom:1px solid var(--border);padding:9px 10px;text-align:left;font-family:'Unbounded',sans-serif;font-size:8px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;white-space:nowrap;cursor:pointer;user-select:none;z-index:1}
 #p-claims .cl-t th:hover{color:var(--accent)}
 #p-claims .cl-t td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.4}
@@ -5150,6 +5154,18 @@ async function okkResolveAppeal(id,status){
   function plural(n,a,b,c){n=Math.abs(n)%100;var n1=n%10;if(n>10&&n<20)return c;if(n1>1&&n1<5)return b;if(n1===1)return a;return c;}
   var RETAINED='Клиент удержан', INWORK='На рассмотрении кризис-менеджером';
   function pending(r){return !r.refunded&&r.final_status!==RETAINED&&r.final_status!==INWORK&&!!r.final_status;}
+  // ── Refund saving rate ──
+  // Финальные: «Клиент удержан», «Завершено», «Частично сохранено». Сохранено: «Клиент удержан» + «Частично».
+  // SR по кол-ву = сохранено / финальные. SR ₽ = «Сумма удержания в KPI» / «Запрошенная сумма» по финальным.
+  function isSaved(r){return /^клиент удержан/i.test(r.final_status||'')||/^частично/i.test(r.final_status||'');}
+  function isFinal(r){return isSaved(r)||/^завершен/i.test(r.final_status||'');}
+  function isZS(r){return /^клиент удержан/i.test(r.final_status||'')&&/^(заморозка|сон)/i.test((r.krm_status||'').trim());}
+  function srCalc(rows){
+    var f=rows.filter(isFinal), req=sum(f,function(r){return r.requested_rub;}), kpi=sum(f,function(r){return r.kpi_rub;});
+    var sv=cnt(f,isSaved);
+    return {fin:f.length,saved:sv,zs:cnt(f,isZS),part:cnt(f,function(r){return /^частично/i.test(r.final_status||'');}),ref:cnt(f,function(r){return /^завершен/i.test(r.final_status||'');}),
+      req:req,kpi:kpi,fact:sum(f,function(r){return r.refund_fact;}),src:f.length?sv/f.length:null,srm:req?kpi/req:null};
+  }
 
   window.claimsLoad = function(force){
     var root=document.getElementById('p-claims'); if(!root) return;
@@ -5230,13 +5246,19 @@ async function okkResolveAppeal(id,status){
         ? k('Средний возврат',nRef?rub(factS/nRef)+' ₽':'—','на один проведённый возврат')
         : k('Доля в сумме возвратов',pct(factA?factS/factA:null),'от '+rub(factA)+' ₽ проведённых',isC))+
       k('Удержано в KPI',rub(kpi)+' ₽','«Сумма удержания в KPI»')+
-      k('В работе у КРМ',int(nWork),'«На рассмотрении кризис-менеджером»');
+      k('В работе у КРМ',int(nWork),'«На рассмотрении кризис-менеджером»')+
+      (function(){var sr=srCalc(S);return k('Refund saving rate',pct(sr.src),'по деньгам (KPI): '+pct(sr.srm)+' · финальных '+int(sr.fin));})();
 
     var lineLbl = CL.seg==='all' ? 'Сохранено, %' : 'Доля от всех запросов, %';
     var segName = isC ? 'Досудебки' : (CL.seg==='regular' ? 'Обычные запросы' : 'Запросы');
     body.innerHTML=
       '<div class="cl-take">'+take+'</div>'+
       '<div class="cl-kpis">'+kp+'</div>'+
+      '<div class="sec-lbl">Refund saving rate по КРМ</div>'+
+      '<div class="cl-grid" style="grid-template-columns:1fr">'+
+        '<div class="cl-card"><h3>Saving rate по менеджерам</h3><div class="nt">Финальные запросы: «Клиент удержан», «Завершено», «Частично сохранено». SR по кол-ву = сохранено / финальные. SR ₽ = удержано в KPI / запрошено. Заморозка и Сон — сохранение без бонуса (0 ₽ в KPI).</div>'+srTable(S)+'</div>'+
+        '<div class="cl-card"><h3>SR по месяцам работы</h3><div class="nt">Линии — SR по деньгам (KPI) по каждому КРМ, пунктир — команда. В подсказке — SR по количеству. Учитывает тип запросов и дату создания.</div><div class="cl-cv" style="height:260px"><canvas id="clChSR"></canvas></div></div>'+
+      '</div>'+
       '<div class="sec-lbl">По месяцам</div>'+
       '<div class="cl-grid">'+
         '<div class="cl-card"><h3>По дате создания запроса</h3><div class="nt">'+esc(segName)+' по месяцу, когда пришёл запрос. Линия — '+(CL.seg==='all'?'доля сохранённых клиентов':'доля от всех запросов')+'. Учитывает фильтр месяца работы.</div><div class="cl-cv"><canvas id="clChC"></canvas></div></div>'+
@@ -5265,6 +5287,15 @@ async function okkResolveAppeal(id,status){
     drawTable(); drawCharts();
   }
 
+  function srTable(rows){
+    var by={}; rows.forEach(function(r){var m=r.krm||'—';(by[m]=by[m]||[]).push(r);});
+    var names=Object.keys(by).sort(function(a,b){return by[b].length-by[a].length;});
+    var line=function(name,sr,tot){if(!sr.fin&&!tot)return '';var st=tot?' style="font-weight:600;border-top:2px solid var(--border2)"':'';
+      return '<tr><td'+st+'>'+esc(name)+'</td><td class="n"'+st+'>'+int(sr.fin)+'</td><td class="n"'+st+'>'+int(sr.saved)+'</td><td class="n"'+st+'>'+int(sr.zs)+'</td><td class="n"'+st+'>'+int(sr.part)+'</td><td class="n"'+st+'>'+int(sr.ref)+'</td>'+
+        '<td class="n"'+st+'><b>'+pct(sr.src)+'</b></td><td class="n"'+st+'>'+rub(sr.req)+'</td><td class="n"'+st+'>'+rub(sr.kpi)+'</td><td class="n"'+st+'>'+rub(sr.fact)+'</td><td class="n"'+st+'><b style="color:var(--gold)">'+pct(sr.srm)+'</b></td></tr>';};
+    return '<div class="cl-tw" style="max-height:none"><table class="cl-t cl-srt"><thead><tr><th>Менеджер КРМ</th><th>Финальных</th><th>Сохранено</th><th title="Заморозка / Сон — сохранение без бонуса">из них Зам./Сон</th><th>Частично</th><th>Возвратов</th><th>SR кол-во</th><th>Запрошено ₽</th><th>Удержано KPI ₽</th><th>Возвращено ₽</th><th>SR ₽</th></tr></thead><tbody>'+
+      names.map(function(n){return line(n,srCalc(by[n]));}).join('')+line('Команда',srCalc(rows),true)+'</tbody></table></div>';
+  }
   function th(key,t){return '<th data-k="'+key+'">'+t+(CL.sortK===key?(CL.sortDir>0?' ↑':' ↓'):'')+'</th>';}
   function hcard(title,note,rows,dim){
     var g={}; rows.forEach(function(c){var k=c[dim]||'—';(g[k]=g[k]||{n:0,s:0});g[k].n++;g[k].s+=Number(c.refund_fact)||0;});
@@ -5334,6 +5365,20 @@ async function okkResolveAppeal(id,status){
     countChart('clChC',agg('created_month','work_month',CL.wm),CL.cm);
     var wr=agg('work_month','created_month',CL.cm);
     countChart('clChW',wr,CL.wm);
+    var esr=document.getElementById('clChSR');
+    if(esr){
+      var wms=uniq(d.requests.map(function(r){return r.work_month;}));
+      var base1=d.requests.filter(function(r){return inSeg(r)&&(CL.cm==='all'||r.created_month===CL.cm);});
+      var mgrs=uniq(base1.filter(isFinal).map(function(r){return r.krm||'—';}));
+      var pal=[accent,css('--blue')||'#8aaac8',css('--sage')||'#9aac8a',css('--purple')||'#a87ac8',css('--warn')||'#c8a87a'];
+      var cell=function(m,w){return srCalc(base1.filter(function(r){return r.work_month===w&&(m===null||(r.krm||'—')===m);}));};
+      var sets=mgrs.map(function(m,i){var cs=wms.map(function(w){return cell(m,w);});return {label:m,cells:cs,data:cs.map(function(c){return c.srm==null?null:+(c.srm*100).toFixed(1);}),borderColor:pal[i%pal.length],backgroundColor:pal[i%pal.length],borderWidth:2,pointRadius:4,tension:0,spanGaps:true};});
+      var tc=wms.map(function(w){return cell(null,w);});
+      sets.push({label:'Команда',cells:tc,data:tc.map(function(c){return c.srm==null?null:+(c.srm*100).toFixed(1);}),borderColor:gold,backgroundColor:gold,borderDash:[5,4],borderWidth:2,pointRadius:3,tension:0});
+      CL.charts.clChSR=new Chart(esr,{type:'line',data:{labels:wms.map(ml),datasets:sets},options:Object.assign({},base,{
+        plugins:Object.assign({},base.plugins,{tooltip:Object.assign({},base.plugins.tooltip,{callbacks:{label:function(c){var x=c.dataset.cells[c.dataIndex];return ' '+c.dataset.label+': SR ₽ '+pct(x.srm)+' · кол-во '+pct(x.src)+' ('+x.saved+'/'+x.fin+')';}}})}),
+        scales:{x:base.scales.x,y:{beginAtZero:true,max:100,ticks:{color:dim,font:{size:10},callback:function(v){return v+'%';}},grid:{color:grid}}}})});
+    }
     var es=document.getElementById('clChS');
     var hiC=CL.seg!=='regular', hiR=CL.seg!=='claim';
     var rmRows=(function(){var ms=uniq(d.requests.map(function(r){return r.refund_month;}).filter(Boolean));return ms.map(function(m){
