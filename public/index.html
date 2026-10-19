@@ -5124,7 +5124,7 @@ async function okkResolveAppeal(id,status){
 </style>
 <script>
 (function(){
-  var CL = { data:null, loading:false, seg:'all', cm:'all', wm:'all', q:'', sortK:'created', sortDir:-1, charts:{} };
+  var CL = { data:null, loading:false, seg:'all', cm:'all', wm:'all', rm:'all', q:'', sortK:'created', sortDir:-1, charts:{} };
   window.CL_STATE = CL;
   var MON = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
   var LBL = {
@@ -5141,7 +5141,7 @@ async function okkResolveAppeal(id,status){
   function pct(v){return v==null||!isFinite(v)?'—':(v*100).toLocaleString('ru-RU',{maximumFractionDigits:1})+'%';}
   function rub(v){if(v==null)return '—';var a=Math.abs(v);if(a>=999500)return (v/1e6).toLocaleString('ru-RU',{maximumFractionDigits:2})+' млн';if(a>=1e4)return (v/1e3).toLocaleString('ru-RU',{maximumFractionDigits:0})+' тыс.';return int(v);}
   function dfmt(d){return d?d.slice(8,10)+'.'+d.slice(5,7)+'.'+d.slice(0,4):'—';}
-  function inF(r){return (CL.cm==='all'||r.created_month===CL.cm)&&(CL.wm==='all'||r.work_month===CL.wm);}
+  function inF(r){return (CL.cm==='all'||r.created_month===CL.cm)&&(CL.wm==='all'||r.work_month===CL.wm)&&(CL.rm==='all'||r.refund_month===CL.rm);}
   function inSeg(r,seg){seg=seg||CL.seg;return seg==='all'||r.segment===seg;}
   function uniq(a){return a.filter(function(x,i){return a.indexOf(x)===i;}).sort();}
   function sum(a,f){return a.reduce(function(s,x){return s+(Number(f(x))||0);},0);}
@@ -5177,13 +5177,15 @@ async function okkResolveAppeal(id,status){
         '<label>Тип запросов<select id="clSeg"><option value="all">Все запросы</option><option value="claim">Досудебки</option><option value="regular">Обычные запросы</option></select></label>'+
         '<label>Дата создания запроса<select id="clCm"></select></label>'+
         '<label>Месяц, в котором ведётся работа<select id="clWm"></select></label>'+
+        '<label>Месяц проведения возврата<select id="clRm"></select></label>'+
         '<button class="btn-nm" id="clReset" type="button">Сбросить</button>'+
         '<button class="btn-nm" id="clRefresh" type="button" style="border-color:var(--blue);color:var(--blue)">↻ Обновить из таблицы</button>'+
       '</div></div><div id="clBody"></div>';
     root.querySelector('#clSeg').addEventListener('change',function(e){CL.seg=e.target.value;claimsRender();});
     root.querySelector('#clCm').addEventListener('change',function(e){CL.cm=e.target.value;claimsRender();});
     root.querySelector('#clWm').addEventListener('change',function(e){CL.wm=e.target.value;claimsRender();});
-    root.querySelector('#clReset').addEventListener('click',function(){CL.seg='all';CL.cm='all';CL.wm='all';CL.q='';claimsRender();});
+    root.querySelector('#clRm').addEventListener('change',function(e){CL.rm=e.target.value;claimsRender();});
+    root.querySelector('#clReset').addEventListener('click',function(){CL.seg='all';CL.cm='all';CL.wm='all';CL.rm='all';CL.q='';claimsRender();});
     root.querySelector('#clRefresh').addEventListener('click',function(){claimsLoad(true);});
   }
 
@@ -5191,12 +5193,15 @@ async function okkResolveAppeal(id,status){
     var d=CL.data; if(!d) return;
     var root=document.getElementById('p-claims'), body=document.getElementById('clBody');
     var upd=d.updated_at?new Date(d.updated_at):null;
-    document.getElementById('clSrc').innerHTML='Источник: <a href="'+esc(d.sheet_url)+'" target="_blank" rel="noopener">таблица «возвраты | CIS»'+(d.tab?' → '+esc(d.tab):'')+'</a>'+(upd?' · обновлено '+upd.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'');
+    document.getElementById('clSrc').innerHTML='Источник: <a href="'+esc(d.sheet_url)+'" target="_blank" rel="noopener">таблица «возвраты | CIS»'+(d.tab?' → '+esc(d.tab):'')+'</a>'+(upd?' · обновлено '+upd.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'')+' · строк прочитано: '+int(d.requests.length)+(d.last_created?', последний запрос от '+dfmt(d.last_created):'')+
+      ((d.skipped&&d.skipped.length)?' · <span style="color:var(--red)" title="'+esc(d.skipped.slice(0,20).map(function(x){return 'строка '+x.row+': '+x.reason;}).join('\n'))+'">⚠ не прочитано строк: '+d.skipped.length+' (наведите, чтобы увидеть)</span>':'');
     var fill=function(sel,vals,cur){sel.innerHTML='<option value="all">Все месяцы</option>'+vals.map(function(m){return '<option value="'+esc(m)+'">'+esc(ml(m))+'</option>';}).join('');sel.value=cur;if(sel.value!==cur)sel.value='all';};
     fill(root.querySelector('#clCm'),uniq(d.requests.map(function(r){return r.created_month;})),CL.cm);
     fill(root.querySelector('#clWm'),uniq(d.requests.map(function(r){return r.work_month;})),CL.wm);
+    fill(root.querySelector('#clRm'),uniq(d.requests.map(function(r){return r.refund_month;}).filter(Boolean)),CL.rm);
+    root.querySelector('#clRm').options[0].textContent='Любой';
     root.querySelector('#clSeg').value=CL.seg;
-    CL.cm=root.querySelector('#clCm').value; CL.wm=root.querySelector('#clWm').value;
+    CL.cm=root.querySelector('#clCm').value; CL.wm=root.querySelector('#clWm').value; CL.rm=root.querySelector('#clRm').value;
 
     var A=d.requests.filter(inF), S=A.filter(function(r){return inSeg(r);});
     var isC=CL.seg==='claim';
@@ -5236,7 +5241,7 @@ async function okkResolveAppeal(id,status){
       '<div class="cl-grid">'+
         '<div class="cl-card"><h3>По дате создания запроса</h3><div class="nt">'+esc(segName)+' по месяцу, когда пришёл запрос. Линия — '+(CL.seg==='all'?'доля сохранённых клиентов':'доля от всех запросов')+'. Учитывает фильтр месяца работы.</div><div class="cl-cv"><canvas id="clChC"></canvas></div></div>'+
         '<div class="cl-card"><h3>По месяцу работы</h3><div class="nt">'+esc(segName)+' по месяцу, в котором ведётся работа. Учитывает фильтр даты создания.</div><div class="cl-cv"><canvas id="clChW"></canvas></div></div>'+
-        '<div class="cl-card"><h3>Сумма возвратов по месяцу работы</h3><div class="nt">Проведённые возвраты, ₽ (факт): досудебки против обычных запросов. Учитывает фильтр даты создания.</div><div class="cl-cv"><canvas id="clChS"></canvas></div></div>'+
+        '<div class="cl-card"><h3>Возвращено по месяцу проведения</h3><div class="nt">Факт, ₽ — по «Дата проведения возврата»: досудебки против обычных запросов. Учитывает фильтры даты создания и месяца работы.</div><div class="cl-cv"><canvas id="clChS"></canvas></div></div>'+
       '</div>'+
       '<div class="sec-lbl">Причины и итоги</div>'+
       '<div class="cl-grid">'+
@@ -5253,7 +5258,7 @@ async function okkResolveAppeal(id,status){
           th('created','Создан')+th('work_month','Месяц работы')+th('type','Тип')+th('reason',isC?'Триггер':'Причина из списка')+th('cause','Причина кратко')+th('essence','Суть и итог')+
           th('purchase_rub','Покупка, ₽')+th('refund_fact','Возвращено факт, ₽')+th('pct','% от покупки')+th('final_status','Статус БО')+th('krm_status','Статус КРМ')+th('refund_date','Дата возврата')+th('krm','КРМ')+th('bo_request','БО')+
         '</tr></thead><tbody id="clTb"></tbody></table></div></div>'+
-      '<div class="cl-foot">Запрос — строка реестра возвратов. Досудебка — флаг «Досудебная претензия» в «Причина из списка»; повторная строка того же клиента считается одной досудебкой и в сегменты не входит (только во «Все»). «Угроза» — суд или претензия упомянуты в комментарии КРМ без флага, такие запросы относятся к обычным. Возвращено факт — «Итоговая сумма возврата, RUB» по статусам БО «Завершено» и «Частично сохранено». Триггер и краткая причина определяются автоматически по тексту «Причина своими словами». Данные кэшируются на 10 минут.</div>';
+      '<div class="cl-foot">Запрос — строка реестра возвратов. Досудебка — флаг «Досудебная претензия» в «Причина из списка»; повторная строка того же клиента считается одной досудебкой и в сегменты не входит (только во «Все»). «Угроза» — суд или претензия упомянуты в комментарии КРМ без флага, такие запросы относятся к обычным. Возвращено факт — «Итоговая сумма возврата, RUB» по статусам БО «Завершено» и «Частично сохранено». Месяц проведения возврата — по «Дата проведения возврата»: показывает, сколько денег реально ушло в месяце, включая возвраты по запросам прошлых месяцев. Триггер и краткая причина определяются автоматически по тексту «Причина своими словами». Данные кэшируются на 10 минут.</div>';
 
     document.getElementById('clQ').addEventListener('input',function(e){CL.q=e.target.value;drawTable();});
     body.querySelectorAll('.cl-t th').forEach(function(t){t.addEventListener('click',function(){var key=t.dataset.k;CL.sortDir=CL.sortK===key?-CL.sortDir:(['purchase_rub','refund_fact','pct','created','refund_date'].indexOf(key)>=0?-1:1);CL.sortK=key;drawTable();});});
@@ -5331,11 +5336,15 @@ async function okkResolveAppeal(id,status){
     countChart('clChW',wr,CL.wm);
     var es=document.getElementById('clChS');
     var hiC=CL.seg!=='regular', hiR=CL.seg!=='claim';
-    if(es) CL.charts.clChS=new Chart(es,{type:'bar',data:{labels:wr.map(function(r){return ml(r.m);}),datasets:[
-        {label:'Досудебки',data:wr.map(function(r){return Math.round(r.fc);}),backgroundColor:hiC?red:muted,borderRadius:3,maxBarThickness:42,stack:'s'},
-        {label:'Обычные запросы',data:wr.map(function(r){return Math.round(r.fr);}),backgroundColor:hiR?accent:muted,borderRadius:3,maxBarThickness:42,stack:'s'}
+    var rmRows=(function(){var ms=uniq(d.requests.map(function(r){return r.refund_month;}).filter(Boolean));return ms.map(function(m){
+      var A=d.requests.filter(function(r){return r.refund_month===m&&(CL.cm==='all'||r.created_month===CL.cm)&&(CL.wm==='all'||r.work_month===CL.wm);});
+      return {m:m,fc:sum(A.filter(function(r){return r.segment==='claim';}),function(r){return r.refund_fact;}),fr:sum(A.filter(function(r){return r.segment!=='claim';}),function(r){return r.refund_fact;})};});})();
+    var dimOff=function(r,on){return CL.rm!=='all'&&CL.rm!==r.m?muted:on;};
+    if(es) CL.charts.clChS=new Chart(es,{type:'bar',data:{labels:rmRows.map(function(r){return ml(r.m);}),datasets:[
+        {label:'Досудебки',data:rmRows.map(function(r){return Math.round(r.fc);}),backgroundColor:rmRows.map(function(r){return dimOff(r,hiC?red:muted);}),borderRadius:3,maxBarThickness:42,stack:'s'},
+        {label:'Обычные запросы',data:rmRows.map(function(r){return Math.round(r.fr);}),backgroundColor:rmRows.map(function(r){return dimOff(r,hiR?accent:muted);}),borderRadius:3,maxBarThickness:42,stack:'s'}
       ]},options:Object.assign({},base,{
-        plugins:Object.assign({},base.plugins,{tooltip:Object.assign({},base.plugins.tooltip,{callbacks:{label:function(c){return ' '+c.dataset.label+': '+int(c.raw)+' ₽';},afterBody:function(it){var r=wr[it[0].dataIndex];var t=r.fc+r.fr;return ['Всего проведено: '+int(t)+' ₽','Доля досудебок: '+pct(t?r.fc/t:null)];}}})}),
+        plugins:Object.assign({},base.plugins,{tooltip:Object.assign({},base.plugins.tooltip,{callbacks:{label:function(c){return ' '+c.dataset.label+': '+int(c.raw)+' ₽';},afterBody:function(it){var r=rmRows[it[0].dataIndex];var t=r.fc+r.fr;return ['Всего проведено: '+int(t)+' ₽','Доля досудебок: '+pct(t?r.fc/t:null)];}}})}),
         scales:{x:Object.assign({},base.scales.x,{stacked:true}),y:{stacked:true,beginAtZero:true,ticks:{color:dim,font:{size:10},callback:function(v){return rub(v);}},grid:{color:grid}}}
       })});
   }

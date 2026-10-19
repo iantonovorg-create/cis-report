@@ -39,13 +39,19 @@ const RX_THREAT = /угроз\S*\s+(суд\S*|претенз\S*)|упомина\
 
 function num(v) {
   if (v == null) return null;
-  const s = String(v).replace(/[\s ]/g, '').replace(',', '.');
-  if (s === '') return null;
+  // убираем пробелы, валюту и прочие символы: «1 234,5 ₽» → 1234.5
+  let s = String(v).replace(/[^\d,.\-]/g, '');
+  if (s === '' || s === '-') return null;
+  if (s.indexOf(',') >= 0 && s.indexOf('.') >= 0) s = s.replace(/\./g, '').replace(',', '.'); // 1.234,5
+  else s = s.replace(',', '.');
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
 }
 function parseDate(v) {
-  const m = String(v || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  const t = String(v || '');
+  const iso = t.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const m = t.match(/(\d{1,2})[./](\d{1,2})[./](\d{4})/);
   if (!m) return null;
   return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
 }
@@ -88,21 +94,25 @@ function parseRefunds(rows) {
   if (missing.length) throw new Error('В таблице не найдены колонки: ' + missing.join(', '));
   const g = (r, k) => (r[C[k]] == null ? '' : String(r[C[k]]).trim());
 
-  const requests = [], cand = [];
+  const requests = [], cand = [], skipped = [];
   rows.slice(1).forEach((r, i) => {
     const created = parseDate(g(r, 'created')), wm = workMonth(g(r, 'work'));
-    if (!created || !wm) return; // пустые / служебные строки
+    if (!created || !wm) {
+      // строка с данными, но без даты создания / месяца работы — не теряем молча
+      if (g(r, 'link') || g(r, 'bo') || g(r, 'refund')) skipped.push({ row: i + 2, reason: !created ? 'нет «Дата создания отчета»' : 'не распознан «Месяц в котором ведется работа»: ' + g(r, 'work') });
+      return;
+    }
     const link = g(r, 'link');
     const id = (link.match(/id=([0-9a-f-]+)/i) || [])[1] || 'row' + (i + 2);
     const status = g(r, 'status');
     const list = g(r, 'list'), text = g(r, 'text');
-    const refunded = status === 'Завершено' || status === 'Частично сохранено';
+    const refunded = /^завершен/i.test(status) || /^частично/i.test(status); // «Завершено», «Частично сохранено/удержан»
     const req = {
       id, created, created_month: created.slice(0, 7), work_month: wm, final_status: status, main_reason: g(r, 'main'),
       period: g(r, 'period'), payment: g(r, 'payment'), refund_rub: num(g(r, 'refund')) || 0,
       refunded, refund_fact: refunded ? (num(g(r, 'refund')) || 0) : 0, claim_type: '', segment: 'regular',
       kpi_rub: KPI_COL >= 0 ? (num(r[KPI_COL]) || 0) : 0, krm: g(r, 'krm'), krm_status: g(r, 'krmStatus'),
-      refund_date: parseDate(g(r, 'refundDate')), purchase_rub: num(g(r, 'purchase')), currency: g(r, 'currency'),
+      refund_date: parseDate(g(r, 'refundDate')), refund_month: refunded ? ((parseDate(g(r, 'refundDate')) || '').slice(0, 7) || 'без даты') : '', purchase_rub: num(g(r, 'purchase')), currency: g(r, 'currency'),
       bo_request: link, reason: list,
       cause: short(section(text, 'Причина запроса возврата') || list || '', 110),
       essence: short([section(text, 'Примененные инструменты'), section(text, 'Итог работы') && ('Итог: ' + section(text, 'Итог работы'))].filter(Boolean).join(' ') || text, 220),
@@ -143,7 +153,7 @@ function parseRefunds(rows) {
     });
   }
   claims.sort((a, b) => a.created.localeCompare(b.created));
-  return { requests, claims };
+  return { requests, claims, skipped, last_created: requests.reduce((m, r) => (r.created > m ? r.created : m), '') };
 }
 
 let cache = null, cacheAt = 0, inflight = null;
